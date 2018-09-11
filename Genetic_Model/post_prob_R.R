@@ -1,31 +1,33 @@
+# Sept 11th: adapting for recrudesence, updating notation etc.  
+
 library(doParallel)
 library(gtools)
 
-post_prob_R = function(MS_data_reformated, Fs, 
-                           p = 0.2, alpha = 0, 
-                           cores = 4, Max_Eps = 3, 
-                           Max_Tot_Vtx = 6,
-                           UpperComplexity = 10^6,# Assuming 10ms per operation -> 55 hours
-                           verbose = FALSE){
+post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
+                       Fs, # Frequencies 
+                       p = c('C' = 0.1, 'L' = 0.2, 'I' = 0.7), # Change s.t. also works with per person per infection 
+                       alpha = 0, 
+                       cores = 4, 
+                       Max_Eps = 3, 
+                       Max_Tot_Vtx = 6,
+                       UpperComplexity = 10^6,# Assuming 10ms per operation -> 55 hours
+                       verbose = FALSE){
   
+  p_pop = length(p) == 3 # Check to see if using pop prior or prior from time-to-event
   if(verbose) writeLines('Setting up parameters to do computation....')
+  if(verbose & p_pop) writeLines('Using population prior probabilities of recurrence states')
+  if(sum(p) != 1) stop('Population prior probabilities do not sum to one')
+
+  # Create store Post_probs with length = num. of all infections inc. Tn = 1 etc.
+  all_infections = unique(MS_data$Episode_Identifier)
+  Post_probs = array(dim = length(all_infections), dimnames = list(all_infections))
   
-  #==========================================================================
-  # Create store Thetas with length = num. of all infections inc. Tn = 1 etc.
-  #==========================================================================
-  all_infections = unique(MS_data_reformated$Episode_Identifier)
-  Thetas = array(dim = length(all_infections), dimnames = list(all_infections))
-  
-  #==========================================================================
-  # Calculate the prior probability or reinfection, log probs. and log frequencies
-  #==========================================================================
+  # Extract microsatellites and related quantities and log prior probs.
   MSs = names(Fs)  
   M = length(MSs) 
-  q = 1 - p 
-  log_p = log(p) 
-  log_q = log(q) 
   log_Fs = lapply(Fs, log)
-  
+  if(p_pop){log_p = log(p)}
+
   #==========================================================================
   # Calculate alpha terms required for logSumExp in nested functions
   #==========================================================================
@@ -39,21 +41,23 @@ post_prob_R = function(MS_data_reformated, Fs,
   # Extract yn for all individuals for checks ahead of do.par and Gn calculation
   # It is important that IDs_all is a character vector since id used to index throughout
   #==========================================================================
-  IDs_all = as.character(unique(MS_data_reformated$ID)) # Character vector
-  yns = lapply(IDs_all, function(x){
-    yn = filter(MS_data_reformated, ID == x)})
+  IDs_all = as.character(unique(MS_data$ID)) # Character vector
+  yns = lapply(IDs_all, function(x){yn = filter(MS_data, ID == x)})
   names(yns) = IDs_all
   
   #==========================================================================
   # Extract COIs (cns) and num. of infections (Tns) for each individual
   #==========================================================================
   cns = lapply(yns, function(x){cn = table(x$Episode_Identifier)})
-  sum_cns = sapply(cns, sum) # Size of Gn = sum(cnt) for check below
+  sum_cns = sapply(cns, sum) # Size of graph = sum(cnt) for check below
   Tns = lapply(cns, length) # Also used in check below
   Tns_chr = lapply(Tns, as.character) # Character version needed for indexes in do.par
   
   #==========================================================================
   # Check for individuals whose data are too complex for theta calculation
+  #++++++++++++++
+  # May need to change this given added complexity of additional state
+  #++++++++++++++
   #==========================================================================
   complex = (Tns > Max_Eps) | (sum_cns >Max_Tot_Vtx)
   if(any(complex)){
@@ -72,32 +76,32 @@ post_prob_R = function(MS_data_reformated, Fs,
   
   #==========================================================================
   # Extract IDs with adequate data that are not too complex
-  # (we only calculate theta for these IDs)
+  # (we only calculate posterior probabilities for these IDs)
   #==========================================================================
   IDs = IDs_all[(!complex & !no_recurrence)]
-  N = length(IDs) # N is the number of individuals for whom theta is calculable
-  if(N == 0) {
-    stop('No infections with calculable theta')
+  N = length(IDs) # N is the number of individuals for whom post. probs. are calculable
+  if(N == 0) {stop('No infections with calculable posterior probabilities')
   } else {
-    writeLines(sprintf('\nTotal number of IDs with calculable theta: %s', N))
+    writeLines(sprintf('\nTotal number of IDs with calculable posterior probabilities: %s', N))
   } 
   
   #==========================================================================
-  # Generate all poss. Lns given unique (Tns) for IDs with calculable theta
+  # Generate all poss. Rns given unique (Tns) for IDs with calculable theta
   #==========================================================================
   unique_Tns = unique(Tns[IDs])
-  Lns = lapply(unique_Tns, function(x){
-    Ln = permutations(n = 2, r = x-1, v = c(0,1), repeats.allowed = TRUE)
-    rownames(Ln) = apply(Ln, 1, paste, collapse = '') 
-    return(Ln)
+  Rns = lapply(unique_Tns, function(x){
+    Rn = permutations(n = 3, r = x-1, v = c('C','L','I'), repeats.allowed = TRUE)
+    rownames(Rn) = apply(Rn, 1, paste, collapse = '') 
+    return(Rn)
   })
-  names(Lns) = unique_Tns
+  names(Rns) = unique_Tns
   
   #==========================================================================
-  # Calculate log Pr( Ln | p )
+  # Calculate log Pr( Rn | p )
   #==========================================================================
-  log_Pr_Lns = lapply(Lns, function(Ln){
-    apply(Ln, 1, function(x){sum(x * log_p + (1-x) * log_q)})})
+  if(p_pop){
+    log_Pr_Rns = lapply(Rns, function(Rn){apply(Rn, 1, function(x){sum(log_p[x])})})
+  }
   
   #==========================================================================
   # Count num. of vertices (COIs) for each individual's tth infection 
@@ -109,7 +113,7 @@ post_prob_R = function(MS_data_reformated, Fs,
   unique_vtx_count_str = unique(vtx_count_strs)
   
   #==========================================================================
-  # Check all the requisite graph look-ups exist before going on
+  # Check all the requisite graph look-ups exist before proceeding
   #==========================================================================
   graph_lookup_check = sapply(unique_vtx_count_str, function(x){
     if(!file.exists(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x))){
@@ -119,21 +123,23 @@ post_prob_R = function(MS_data_reformated, Fs,
   })
   
   #==========================================================================
-  # For each unique_vtx_count_str generate matrix log_Pr_G_Ln 
-  # where each log_Pr_G_Ln has rows per Gnw; cols per Lnt
+  # For each unique_vtx_count_str generate matrix log_Pr_G_Rn 
+  # where each log_Pr_G_Rn has rows per Gnw; cols per Rnt
   #==========================================================================
-  log_Pr_G_Lns = lapply(unique_vtx_count_str, function(x, log_p, log_q){
-    load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all Gnw for Gn
-    G_Ln_comp = sapply(graph_lookup, test_Ln_compatible) # For each Gnw, test compatibility with Rn
-    cn = as.numeric(strsplit(x, split = '_')[[1]]) # Reconstruct cn
+  log_Pr_G_Rns = lapply(unique_vtx_count_str, function(x){
+    load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all G_ab for given vtx_count_str
+    G_Rn_comp = sapply(graph_lookup, test_Rn_compatible, Rns) # For each G_ab, test compatibility with Rn
+    cn = as.numeric(strsplit(x, split = '_')[[1]]) # Reconstruct cn 
     Tn_chr = as.character(length(cn)) # Reconstruct Tn_chr
-    Ln = Lns[[Tn_chr]] # Extract Ln 
-    log_Pr_Ln = log_Pr_Lns[[Tn_chr]] # Extract log Pr( Rn | p)
-    log_Pr_G_Ln = log(t(G_Ln_comp*(1/rowSums(G_Ln_comp)))) # log Pr( Gnw | Rn ) = 1 / W in matrix
-    log_Pr_G_Ln[is.infinite(log_Pr_G_Ln)] = NA # Set -Inf due to log(0) to NA
-    return(log_Pr_G_Ln)
-  }, log_p, log_q)
-  names(log_Pr_G_Lns) = unique_vtx_count_str
+    Rn = Rns[[Tn_chr]] # Extract Rn 
+    log_Pr_Rn = log_Pr_Rns[[Tn_chr]] # Extract log Pr( Rn | p)
+    log_Pr_G_Rn = log(t(G_Rn_comp*(1/rowSums(G_Rn_comp)))) # log Pr( Gnw | Rn ) = 1 / W in matrix
+    log_Pr_G_Rn[is.infinite(log_Pr_G_Rn)] = NA # Set -Inf due to log(0) to NA
+    return(log_Pr_G_Rn)
+  })
+  names(log_Pr_G_Rns) = unique_vtx_count_str
+  #+++++++++++++++++++++++++++
+  # This is where I am at as of 6pm 
   
   if(verbose){
     writeLines('\nIn the following viable graphs include only those with sufficient numbers of vertices 
@@ -146,7 +152,7 @@ post_prob_R = function(MS_data_reformated, Fs,
   #***********************************************
   # Computation of likelihood values
   #***********************************************
-  Thetas = foreach(i=1:N, .combine = c) %dopar% {
+  Post_probs = foreach(i=1:N, .combine = c) %dopar% {
     # set id = '70' for vtx_counts_str = "1_2_2" if checking by hand
     # set id = '402' for vtx_counts_str = "4_1_0" if checking by hand
     id = IDs[i] 
@@ -160,11 +166,11 @@ post_prob_R = function(MS_data_reformated, Fs,
     Tn = Tns[[id]]
     Tn_chr = Tns_chr[[id]]
     infections = unique(yn$Episode_Identifier) # IDs of infections for the nth individual
-    Ln = Lns[[Tn_chr, drop = FALSE]] # Extract relevant Ln
-    colnames(Ln) = infections[-1] # Extract relevant Ln and name
+    Rn = Rns[[Tn_chr, drop = FALSE]] # Extract relevant Rn
+    colnames(Rn) = infections[-1] # Extract relevant Rn and name
     vtx_count_str = vtx_count_strs[id] # Extract vertex sizes of Gn
-    log_Pr_Ln = log_Pr_Lns[[Tn_chr]] # Extract log P(Ln)
-    log_Pr_G_Ln = log_Pr_G_Lns[[vtx_count_str]] # Extract log P(Gnw | Ln)
+    log_Pr_Rn = log_Pr_Rns[[Tn_chr]] # Extract log P(Rn)
+    log_Pr_G_Rn = log_Pr_G_Rns[[vtx_count_str]] # Extract log P(Gnw | Rn)
     
     #==========================================================================          
     # Generate all possible vertex haplotype label mappings of data onto a graph 
@@ -241,11 +247,11 @@ post_prob_R = function(MS_data_reformated, Fs,
     if(complexity_problem > UpperComplexity){ # Return NAs and skip to next ID
       
       writeLines(sprintf('\nSkipping this problem (ID %s), too complex.', id))
-      thetas = array(NA, dim = Tn, dimnames = list(infections)) # Return NAs
-      #Thetas[names(thetas)] = thetas # Need to change this for parallel computation
+      Post_probs = array(NA, dim = Tn, dimnames = list(infections)) # Return NAs
+      #Post_probs[names(Post_probs)] = Post_probs # Need to change this for parallel computation
       
-      # return NA vector of thetas
-      thetas
+      # return NA vector of Post_probs
+      Post_probs
       
     } else { # Go on to calculate theta
       
@@ -268,35 +274,35 @@ post_prob_R = function(MS_data_reformated, Fs,
       log_Pr_yn_Gnws = log_Pr_yn_Gnws_unnormalised - log_L # Normalise probabilities
       
       #==========================================================================          
-      # Calculate P(yn | Ln) by summing over all Gnw 
+      # Calculate P(yn | Rn) by summing over all Gnw 
       #==========================================================================
-      log_Pr_yn_Ln = array(dim = dim(log_Pr_G_Ln), dimnames = dimnames(log_Pr_G_Ln))
-      for(col_i in 1:ncol(log_Pr_G_Ln)){
-        log_Pr_yn_Ln[,col_i] = log_Pr_yn_Gnws + log_Pr_G_Ln[,col_i]
+      log_Pr_yn_Rn = array(dim = dim(log_Pr_G_Rn), dimnames = dimnames(log_Pr_G_Rn))
+      for(col_i in 1:ncol(log_Pr_G_Rn)){
+        log_Pr_yn_Rn[,col_i] = log_Pr_yn_Gnws + log_Pr_G_Rn[,col_i]
       }
-      log_Pr_yn_Ln = apply(log_Pr_yn_Ln, 2, logSumExp, na.rm = TRUE)
+      log_Pr_yn_Rn = apply(log_Pr_yn_Rn, 2, logSumExp, na.rm = TRUE)
       
       #==========================================================================          
-      # Calculate P(Ln | yn) 
+      # Calculate P(Rn | yn) 
       #==========================================================================
-      # Pr_yn_Ln[] = 1 # Likelihood check: returns the prior
-      log_Pr_yn_and_Ln = log_Pr_yn_Ln[names(log_Pr_Ln)] + log_Pr_Ln
-      log_Pr_yn = logSumExp(log_Pr_yn_and_Ln)
-      Pr_Ln_yn = exp(log_Pr_yn_and_Ln - log_Pr_yn) 
+      # Pr_yn_Rn[] = 1 # Likelihood check: returns the prior
+      log_Pr_yn_and_Rn = log_Pr_yn_Rn[names(log_Pr_Rn)] + log_Pr_Rn
+      log_Pr_yn = logSumExp(log_Pr_yn_and_Rn)
+      Pr_Rn_yn = exp(log_Pr_yn_and_Rn - log_Pr_yn) 
       
       #==========================================================================          
-      # Calculate P(Lnt | yn) and return 
+      # Calculate P(Rnt | yn) and return 
       #==========================================================================
       if(Tn == 2){
-        thetas =  c(NA, Pr_Ln_yn['1'])
+        Post_probs =  c(NA, Pr_Rn_yn['1'])
       }
       if(Tn == 3){
-        thetas = c(NA, sum(Pr_Ln_yn[c('11','10')]), sum(Pr_Ln_yn[c('11','01')]))
+        Post_probs = c(NA, sum(Pr_Rn_yn[c('11','10')]), sum(Pr_Rn_yn[c('11','01')]))
       }
-      names(thetas) = infections
+      names(Post_probs) = infections
       
       # return vector
-      thetas
+      Post_probs
     }
   }
   
@@ -306,10 +312,10 @@ post_prob_R = function(MS_data_reformated, Fs,
   #                                                            'Run time (ms) per graph')))
   
   ## Uncomment for doParallel
-  # Thetas[names(thetas)] = thetas
+  # Post_probs[names(Post_probs)] = Post_probs
   # Aimee I'm saving this so plot can be generated outside of function
   # James: need to think how to incorporate this into the parallel version
   # save(complexity_time, file = '../../RData/complexity_time.RData')
-  return(Thetas)
+  return(Post_probs)
   
 }
