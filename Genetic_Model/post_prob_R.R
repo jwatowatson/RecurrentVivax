@@ -1,28 +1,39 @@
-# Sept 11th: adapting for recrudesence, updating notation etc.  
+# Aside from nested functions, notation matches unless otherwised specified 
+# e.g. Tn counts from 1 here and 0 in the notation
+# In names, conditioning bar is represented by an underscore while and is explicit
+# e.g. log_Pr_yn_Rn denotes log Pr(yn | Rn) while log_Pr_yn_and_Rn denotes log Pr(yn, Rn)
 
+# These should be made into dependencies
 library(doParallel)
 library(gtools)
 
-post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
-                       Fs, # Frequencies 
-                       p = c('C' = 0.1, 'L' = 0.2, 'I' = 0.7), # Change s.t. also works with per person per infection 
-                       alpha = 0, 
+post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
+                       Fs, # MS population frequencies 
+                       p = c('C' = 0.1, 'L' = 0.2, 'I' = 0.7), # Population constant prior over C, L, I
+                       alpha = 0, # Additative inbreeding constant
                        cores = 4, 
                        Max_Eps = 3, 
                        Max_Tot_Vtx = 6,
-                       UpperComplexity = 10^6,# Assuming 10ms per operation -> 55 hours
+                       UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
                        verbose = FALSE){
   
-  p_pop = length(p) == 3 # Check to see if using pop prior or prior from time-to-event
+  #==========================================================================
+  # Check to see if using pop prior or prior from time-to-event and comment
+  #==========================================================================
+  p_pop = length(p) == 3
   if(verbose) writeLines('Setting up parameters to do computation....')
   if(verbose & p_pop) writeLines('Using population prior probabilities of recurrence states')
   if(sum(p) != 1) stop('Population prior probabilities do not sum to one')
 
-  # Create store Post_probs with length = num. of all infections inc. Tn = 1 etc.
+  #==========================================================================
+  # Create Post_probs store with length = num. of all infections inc. those without recurrence
+  #==========================================================================
   all_infections = unique(MS_data$Episode_Identifier)
   Post_probs = array(dim = length(all_infections), dimnames = list(all_infections))
   
-  # Extract microsatellites and related quantities and log prior probs.
+  #==========================================================================
+  # Extract microsatellites, related quantities and calculate log pop prior
+  #==========================================================================
   MSs = names(Fs)  
   M = length(MSs) 
   log_Fs = lapply(Fs, log)
@@ -38,8 +49,8 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
                   log_0.5_alpha = log(0.5 - alpha))
   
   #==========================================================================
-  # Extract yn for all individuals for checks ahead of do.par and Gn calculation
-  # It is important that IDs_all is a character vector since id used to index throughout
+  # Extract yn for all individuals for checks ahead of do.par and Gn_ab calculation
+  # It is important that IDs_all is a character vector since id used to index
   #==========================================================================
   IDs_all = as.character(unique(MS_data$ID)) # Character vector
   yns = lapply(IDs_all, function(x){yn = filter(MS_data, ID == x)})
@@ -47,6 +58,7 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
   
   #==========================================================================
   # Extract COIs (cns) and num. of infections (Tns) for each individual
+  # Note that, in contrast to notation, here Tn counts from 1 
   #==========================================================================
   cns = lapply(yns, function(x){cn = table(x$Episode_Identifier)})
   sum_cns = sapply(cns, sum) # Size of graph = sum(cnt) for check below
@@ -55,9 +67,9 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
   
   #==========================================================================
   # Check for individuals whose data are too complex for theta calculation
-  #++++++++++++++
+  #++++++++++++++++++++++++++++
   # May need to change this given added complexity of additional state
-  #++++++++++++++
+  #++++++++++++++++++++++++++++
   #==========================================================================
   complex = (Tns > Max_Eps) | (sum_cns >Max_Tot_Vtx)
   if(any(complex)){
@@ -65,8 +77,8 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
                        paste(IDs_all[complex], collapse = ', '), Max_Eps,Max_Tot_Vtx))}
   
   #==========================================================================
-  # Check for individuals that have Tn = 1 
-  # (inadequate data for theta calculation)
+  # Check for individuals that have Tn = 1 (no recurrence)
+  # (inadequate data for posterior probability calculation)
   #==========================================================================
   no_recurrence = Tns < 2
   if(any(no_recurrence)){
@@ -86,7 +98,7 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
   } 
   
   #==========================================================================
-  # Generate all poss. Rns given unique (Tns) for IDs with calculable theta
+  # Generate all poss. Rns given unique (Tns) for IDs with calculable posteriors
   #==========================================================================
   unique_Tns = unique(Tns[IDs])
   Rns = lapply(unique_Tns, function(x){
@@ -97,14 +109,13 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
   names(Rns) = unique_Tns
   
   #==========================================================================
-  # Calculate log Pr( Rn | p )
+  # Calculate log Pr(Rn | p)
   #==========================================================================
-  if(p_pop){
-    log_Pr_Rns = lapply(Rns, function(Rn){apply(Rn, 1, function(x){sum(log_p[x])})})
-  }
+  if(p_pop){log_Pr_Rns = lapply(Rns, function(Rn){apply(Rn, 1, function(x){sum(log_p[x])})})}
   
   #==========================================================================
   # Count num. of vertices (COIs) for each individual's tth infection 
+  # (save as a vector of strings as used to index)
   #==========================================================================
   vtx_count_strs = sapply(cns[IDs], function(cn,  Max_Eps){
     vtx_count = c(cn, rep(0, Max_Eps-(length(cn)))) # Add 0 if Tn < Max_Eps
@@ -124,38 +135,35 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
   
   #==========================================================================
   # For each unique_vtx_count_str generate matrix log_Pr_G_Rn 
-  # where each log_Pr_G_Rn has rows per Gnw; cols per Rnt
+  # where each log_Pr_G_Rn has rows per Gnb; cols per Rnt
   #==========================================================================
   log_Pr_G_Rns = lapply(unique_vtx_count_str, function(x){
-    load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all G_ab for given vtx_count_str
-    G_Rn_comp = sapply(graph_lookup, test_Rn_compatible, Rns) # For each G_ab, test compatibility with Rn
+    load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all Gnb for given vtx_count_str
+    G_Rn_comp = sapply(graph_lookup, test_Rn_compatible, Rns) # For each Gnb, test compatibility with Rn
     cn = as.numeric(strsplit(x, split = '_')[[1]]) # Reconstruct cn 
     Tn_chr = as.character(length(cn)) # Reconstruct Tn_chr
     Rn = Rns[[Tn_chr]] # Extract Rn 
     log_Pr_Rn = log_Pr_Rns[[Tn_chr]] # Extract log Pr( Rn | p)
-    log_Pr_G_Rn = log(t(G_Rn_comp*(1/rowSums(G_Rn_comp)))) # log Pr( Gnw | Rn ) = 1 / W in matrix
+    log_Pr_G_Rn = log(t(G_Rn_comp*(1/rowSums(G_Rn_comp)))) # log Pr( Gnb | Rn ) = 1 / B in matrix
     log_Pr_G_Rn[is.infinite(log_Pr_G_Rn) | is.nan(log_Pr_G_Rn)] = NA # Set -Inf due to log(0) and NAN due to division by 0 to NA
-    # plot_Vivax_model(G) # for checking graphs make sense
+    # plot_Vivax_model(G) # uncomment when manually checking graphs make sense
     return(log_Pr_G_Rn)
   })
   names(log_Pr_G_Rns) = unique_vtx_count_str
-  #+++++++++++++++++++++++++++
-  # This is where I am at as of 6pm 
   
   if(verbose){
     writeLines('\nIn the following viable graphs include only those with sufficient numbers of vertices 
                and appropriate vertex labels to fully represent each individual\'s data.')}
   
-  
   # If cores=1 then this does normal sequential computation
   if(cores>1) registerDoParallel(cores = cores)
   
   #***********************************************
-  # Computation of likelihood values
+  # Computation of per-individual values
   #***********************************************
   Post_probs = foreach(i=1:N, .combine = c) %dopar% {
-    # set id = '70' for vtx_counts_str = "1_2_2" if checking by hand
-    # set id = '402' for vtx_counts_str = "4_1_0" if checking by hand
+    # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
+    # set id = 'BPD_402' for vtx_counts_str = "4_1_0" when checking by hand
     id = IDs[i] 
     
     #==========================================================================
@@ -171,7 +179,7 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
     colnames(Rn) = infections[-1] # Extract relevant Rn and name
     vtx_count_str = vtx_count_strs[id] # Extract vertex sizes of Gn
     log_Pr_Rn = log_Pr_Rns[[Tn_chr]] # Extract log P(Rn)
-    log_Pr_G_Rn = log_Pr_G_Rns[[vtx_count_str]] # Extract log P(Gnw | Rn)
+    log_Pr_G_Rn = log_Pr_G_Rns[[vtx_count_str]] # Extract log P(Gnb | Rn)
     
     #==========================================================================          
     # Generate all possible vertex haplotype label mappings of data onto a graph 
@@ -208,13 +216,13 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
     
     # Extract the number of compatible combinations for each infection
     num_comp_combs_Vt = lapply(Haplotypes_and_combinations, function(x){1:nrow(x$Vt_Hnt_inds_comp)})
-    # Create a matrix of inds to create all possible Gnl for a given Gn
+    # Create a matrix of inds to create all possible Gna for a given Gn
     labelled_G_ind = as.matrix(expand.grid(num_comp_combs_Vt))
-    # Total number of possible mappings, L (same as prod(sapply(num_comp_combs_Vt, length)))
-    L = nrow(labelled_G_ind)
-    log_L = log(L) # Needed for log domain calculation
+    # Total number of possible mappings, A (same as prod(sapply(num_comp_combs_Vt, length)))
+    A = nrow(labelled_G_ind)
+    log_A = log(A) # Needed for log domain calculation
     # From labelled_G_ind create all Gnl 
-    labelled_Gs = vector('list', L) # store in list
+    labelled_Gs = vector('list', A) # store in list
     for(label_ind in 1:nrow(labelled_G_ind)){ # labelled_G_ind inc. compatible labelled graphs only
       # For each labbeling in labelled_G_ind extract vertex data matrix 
       x <- labelled_G_ind[label_ind, ,drop=FALSE]
@@ -230,16 +238,16 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
     
     
     #==========================================================================          
-    # Load all Gnw and check complexity
+    # Load all Gnb and check complexity
     #==========================================================================
     load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', vtx_count_str))
     length_graph_lookup = length(graph_lookup)
     # as.numeric to avoid getting integer overflow leading to an error
-    complexity_problem = as.numeric(L)*as.numeric(length_graph_lookup)
+    complexity_problem = as.numeric(A)*as.numeric(length_graph_lookup)
     
     if(verbose){
       writeLines(sprintf('\nComplexity of problem, ID: %s\nThe number of different viable vertex labeled graphs is: %s\nThe number of different viable edge labeled graphs is: %s\nThe number of graphs in viable graph space is therefore: %s', 
-                         id, L, length_graph_lookup, complexity_problem))
+                         id, A, length_graph_lookup, complexity_problem))
     }
     
     # We do a complexity check - need to work out what an OK upper limit should be
@@ -254,15 +262,15 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
       # return NA vector of Post_probs
       Post_probs
       
-    } else { # Go on to calculate theta
+    } else { # Go on to calculate posterior probabilities
       
       #==========================================================================          
-      # Calculate probabilities of all Gnw summed over all Gnlw and record run time
+      # Calculate probabilities of all Gnb summed over all Gnab and record run time
       #==========================================================================
       tic() # Start clock to calculate time take per graph
       
-      # Calculate probabilities of Gnw summed over all Gnlw 
-      log_Pr_yn_Gnws_unnormalised = sapply(graph_lookup, Log_Pr_yn_Gnw_unnormalised, 
+      # Calculate probabilities of Gnb summed over all Gnab 
+      log_Pr_yn_Gnbs_unnormalised = sapply(graph_lookup, Log_Pr_yn_Gnw_unnormalised, # This function needs renaming
                                            labelled_Gs=labelled_Gs, cn=cn, Tn=Tn, 
                                            log_Fs=log_Fs, MSs=MSs, alpha_terms=alpha_terms) 
       
@@ -272,14 +280,14 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
       
       if(verbose){writeLines(sprintf('Run time (ms) over all graphs in graph space: %s\nRun time (ms) per graph in graph space: %s', round(ms_per_graph_space), round(ms_per_graph)))}
       #complexity_time[i,] = c(complexity_problem, ms_per_graph) # Store time 
-      log_Pr_yn_Gnws = log_Pr_yn_Gnws_unnormalised - log_L # Normalise probabilities
+      log_Pr_yn_Gnbs = log_Pr_yn_Gnbs_unnormalised - log_A # Normalise probabilities
       
       #==========================================================================          
-      # Calculate P(yn | Rn) by summing over all Gnw 
+      # Calculate P(yn | Rn) by summing over all Gnb
       #==========================================================================
       log_Pr_yn_Rn = array(dim = dim(log_Pr_G_Rn), dimnames = dimnames(log_Pr_G_Rn))
       for(col_i in 1:ncol(log_Pr_G_Rn)){
-        log_Pr_yn_Rn[,col_i] = log_Pr_yn_Gnws + log_Pr_G_Rn[,col_i]
+        log_Pr_yn_Rn[,col_i] = log_Pr_yn_Gnbs + log_Pr_G_Rn[,col_i]
       }
       log_Pr_yn_Rn = apply(log_Pr_yn_Rn, 2, logSumExp, na.rm = TRUE)
       
