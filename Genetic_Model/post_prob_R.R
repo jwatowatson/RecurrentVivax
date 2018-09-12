@@ -134,7 +134,8 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
     Rn = Rns[[Tn_chr]] # Extract Rn 
     log_Pr_Rn = log_Pr_Rns[[Tn_chr]] # Extract log Pr( Rn | p)
     log_Pr_G_Rn = log(t(G_Rn_comp*(1/rowSums(G_Rn_comp)))) # log Pr( Gnw | Rn ) = 1 / W in matrix
-    log_Pr_G_Rn[is.infinite(log_Pr_G_Rn)] = NA # Set -Inf due to log(0) to NA
+    log_Pr_G_Rn[is.infinite(log_Pr_G_Rn) | is.nan(log_Pr_G_Rn)] = NA # Set -Inf due to log(0) and NAN due to division by 0 to NA
+    # plot_Vivax_model(G) # for checking graphs make sense
     return(log_Pr_G_Rn)
   })
   names(log_Pr_G_Rns) = unique_vtx_count_str
@@ -233,7 +234,7 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
     #==========================================================================
     load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', vtx_count_str))
     length_graph_lookup = length(graph_lookup)
-    # James: added as.numeric to avoid getting integer overflow leading to an error
+    # as.numeric to avoid getting integer overflow leading to an error
     complexity_problem = as.numeric(L)*as.numeric(length_graph_lookup)
     
     if(verbose){
@@ -294,19 +295,17 @@ post_prob_R = function(MS_data, # Assumes no NA gaps in mixed infections
       # Calculate P(Rnt | yn) and return 
       #==========================================================================
       if(Tn == 2){
-        Post_probs =  c(NA, Pr_Rn_yn['1'])
+        Post_probs =  c(NA, Pr_Rn_yn['L'])
       }
-      if(Tn == 3){
-        Post_probs = c(NA, sum(Pr_Rn_yn[c('11','10')]), sum(Pr_Rn_yn[c('11','01')]))
+      if(Tn == 3){ # Need to change 
+        Post_probs = c(NA, sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')]))
       }
       names(Post_probs) = infections
       
-      # return vector
-      Post_probs
+      Post_probs # return vector
     }
   }
-  
-  
+
   # # Store to check relationship between problem complexity and time
   # complexity_time = array(NA, c(N,2), dimnames = list(IDs, c('Number of graphs in viable graph space', 
   #                                                            'Run time (ms) per graph')))
