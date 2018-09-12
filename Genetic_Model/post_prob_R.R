@@ -16,7 +16,7 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
                        Max_Tot_Vtx = 6,
                        UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
                        verbose = FALSE){
-  
+
   #==========================================================================
   # Check to see if using pop prior or prior from time-to-event and comment
   #==========================================================================
@@ -37,7 +37,9 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
   MSs = names(Fs)  
   M = length(MSs) 
   log_Fs = lapply(Fs, log)
-  if(p_pop){log_p = log(p)}
+  if(p_pop){log_p = log(p)} else {
+    p_pop
+  }
 
   #==========================================================================
   # Calculate alpha terms required for logSumExp in nested functions

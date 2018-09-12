@@ -1,0 +1,3 @@
+load("/Users/aimeet/Documents/GitHub/RecurrentVivax/Timing_Model/OutputResults/StanModels_mod2.RData")
+ls()
+head(mod2_RE)
