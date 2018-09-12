@@ -209,8 +209,7 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
       Hnt_chr = matrix(sapply(Hnt, as.character), ncol = M)
       colnames(Hnt_chr) = MSs
       # Return all possible haplotypes and indices of compatible combinations of haplotypes 
-      Haplotypes_and_combinations[[inf]] = list(Hnt = Hnt_chr, 
-                                                Vt_Hnt_inds_comp = Vt_Hnt_inds_comp)
+      Haplotypes_and_combinations[[inf]] = list(Hnt = Hnt_chr, Vt_Hnt_inds_comp = Vt_Hnt_inds_comp)
     }
     
     
@@ -221,7 +220,7 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
     # Total number of possible mappings, A (same as prod(sapply(num_comp_combs_Vt, length)))
     A = nrow(labelled_G_ind)
     log_A = log(A) # Needed for log domain calculation
-    # From labelled_G_ind create all Gnl 
+    # From labelled_G_ind create all Gna 
     labelled_Gs = vector('list', A) # store in list
     for(label_ind in 1:nrow(labelled_G_ind)){ # labelled_G_ind inc. compatible labelled graphs only
       # For each labbeling in labelled_G_ind extract vertex data matrix 

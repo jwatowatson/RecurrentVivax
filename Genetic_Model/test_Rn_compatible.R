@@ -1,29 +1,31 @@
 # This is not presently scalable beyond Tn = {1,2}
 test_Rn_compatible = function(G, Rns){ 
   
-  cns = as.vector(table(vertex_attr(G)$group)) # Extract COIs (need as.vector in order to drop name)
+  cns = as.vector(table(vertex_attr(G)$group)) # Extract COIs (as.vector removes names which otherwise get appended to names of G_mid_Rn)
   Tn = length(cns) # Number of infections experienced by the nth individual
-  Rn = Rns[[as.character(Tn)]]
+  Rn = Rns[[as.character(Tn)]] # Recurrence states give Tn
   
-  # Reconstruct the adjaceny matrix
+  # Reconstruct the adjacency matrix from G
   if(is.null(edge_attr(G)$w)){ 
-    Adj_matrix = array(0, dim = rep(sum(cns),2)) # If there are no edge weights
+    Adj_matrix = array(0, dim = rep(sum(cns),2)) # If there are no edge weights create matriz of zeros
   } else {
     Adj_matrix = as.matrix(get.adjacency(G, attr = 'w'))      
   } 
   
-  # Work with lower triangle only (imporant for cln sums)
+  # Work with lower triangle only (imporant for cln sums as otherwise duplicate counts)
   Adj_matrix[upper.tri(Adj_matrix)] = NA 
   
-  # Generate NA mask for all block diagonals regardless of Tn
+  # Generate NA mask over all block diagonals (within infection entries) regardless of Tn
+  # s.t. !is.na(blocks) accesses across infections edges only
+  # blocks is lower triangle only
   blocks = as.matrix(bdiag(lapply(cns, function(x){matrix(NA, ncol = x, nrow = x)})))
-  #dimnames(blocks) = list(vertex_attr(G)$group,vertex_attr(G)$group) # Useful when checking but can comment after
+  # dimnames(blocks) = list(vertex_attr(G)$group,vertex_attr(G)$group) # Useful when checking but can comment after
   
-  # Note that !is.na(blocks) accesses across infections edges only
-  all_str_across_inf = all(Adj_matrix[!is.na(blocks)] == 0, na.rm = T) # non-block diagonal elements
+  # Are all non-block diagonal elements (across infections) strangers? 
+  all_str_across_inf = all(Adj_matrix[!is.na(blocks)] == 0, na.rm = T) # na.rm important due to NAs in upper triangle
   
   if(Tn == 2){ # There is only one past infection to compare to
-    # non-block diagonal elements t1:t2
+    # True if no sibs and cn[2] clones over non-block diagonal elements t1:t2
     cn_cln_across_inf = !any(Adj_matrix[!is.na(blocks)] == 0.5,  na.rm = T) & sum(Adj_matrix[!is.na(blocks)], na.rm = T) == cns[2] 
     # Generate the compatibility of C, L, I given collection of parasites
     G_mid_Rn = c('C' = cn_cln_across_inf, 'L' = TRUE, 'I' = all_str_across_inf)
