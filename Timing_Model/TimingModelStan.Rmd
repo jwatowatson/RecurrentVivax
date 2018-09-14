@@ -73,9 +73,9 @@ A random effects term is used to adjust for inter-individual variability in prop
 if(RECOMPILE_MODELS){
   writeLines('Compiling model 2....')
   source('StanModel2.R')
-  save(Timing_Model2_RE, file = '../../RData/TimingModel/Timing_Model2_RE.RData')
+  save(Timing_Model2_RE, file = '../RData/TimingModel/Timing_Model2_RE.RData')
 } else {
-  load('../../RData/TimingModel/Timing_Model2_RE.RData')
+  load('../RData/TimingModel/Timing_Model2_RE.RData')
 }
 ```
 
@@ -96,9 +96,9 @@ A random effects term is used to adjust for inter-individual variability in prop
 if(RECOMPILE_MODELS){
   writeLines('Compiling model 3....')
   source('StanModel3.R')
-  save(Timing_Model3_RE, file = '../../RData/TimingModel/Timing_Model3_RE.RData')
+  save(Timing_Model3_RE, file = '../RData/TimingModel/Timing_Model3_RE.RData')
 } else {
-  load('../../RData/TimingModel/Timing_Model3_RE.RData')
+  load('../RData/TimingModel/Timing_Model3_RE.RData')
 }
 ```
 
@@ -107,7 +107,7 @@ if(RECOMPILE_MODELS){
 
 
 ```{r}
-load('../../RData/Combined_Time_Event.RData')
+load('../RData/TimingModel/Combined_Time_Event.RData')
 # Get rid of the very short durations 
 Combined_Time_Data = filter(Combined_Time_Data, Time_to_event > 5)
 
@@ -186,11 +186,11 @@ Prior_params_M3 = c(Prior_params_M2,
 Set up parameters for the MCMC runs.
 ```{r PrepModels}
 # Choose as many chains as available cores
-Chains = 8
+Chains = 6
 options(mc.cores = Chains)
 IT = 2*10^5
 WarmUp = .5*IT
-thin = 100
+thin = Chains*100
 
 # put the data into stan format
 # For models 1 & 2
