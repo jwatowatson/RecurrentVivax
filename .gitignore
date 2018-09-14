@@ -11,3 +11,5 @@ StanModels_mod*
 
 *.html
 *.tex
+
+Timing_Model/TimingModelStan_cache/*
