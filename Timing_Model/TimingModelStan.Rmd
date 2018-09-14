@@ -27,7 +27,7 @@ library(RColorBrewer)
 require(gdata)
 
 # Note that recompilation is necessary on different platforms
-RECOMPILE_MODELS = F
+RECOMPILE_MODELS = T
 RUN_MODELS = F
 ```
 
@@ -48,9 +48,9 @@ RUN_MODELS = F
 if(RECOMPILE_MODELS){
   writeLines('Compiling model 1....')
   source('StanModel1.R')
-  save(Timing_Model1_RE, file = '../../RData/TimingModel/Timing_Model1_RE.RData')
+  save(Timing_Model1_RE, file = '../RData/TimingModel/Timing_Model1_RE.RData')
 } else {
-  load('../../RData/TimingModel/Timing_Model1_RE.RData')
+  load('../RData/TimingModel/Timing_Model1_RE.RData')
 }
 ```
 
