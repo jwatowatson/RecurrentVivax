@@ -6,31 +6,13 @@ output:
     fig_caption: yes
     keep_md: yes
 ---
-```{r, echo=F}
-knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
-                      echo = TRUE, include = TRUE, cache.lazy = F,
-                      fig.width = 7, fig.height = 7,
-                      fig.pos = 'H', 
-                      dev = 'png', dpi = 300)
-```
+
 
 # Preliminaries
 
 Load R packages.
 
-```{r, echo=FALSE}
-library(plyr)
-library(dplyr)
-library(rstan)
-library(boot)
-library(RColorBrewer)
-require(gdata)
 
-# Note that recompilation is necessary on different platforms
-RECOMPILE_MODELS = F
-# Running the full stan models can take several days
-RUN_MODELS = F
-```
 
 
 # Load Stan models
@@ -45,15 +27,7 @@ RUN_MODELS = F
 * Primaquine is assumed to have 100% efficacy.
 
 
-```{r, include=FALSE}
-if(RECOMPILE_MODELS){
-  writeLines('Compiling model 1....')
-  source('StanModel1.R')
-  save(Timing_Model1_RE, file = '../RData/TimingModel/Timing_Model1_RE.RData')
-} else {
-  load('../RData/TimingModel/Timing_Model1_RE.RData')
-}
-```
+
 
 
 
@@ -70,15 +44,7 @@ A random effects term is used to adjust for inter-individual variability in prop
 * Primaquine is assumed to have 100% efficacy.
 
 
-```{r,include=FALSE}
-if(RECOMPILE_MODELS){
-  writeLines('Compiling model 2....')
-  source('StanModel2.R')
-  save(Timing_Model2_RE, file = '../RData/TimingModel/Timing_Model2_RE.RData')
-} else {
-  load('../RData/TimingModel/Timing_Model2_RE.RData')
-}
-```
+
 
 
 ## Model 3: Mixture of three components and reLapses after PMQ
@@ -93,21 +59,14 @@ A random effects term is used to adjust for inter-individual variability in prop
 * Primaquine is not assumed to have 100% efficacy and a random effects terms describes the propensity to relapse after primaquine.
 
 
-```{r, include=FALSE}
-if(RECOMPILE_MODELS){
-  writeLines('Compiling model 3....')
-  source('StanModel3.R')
-  save(Timing_Model3_RE, file = '../RData/TimingModel/Timing_Model3_RE.RData')
-} else {
-  load('../RData/TimingModel/Timing_Model3_RE.RData')
-}
-```
+
 
 
 # VHX and BPD combined dataset
 
 
-```{r}
+
+```r
 load('../RData/TimingModel/Combined_Time_Event.RData')
 # Get rid of the very short durations 
 Combined_Time_Data = filter(Combined_Time_Data, Time_to_event > 5)
@@ -154,7 +113,8 @@ drug_received = numeric_drug[ind]
 
 # Prior specification
 
-```{r}
+
+```r
 # The hierachical parameters defining the prior distributions for model 1
 Prior_params_M1 = list(mu_inv_lambda = 400,
                        sigma_inv_lambda = 50,
@@ -185,7 +145,8 @@ Prior_params_M3 = c(Prior_params_M2,
 # Run Model
 
 Set up parameters for the MCMC runs.
-```{r PrepModels}
+
+```r
 # Choose as many chains as available cores
 Chains = 6
 options(mc.cores = Chains)
@@ -238,7 +199,8 @@ Time_data_3 =list(N         = N,
 
 Run with X parallel chains. This depends on local computing power.
 
-```{r runModels, echo=T}
+
+```r
 if(RUN_MODELS){
   mod1_RE = sampling(Timing_Model1_RE,
                      data = c(Time_data_1_2, Prior_params_M1),
@@ -267,7 +229,8 @@ load('OutputResults/StanModels_mod3.RData')
 
 
 Let's make some nice colors for the plotting
-```{r}
+
+```r
 mycols = brewer.pal(n=3, name = 'Set1')
 PLOT_Censored_Obs = FALSE
 
@@ -284,12 +247,27 @@ Combined_Time_Data$Time_to_event = jitter(Combined_Time_Data$Time_to_event, amou
 
 ## Model 1
 
-```{r plotModel1}
+
+```r
 # Traceplots
 traceplot(mod1_RE,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
-traceplot(mod1_RE, c('inv_lambda','logit_c1','Recrud_shape','Recrud_scale'))
-traceplot(mod1_RE, c('logit_mean_p','logit_sd_p'))
+```
 
+![](TimingModelStan_files/figure-html/plotModel1-1.png)<!-- -->
+
+```r
+traceplot(mod1_RE, c('inv_lambda','logit_c1','Recrud_shape','Recrud_scale'))
+```
+
+![](TimingModelStan_files/figure-html/plotModel1-2.png)<!-- -->
+
+```r
+traceplot(mod1_RE, c('logit_mean_p','logit_sd_p'))
+```
+
+![](TimingModelStan_files/figure-html/plotModel1-3.png)<!-- -->
+
+```r
 # Extract samples
 thetas = extract(mod1_RE)
 
@@ -298,7 +276,11 @@ hist(thetas$inv_lambda, main='Mean time to reinfection',
      xlab='1/lambda (days)')
 hist(inv.logit(apply(thetas$logit_p,2,mean)), 
      main = 'proportion of reInfections', xlab='p')
+```
 
+![](TimingModelStan_files/figure-html/plotModel1-4.png)<!-- -->
+
+```r
 par(las=1, mfrow=c(1,1))
 # Plot the outcome of the predicted labels
 #****************************** Reinfection ******************************
@@ -316,8 +298,11 @@ axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
 axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
 legend('bottomright',legend = c('AS','CQ','CQ+PMQ'), 
        col=c(mycols),pch = c(rep(1,3)), bty='n',lwd=2,lty=NA)
+```
 
+![](TimingModelStan_files/figure-html/plotModel1-5.png)<!-- -->
 
+```r
 #****************************** Recrudescence ****************************
 mean_labels_ReCrud = apply(labels[,ind_plotting,3,drop=T], 2, mean)
 plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud, 
@@ -326,8 +311,11 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud,
      ylab='ReCrudescence',
      xlab='Weeks from last episode', xlim=c(0,30))
 axis(1, at = seq(0,28,by=7), labels = seq(0,28,by=7)/7)
+```
 
+![](TimingModelStan_files/figure-html/plotModel1-6.png)<!-- -->
 
+```r
 #****************************** Relapse ****************************
 mean_labels_ReLap = apply(labels[,ind_plotting,2,drop=T], 2, mean)
 plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap), 
@@ -340,24 +328,50 @@ axis(1, at = seq(0, 90, by= 30), labels = seq(0, 90, by=30)/30)
 axis(2, at = -2:0, labels= 10^(-2:0))
 ```
 
+![](TimingModelStan_files/figure-html/plotModel1-7.png)<!-- -->
+
 ## Model 2
 
-```{r plotModel2}
+
+```r
 par(las=1)
 traceplot(mod2_RE,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
+```
+
+![](TimingModelStan_files/figure-html/plotModel2-1.png)<!-- -->
+
+```r
 traceplot(mod2_RE, c('inv_lambda','logit_c1','Recrud_shape','Recrud_scale'))
+```
+
+![](TimingModelStan_files/figure-html/plotModel2-2.png)<!-- -->
+
+```r
 traceplot(mod2_RE, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
+```
+
+![](TimingModelStan_files/figure-html/plotModel2-3.png)<!-- -->
+
+```r
 par(mfrow=c(1,2))
 thetas = extract(mod2_RE)
 hist(thetas$inv_lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
 hist(thetas$inv_gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
+```
 
+![](TimingModelStan_files/figure-html/plotModel2-4.png)<!-- -->
+
+```r
 par(las=1, mfrow=c(1,3))
 
 hist(inv.logit(apply(thetas$logit_p,2,mean)), xlab = 'Probability reinfection', main = '')
 hist(inv.logit(thetas$logit_c1), xlab = 'proportion recrudescence', main='')
 hist(inv.logit(thetas$logit_EarlyL), xlab = 'proportion early Relapse', main='')
+```
 
+![](TimingModelStan_files/figure-html/plotModel2-5.png)<!-- -->
+
+```r
 par(las=1, mfrow=c(1,1))
 # Plot the outcome of the predicted labels
 #****************************** Reinfection ******************************
@@ -375,8 +389,11 @@ axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
 axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
 legend('bottomright',legend = c('Artesunate','Chloroquine','Chloroquine+\nPrimaquine'), 
        col=c(mycols),pch = rep(1,3), bty='n',lwd=2,lty=NA)
+```
 
+![](TimingModelStan_files/figure-html/plotModel2-6.png)<!-- -->
 
+```r
 #****************************** Recrudescence ****************************
 mean_labels_ReCrud = apply(labels[,ind_plotting,4,drop=T], 2, mean)
 plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud, 
@@ -385,8 +402,11 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud,
      ylab='ReCrudescence',
      xlab='Weeks from last episode', xlim=c(0,60))
 axis(1, at = seq(0,54,by=7), labels = seq(0,54,by=7)/7)
+```
 
+![](TimingModelStan_files/figure-html/plotModel2-7.png)<!-- -->
 
+```r
 #****************************** Relapse ****************************
 mean_labels_ReLap1 = apply(labels[,ind_plotting,2,drop=T], 2, mean)
 mean_labels_ReLap2 = apply(labels[,ind_plotting,3,drop=T], 2, mean)
@@ -399,18 +419,45 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReLap,
 axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
 ```
 
+![](TimingModelStan_files/figure-html/plotModel2-8.png)<!-- -->
+
 ## Model 3
 
-```{r plotModel3}
+
+```r
 traceplot(mod3_RE,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
+```
+
+![](TimingModelStan_files/figure-html/plotModel3-1.png)<!-- -->
+
+```r
 traceplot(mod3_RE, c('inv_lambda','Recrud_shape','Recrud_scale'))
+```
+
+![](TimingModelStan_files/figure-html/plotModel3-2.png)<!-- -->
+
+```r
 traceplot(mod3_RE, c('logit_c1_AS','logit_c1_CQ','logit_c1_CQ_PMQ'))
+```
+
+![](TimingModelStan_files/figure-html/plotModel3-3.png)<!-- -->
+
+```r
 traceplot(mod3_RE, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
+```
+
+![](TimingModelStan_files/figure-html/plotModel3-4.png)<!-- -->
+
+```r
 par(mfrow=c(1,2))
 thetas = extract(mod3_RE)
 hist(thetas$inv_lambda, xlab='Mean time to reinfection (days)', main='')
 hist(thetas$inv_gamma, xlab='Mean time to late reLapse (days)', main='')
+```
 
+![](TimingModelStan_files/figure-html/plotModel3-5.png)<!-- -->
+
+```r
 hist(inv.logit(apply(thetas$logit_p,2,mean)),
      xlab = 'Reinfection: no PMQ', main = '',
      yaxt='n',ylab='')
@@ -418,6 +465,11 @@ hist(inv.logit(apply(thetas$logit_p,2,mean)),
 hist(inv.logit(apply(thetas$logit_p_PMQ,2,mean)), 
      xlab = 'Reinfection: after PMQ', main = '',
      yaxt='n',ylab='')
+```
+
+![](TimingModelStan_files/figure-html/plotModel3-6.png)<!-- -->
+
+```r
 # Recrudescence weights
 plot(density(100*inv.logit(thetas$logit_c1_AS)), col = mycols[1],lwd=3,
      xlab = 'Recrudescence (%)', main='',yaxt='n',ylab='', xlim=c(0,10))
@@ -427,7 +479,11 @@ legend('topright',col=mycols, legend = c('AS','CQ','CQ+PMQ'),lwd=3)
 
 hist(inv.logit(thetas$logit_EarlyL), xlab = 'Early Relapse',
      main='',yaxt='n',ylab='')
+```
 
+![](TimingModelStan_files/figure-html/plotModel3-7.png)<!-- -->
+
+```r
 par(las=1, mfrow=c(1,1))
 # Plot the outcome of the predicted labels
 #****************************** Reinfection ******************************
@@ -445,8 +501,11 @@ axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
 axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
 legend('bottomright',legend = c('Artesunate','Chloroquine','Chloroquine\nPrimaquine'), 
        col=c(mycols),pch = rep(1,3), bty='n',lwd=2,lty=NA)
+```
 
+![](TimingModelStan_files/figure-html/plotModel3-8.png)<!-- -->
 
+```r
 #****************************** Recrudescence ****************************
 mean_labels_ReCrud = apply(labels[,ind_plotting,4,drop=T], 2, mean)
 plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud, 
@@ -455,7 +514,11 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud,
      ylab='ReCrudescence',
      xlab='Weeks from last episode', xlim=c(0,60))
 axis(1, at = seq(0,54,by=7), labels = seq(0,54,by=7)/7)
+```
 
+![](TimingModelStan_files/figure-html/plotModel3-9.png)<!-- -->
+
+```r
 #****************************** Relapse ****************************
 mean_labels_ReLap1 = apply(labels[,ind_plotting,2,drop=T], 2, mean)
 mean_labels_ReLap2 = apply(labels[,ind_plotting,3,drop=T], 2, mean)
@@ -468,31 +531,123 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReLap,
 axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
 ```
 
+![](TimingModelStan_files/figure-html/plotModel3-10.png)<!-- -->
+
 
 
 # Model Comparison
 
-```{r}
+
+```r
 library(loo)
+```
+
+```
+## Warning: package 'loo' was built under R version 3.4.4
+```
+
+```
+## This is loo version 2.0.0.
+## **NOTE: As of version 2.0.0 loo defaults to 1 core but we recommend using as many as possible. Use the 'cores' argument or set options(mc.cores = NUM_CORES) for an entire session. Visit mc-stan.org/loo/news for details on other changes.
+```
+
+```r
 log_lik1 <- extract_log_lik(mod1_RE)
 log_lik2 <- extract_log_lik(mod2_RE)
 log_lik3 <- extract_log_lik(mod3_RE)
 
 waic1 = waic(log_lik1)
+```
+
+```
+## Warning: 194 (7.2%) p_waic estimates greater than 0.4. We recommend trying
+## loo instead.
+```
+
+```r
 loo1 = loo(log_lik1)
+```
+
+```
+## Warning: Relative effective sample sizes ('r_eff' argument) not specified.
+## For models fit with MCMC, the reported PSIS effective sample sizes and 
+## MCSE estimates will be over-optimistic.
+```
+
+```
+## Warning: Some Pareto k diagnostic values are slightly high. See help('pareto-k-diagnostic') for details.
+```
+
+```r
 waic2 = waic(log_lik2)
+```
+
+```
+## Warning: 125 (4.6%) p_waic estimates greater than 0.4. We recommend trying
+## loo instead.
+```
+
+```r
 loo2 = loo(log_lik2)
+```
+
+```
+## Warning: Relative effective sample sizes ('r_eff' argument) not specified.
+## For models fit with MCMC, the reported PSIS effective sample sizes and 
+## MCSE estimates will be over-optimistic.
+
+## Warning: Some Pareto k diagnostic values are slightly high. See help('pareto-k-diagnostic') for details.
+```
+
+```r
 waic3 = waic(log_lik3)
+```
+
+```
+## Warning: 145 (5.4%) p_waic estimates greater than 0.4. We recommend trying
+## loo instead.
+```
+
+```r
 loo3 = loo(log_lik3)
+```
+
+```
+## Warning: Relative effective sample sizes ('r_eff' argument) not specified.
+## For models fit with MCMC, the reported PSIS effective sample sizes and 
+## MCSE estimates will be over-optimistic.
+
+## Warning: Some Pareto k diagnostic values are slightly high. See help('pareto-k-diagnostic') for details.
+```
+
+```r
 compare(waic1, waic2, waic3)
+```
+
+```
+##       elpd_diff elpd_waic se_elpd_waic p_waic  se_p_waic waic    se_waic
+## waic2     0.0   -7731.0     123.8        150.5     8.2   15462.0   247.5
+## waic3   -18.7   -7749.7     123.1        166.8     8.9   15499.4   246.3
+## waic1  -126.5   -7857.5     127.8        204.1     6.9   15715.1   255.6
+```
+
+```r
 compare(loo1, loo2, loo3)
+```
+
+```
+##      elpd_diff elpd_loo se_elpd_loo p_loo   se_p_loo looic   se_looic
+## loo2     0.0   -7729.4    123.8       148.9     8.0  15458.8   247.6 
+## loo3   -19.5   -7749.0    123.2       166.0     8.8  15497.9   246.4 
+## loo1  -135.9   -7865.3    127.8       211.9     7.2  15730.7   255.7
 ```
 
 # Interpretation of results
 
 The cumulative probability of time to relapse. We draw from the posterior distribution to get a predicted time to relapse (in those who will relapse before they are reinfected).
 
-```{r }
+
+```r
 thetas = extract(mod3_RE)
 K = 500000
 Early_relapse = sample(x = inv.logit(thetas$logit_EarlyL),replace = T, size = K) 
@@ -506,7 +661,8 @@ T2s = rexp(n = K, rate =  sample(x = 1/thetas$inv_gamma, size = K, replace = T))
 Times_RelapseAS = c(T1s[Mixture==1], T2s[Mixture==2])
 ```
 
-```{r PredictedRelapse}
+
+```r
 par(mfrow=c(1,2), las=1)
 
 # Chloroquine mono-therapy
@@ -536,10 +692,12 @@ lines(ecdf(Times_RelapseCQ[Times_RelapseCQ<360]),
 axis(1, at = seq(0,360, by=60), labels =  seq(0,360, by=60)/30)
 abline(h=.9, lwd=2, lty=2)
 abline(v=4*30, lwd=2, lty=2)
-
 ```
 
-```{r Model3_Output}
+![](TimingModelStan_files/figure-html/PredictedRelapse-1.png)<!-- -->
+
+
+```r
 # Now we compute the fixed effect probabilities over time
 Ts = 1:360
 # AS
@@ -672,11 +830,14 @@ hist(inv.logit(thetas$logit_EarlyL), xlab = '',
 mtext(text = 'Early Relapse',side = 1,line=2,cex=.8)
 ```
 
+![](TimingModelStan_files/figure-html/Model3_Output-1.png)<!-- -->
+
 
 
 # Extract probabilistic information
 
-```{r}
+
+```r
 labels = extract(mod3_RE, 'prob_labels')$prob_labels
 # recrudescence
 Combined_Time_Data$Recrudescence_mean_theta = apply(labels[,,4,drop=T],2,mean)
@@ -712,7 +873,8 @@ Combined_Time_Data = Combined_Time_Data[order(-log10(Combined_Time_Data$Relapse_
 ```
 
 
-```{r UncertaintyOutputsModel3}
+
+```r
 par(las = 1, mfcol=c(2,2), bty='n')
 ## No PMQ group
 ind = Combined_Time_Data$arm_num!='CHQ/PMQ' & !Combined_Time_Data$Censored
@@ -755,12 +917,14 @@ plot(Combined_Time_Data$Time_to_event[ind],
      col = mycols[3],
      pch=20, xlab='')
 mtext(text = 'Time to event (days)',side = 1, line = 2)
-
 ```
+
+![](TimingModelStan_files/figure-html/UncertaintyOutputsModel3-1.png)<!-- -->
 
 Some rough calculations to make sure we're not completely off track with the model output
 
-```{r}
+
+```r
 #Follow up time in PMQ individuals
 FU_pmq = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'])/365
 FU_Nopmq = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num!='CHQ/PMQ'])/365
@@ -769,13 +933,25 @@ NumEps_pmq = sum(Combined_Time_Data$arm_num=='CHQ/PMQ' & !Combined_Time_Data$Cen
 NumEps_Nopmq = sum(Combined_Time_Data$arm_num!='CHQ/PMQ' & !Combined_Time_Data$Censored)
 
 writeLines(paste('No radical cure: episodes per year: ',round(NumEps_Nopmq/FU_Nopmq,2)))
+```
+
+```
+## No radical cure: episodes per year:  3.97
+```
+
+```r
 writeLines(paste('Radical cure: episodes per year: ',round(NumEps_pmq/FU_pmq,2)))
+```
+
+```
+## Radical cure: episodes per year:  0.19
 ```
 
 
 We look at weighted averages of relapses, recrudescences and reinfections.
 We pick 500 random draws from the posterior to calculate credible intervals.
-```{r}
+
+```r
 # We sum over the observed recurrences
 indAS = which(Mod3_ThetaEstimates$arm_num=='AS' & !Mod3_ThetaEstimates$Censored)
 indCQ = which(Mod3_ThetaEstimates$arm_num=='CHQ' & !Mod3_ThetaEstimates$Censored)
@@ -803,63 +979,128 @@ for(i in 1:K){
   res_estimates$PQ_I[i] = sum(labels[j,indPMQ,1])/length(indPMQ)
   res_estimates$PQ_C[i] = sum(labels[j,indPMQ,4])/length(indPMQ)
 }
-
 ```
 
 
 The labels on the observed recurrences along with 95% credible intervals:
 
-```{r MeanEstimates}
+
+```r
 #************ AS monotherapy **************
 writeLines(paste('Relapses are approximately ',
                  round(100*mean(res_estimates$AS_L),2),'(', 
                  round(100*quantile(res_estimates$AS_L, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$AS_L, probs = 0.975),1),')',
                  '% of recurrences after AS'))
+```
+
+```
+## Relapses are approximately  95.41 ( 94 - 96.7 ) % of recurrences after AS
+```
+
+```r
 writeLines(paste('Recrudescences are approximately ',
                  round(100*mean(res_estimates$AS_C),2),'(', 
                  round(100*quantile(res_estimates$AS_C, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$AS_C, probs = 0.975),1),')',
                  '% of recurrences after AS'))
+```
+
+```
+## Recrudescences are approximately  0.71 ( 0.1 - 1.3 ) % of recurrences after AS
+```
+
+```r
 writeLines(paste('Reinfections are approximately ',
                  round(100*mean(res_estimates$AS_I),2),'(', 
                  round(100*quantile(res_estimates$AS_I, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$AS_I, probs = 0.975),1),')',
                  '% of recurrences after AS'))
-writeLines('\n')
+```
 
+```
+## Reinfections are approximately  3.88 ( 2.8 - 5.2 ) % of recurrences after AS
+```
+
+```r
+writeLines('\n')
+```
+
+```r
 #******** CQ montherapy ***************
 writeLines(paste('Relapses are approximately ',
                  round(100*mean(res_estimates$CQ_L),1),'(', 
                  round(100*quantile(res_estimates$CQ_L, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$CQ_L, probs = 0.975),1),')',
                  '% of recurrences after CQ'))
+```
+
+```
+## Relapses are approximately  94.3 ( 92.6 - 95.9 ) % of recurrences after CQ
+```
+
+```r
 writeLines(paste('Recrudescences are approximately ',
                  round(100*mean(res_estimates$CQ_C),2),'(', 
                  round(100*quantile(res_estimates$CQ_C, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$CQ_C, probs = 0.975),1),')',
                  '% of recurrences after CQ'))
+```
+
+```
+## Recrudescences are approximately  0.63 ( 0.1 - 1.2 ) % of recurrences after CQ
+```
+
+```r
 writeLines(paste('Reinfections are approximately ',
                  round(100*mean(res_estimates$CQ_I),2),'(', 
                  round(100*quantile(res_estimates$CQ_I, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$CQ_I, probs = 0.975),1),')',
                  '% of recurrences after CQ'))
+```
+
+```
+## Reinfections are approximately  5.05 ( 3.7 - 6.7 ) % of recurrences after CQ
+```
+
+```r
 writeLines('\n')
+```
+
+```r
 #******** CQ + PMQ ***************
 writeLines(paste('Relapses are approximately ',
                  round(100*mean(res_estimates$PQ_L),2),'(', 
                  round(100*quantile(res_estimates$PQ_L, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$PQ_L, probs = 0.975),1),')',
                  '% of recurrences after CQ+PMQ'))
+```
+
+```
+## Relapses are approximately  6.46 ( 4.7 - 8.7 ) % of recurrences after CQ+PMQ
+```
+
+```r
 writeLines(paste('Recrudescences are approximately ',
                  round(100*mean(res_estimates$PQ_C),2),'(', 
                  round(100*quantile(res_estimates$PQ_C, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$PQ_C, probs = 0.975),1),')',
                  '% of recurrences after CQ+PMQ'))
+```
+
+```
+## Recrudescences are approximately  0.06 ( 0 - 0.1 ) % of recurrences after CQ+PMQ
+```
+
+```r
 writeLines(paste('Reinfections are approximately ',
                  round(100*mean(res_estimates$PQ_I),2),'(', 
                  round(100*quantile(res_estimates$PQ_I, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$PQ_I, probs = 0.975),1),')',
                  '% of recurrences after CQ+PMQ'))
+```
+
+```
+## Reinfections are approximately  93.48 ( 91.3 - 95.3 ) % of recurrences after CQ+PMQ
 ```
 
