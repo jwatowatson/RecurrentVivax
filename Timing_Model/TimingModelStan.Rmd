@@ -705,7 +705,7 @@ Mod3_ThetaEstimates$Episode_Identifier = apply(Mod3_ThetaEstimates,
                                                              1, function(x) {
                                                                paste(x['patientid'], x['episode'], sep='_')
                                                              } )
-save(Mod3_ThetaEstimates, file = '../../RData/TimingModel/MOD2_theta_estimates.RData')
+save(Mod3_ThetaEstimates, file = '../RData/TimingModel/MOD2_theta_estimates.RData')
 # Order by difference in posterior interval
 Combined_Time_Data = Combined_Time_Data[order(-log10(Combined_Time_Data$Relapse_mean_theta)),]
 ```
