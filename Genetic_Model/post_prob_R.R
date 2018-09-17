@@ -7,6 +7,8 @@
 library(doParallel)
 library(gtools)
 
+
+
 post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
                        Fs, # MS population frequencies 
                        p = c('C' = 0.1, 'L' = 0.2, 'I' = 0.7), # Population constant prior over C, L, I
@@ -16,15 +18,35 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
                        Max_Tot_Vtx = 6,
                        UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
                        verbose = FALSE){
-
+  
+  if(verbose) writeLines('Setting up parameters to do computation....')
+  
+  #==========================================================================
+  # Retrieve population prior and recurrent eps identifiers
+  #==========================================================================
+  p_pop = sapply(c('C','L','I'), function(x)as.list(formals(post_prob_R)$p)[[x]])
+  recurrent_eps = MS_data$Episode_Identifier[!grepl('_1', MS_data$Episode_Identifier)]
+  
   #==========================================================================
   # Check to see if using pop prior or prior from time-to-event and comment
   #==========================================================================
-  p_pop = length(p) == 3
-  if(verbose) writeLines('Setting up parameters to do computation....')
-  if(verbose & p_pop) writeLines('Using population prior probabilities of recurrence states')
-  if(sum(p) != 1) stop('Population prior probabilities do not sum to one')
-
+  if(is.null(dim(p)) & length(p) == 3){
+    p_pop_ind = TRUE
+    if(verbose & p_pop_ind) writeLines('Using population prior probabilities of recurrence states')
+    if(sum(p) != 1) stop('Population prior probabilities do not sum to one')
+  } else {
+    writeLines('Using time-to-event prior probabilities of recurrence states')
+    recurrent_eps_no_prior = recurrent_eps[which(!recurrent_eps %in% p$Episode_Identifier)]
+    no_recurrent_eps_no_prior = length(recurrent_eps_no_prior)
+    if(no_recurrent_eps_no_prior == 0){
+      writeLines(sprintf('Using time-to-event prior probabilities for all recurrent infections', recurrent_eps_no_prior))
+    } else {
+      writeLines(sprintf('Using time-to-event prior probabilities for all but the following for which population prior probabilities are used: %s', 
+                         paste(recurrent_eps_no_prior, collapse = ', ')))
+    }
+    for(x in recurrent_eps_no_prior){p = rbind(c(x, p_pop), p)} # Add to episodes based on the prior to the top of the list
+  }
+  
   #==========================================================================
   # Create Post_probs store with length = num. of all infections inc. those without recurrence
   #==========================================================================
@@ -37,10 +59,14 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
   MSs = names(Fs)  
   M = length(MSs) 
   log_Fs = lapply(Fs, log)
-  if(p_pop){log_p = log(p)} else {
-    p_pop
+  if(p_pop_ind){
+    log_p = log(p)
+  } else {
+    log_p = t(apply(p, 1, function(x)log(as.numeric(x[-1]))))
+    rownames(log_p) = p[,1]
+    colnames(log_p) = colnames(p)[-1]
   }
-
+  
   #==========================================================================
   # Calculate alpha terms required for logSumExp in nested functions
   #==========================================================================
@@ -113,7 +139,7 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
   #==========================================================================
   # Calculate log Pr(Rn | p)
   #==========================================================================
-  if(p_pop){log_Pr_Rns = lapply(Rns, function(Rn){apply(Rn, 1, function(x){sum(log_p[x])})})}
+  if(p_pop_ind){log_Pr_Rns = lapply(Rns, function(Rn){apply(Rn, 1, function(x){sum(log_p[x])})})}
   
   #==========================================================================
   # Count num. of vertices (COIs) for each individual's tth infection 
@@ -314,7 +340,7 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
       Post_probs # return vector
     }
   }
-
+  
   # # Store to check relationship between problem complexity and time
   # complexity_time = array(NA, c(N,2), dimnames = list(IDs, c('Number of graphs in viable graph space', 
   #                                                            'Run time (ms) per graph')))
