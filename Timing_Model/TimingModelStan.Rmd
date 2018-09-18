@@ -191,7 +191,7 @@ Chains = 6
 options(mc.cores = Chains)
 IT = 2*10^5
 WarmUp = .5*IT
-thin = Chains*100
+thin = 1000
 
 # put the data into stan format
 # For models 1 & 2
@@ -760,7 +760,7 @@ mtext(text = 'Time to event (days)',side = 1, line = 2)
 
 Some rough calculations to make sure we're not completely off track with the model output
 
-```{r}
+```{r, echo=FALSE}
 #Follow up time in PMQ individuals
 FU_pmq = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'])/365
 FU_Nopmq = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num!='CHQ/PMQ'])/365
@@ -775,7 +775,7 @@ writeLines(paste('Radical cure: episodes per year: ',round(NumEps_pmq/FU_pmq,2))
 
 We look at weighted averages of relapses, recrudescences and reinfections.
 We pick 500 random draws from the posterior to calculate credible intervals.
-```{r}
+```{r,echo=FALSE}
 # We sum over the observed recurrences
 indAS = which(Mod3_ThetaEstimates$arm_num=='AS' & !Mod3_ThetaEstimates$Censored)
 indCQ = which(Mod3_ThetaEstimates$arm_num=='CHQ' & !Mod3_ThetaEstimates$Censored)
@@ -809,7 +809,7 @@ for(i in 1:K){
 
 The labels on the observed recurrences along with 95% credible intervals:
 
-```{r MeanEstimates}
+```{r MeanEstimates, echo=FALSE}
 #************ AS monotherapy **************
 writeLines(paste('Relapses are approximately ',
                  round(100*mean(res_estimates$AS_L),2),'(', 
