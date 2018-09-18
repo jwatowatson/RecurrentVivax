@@ -23,7 +23,7 @@ post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infection
   #==========================================================================
   # Retrieve population prior and recurrent eps identifiers
   #==========================================================================
-  p_pop = sapply(c('C','L','I'), function(x)as.list(formals(post_prob_R)$p)[[x]])
+  p_pop = sapply(c('C','L','I'), function(x)as.list(formals(post_prob_L)$p)[[x]])
   recurrent_eps_ind = as.numeric(do.call(rbind, strsplit(MS_data$Episode_Identifier, split = '_'))[,3]) > 1
   recurrent_eps = unique(MS_data$Episode_Identifier[recurrent_eps_ind])
   
