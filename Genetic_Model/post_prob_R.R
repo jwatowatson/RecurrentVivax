@@ -1,11 +1,11 @@
-# Aside from nested functions, notation matches unless otherwised specified 
-# e.g. Tn counts from 1 here and 0 in the notation
-# In names, conditioning bar is represented by an underscore while and is explicit
+# Notation matches manuscript aside from Tn, which counts from 1 here and 0 in the notation
+# Variables names: conditioning bar is represented by an underscore while 'and' is explicit
 # e.g. log_Pr_yn_Rn denotes log Pr(yn | Rn) while log_Pr_yn_and_Rn denotes log Pr(yn, Rn)
 
-# These should be made into dependencies
-library(doParallel)
-library(gtools)
+# # Can we collapse the following checks? 
+# Max_Eps = 3, 
+# Max_Tot_Vtx = 6,
+# UpperComplexity = 10^6
 
 post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
                        Fs, # MS population frequencies 
@@ -260,7 +260,7 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
     A = nrow(labelled_G_ind)
     log_A = log(A) # Needed for log domain calculation
     # From labelled_G_ind create all Gna 
-    labelled_Gs = vector('list', A) # store in list
+    Gabs = vector('list', A) # store in list
     for(label_ind in 1:nrow(labelled_G_ind)){ # labelled_G_ind inc. compatible labelled graphs only
       # For each labbeling in labelled_G_ind extract vertex data matrix 
       x <- labelled_G_ind[label_ind, ,drop=FALSE]
@@ -271,7 +271,7 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
         labels = as.matrix(Z$Hnt[Z$Vt_Hnt_inds_comp[x[t],,drop=FALSE],,drop=FALSE]) 
         vertex_data_matrix[cumsum(c(1,cn))[t]:cumsum(cn)[t], ] = labels 
       }
-      labelled_Gs[[label_ind]] = vertex_data_matrix 
+      Gabs[[label_ind]] = vertex_data_matrix 
     }
     
     
@@ -303,13 +303,13 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
     } else { # Go on to calculate posterior probabilities
       
       #==========================================================================          
-      # Calculate probabilities of all Gnb summed over all Gnab and record run time
+      # Calculate Pr(yn | Gnb) = sum from a = 1 to A over Pr(yn | Gnab) and record run time
       #==========================================================================
       tic() # Start clock to calculate time take per graph
       
       # Calculate probabilities of Gnb summed over all Gnab 
-      log_Pr_yn_Gnbs_unnormalised = sapply(graph_lookup, Log_Pr_yn_Gnw_unnormalised, # This function needs renaming
-                                           labelled_Gs=labelled_Gs, cn=cn, Tn=Tn, 
+      log_Pr_yn_Gnbs_unnormalised = sapply(graph_lookup, Log_Pr_yn_Gnb_unnormalised, 
+                                           Gabs=Gabs, cn=cn, Tn=Tn, 
                                            log_Fs=log_Fs, MSs=MSs, alpha_terms=alpha_terms) 
       
       z = toc(quiet = TRUE) # Stop clock
