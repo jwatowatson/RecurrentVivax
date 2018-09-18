@@ -7,8 +7,6 @@
 library(doParallel)
 library(gtools)
 
-
-
 post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
                        Fs, # MS population frequencies 
                        p = c('C' = 0.1, 'L' = 0.2, 'I' = 0.7), # Population constant prior over C, L, I
@@ -19,22 +17,25 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
                        UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
                        verbose = FALSE){
   
+
   if(verbose) writeLines('Setting up parameters to do computation....')
   
   #==========================================================================
   # Retrieve population prior and recurrent eps identifiers
   #==========================================================================
   p_pop = sapply(c('C','L','I'), function(x)as.list(formals(post_prob_R)$p)[[x]])
-  recurrent_eps = MS_data$Episode_Identifier[!grepl('_1', MS_data$Episode_Identifier)]
+  recurrent_eps_ind = as.numeric(do.call(rbind, strsplit(MS_data$Episode_Identifier, split = '_'))[,3]) > 1
+  recurrent_eps = unique(MS_data$Episode_Identifier[recurrent_eps_ind])
   
   #==========================================================================
   # Check to see if using pop prior or prior from time-to-event and comment
   #==========================================================================
   if(is.null(dim(p)) & length(p) == 3){
     p_pop_ind = TRUE
-    if(verbose & p_pop_ind) writeLines('Using population prior probabilities of recurrence states')
+    writeLines('Using population prior probabilities of recurrence states')
     if(sum(p) != 1) stop('Population prior probabilities do not sum to one')
   } else {
+    p_pop_ind = FALSE
     writeLines('Using time-to-event prior probabilities of recurrence states')
     recurrent_eps_no_prior = recurrent_eps[which(!recurrent_eps %in% p$Episode_Identifier)]
     no_recurrent_eps_no_prior = length(recurrent_eps_no_prior)
@@ -138,8 +139,19 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
   
   #==========================================================================
   # Calculate log Pr(Rn | p)
+  # If p_pop_ind = T: log_Pr_Rns is a list of length unique(Tn) with an entry by Rn^(t)
+  # If p_pop_ind = F: log_Pr_Rns list of length N
   #==========================================================================
-  if(p_pop_ind){log_Pr_Rns = lapply(Rns, function(Rn){apply(Rn, 1, function(x){sum(log_p[x])})})}
+  if(p_pop_ind){ 
+    log_Pr_Rns = lapply(Rns, function(Rn){apply(Rn, 1, function(x){sum(log_p[x])})})
+  } else {
+    log_p_IDs = lapply(IDs, function(x){log_p[grepl(paste(x,'_', sep = ''), rownames(log_p)),]})
+    names(log_p_IDs) = IDs
+    log_Pr_Rns = log_p_IDs # Set log_p equal to log Pr(Rn | p)
+    for(x in names(which(unlist(Tns) > 2))){ # For those with more than recurrence sum over recurrences 
+      log_Pr_Rns[[x]] = apply(Rns[[Tns_chr[[x]]]], 1, function(z) sum(diag(log_p_IDs[[x]][,z])))
+    }
+  }
   
   #==========================================================================
   # Count num. of vertices (COIs) for each individual's tth infection 
@@ -162,8 +174,7 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
   })
   
   #==========================================================================
-  # For each unique_vtx_count_str generate matrix log_Pr_G_Rn 
-  # where each log_Pr_G_Rn has rows per Gnb; cols per Rnt
+  # log_Pr_G_Rn: matrix with rows per Gnb and cols per Rnt
   #==========================================================================
   log_Pr_G_Rns = lapply(unique_vtx_count_str, function(x){
     load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all Gnb for given vtx_count_str
@@ -206,7 +217,7 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
     Rn = Rns[[Tn_chr, drop = FALSE]] # Extract relevant Rn
     colnames(Rn) = infections[-1] # Extract relevant Rn and name
     vtx_count_str = vtx_count_strs[id] # Extract vertex sizes of Gn
-    log_Pr_Rn = log_Pr_Rns[[Tn_chr]] # Extract log P(Rn)
+    log_Pr_Rn = if(p_pop_ind){log_Pr_Rns[[Tn_chr]]}else{log_Pr_Rns[[id]]} # Extract log P(Rn)
     log_Pr_G_Rn = log_Pr_G_Rns[[vtx_count_str]] # Extract log P(Gnb | Rn)
     
     #==========================================================================          
