@@ -7,7 +7,7 @@
 # Max_Tot_Vtx = 6,
 # UpperComplexity = 10^6
 
-post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
+post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
                        Fs, # MS population frequencies 
                        p = c('C' = 0.1, 'L' = 0.2, 'I' = 0.7), # Population constant prior over C, L, I
                        alpha = 0, # Additative inbreeding constant
@@ -362,5 +362,4 @@ post_prob_R = function(MS_data, # MS data (assumes no NA gaps in mixed infection
   # James: need to think how to incorporate this into the parallel version
   # save(complexity_time, file = '../../RData/complexity_time.RData')
   return(Post_probs)
-  
 }
