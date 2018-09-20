@@ -9,7 +9,7 @@
 
 post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
                        Fs, # MS population frequencies 
-                       p = c('C' = 0.1, 'L' = 0.2, 'I' = 0.7), # Population constant prior over C, L, I
+                       p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
                        alpha = 0, # Additative inbreeding constant
                        cores = 4, 
                        Max_Eps = 3, 
