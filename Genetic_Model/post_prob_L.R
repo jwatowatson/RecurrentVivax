@@ -190,11 +190,11 @@ post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infection
   names(log_Pr_G_Rns) = unique_vtx_count_str
   
   # #===================================================
-  # # Aside: uncomment when manually log_Pr_G_Rns make sense 
-  # x = unique_vtx_count_str[6]
+  # # Aside: uncomment when manually log_Pr_G_Rns make sense
+  # x = unique_vtx_count_str[10]
   # load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all Gnb for given vtx_count_str
   # G_Rn_comp = sapply(graph_lookup, test_Rn_compatible, Rns)
-  # RR_comp_Gs = which(G_Rn_comp['LC',])
+  # RR_comp_Gs = which(G_Rn_comp['C',])
   # par(mfrow = c(6,3), mar = c(1,1,1,1))
   # sapply(RR_comp_Gs, function(z) plot_Vivax_model(graph_lookup[[z]]))
   # #===================================================
