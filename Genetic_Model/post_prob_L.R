@@ -185,14 +185,19 @@ post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infection
     log_Pr_Rn = log_Pr_Rns[[Tn_chr]] # Extract log Pr( Rn | p)
     log_Pr_G_Rn = log(t(G_Rn_comp*(1/rowSums(G_Rn_comp)))) # log Pr( Gnb | Rn ) = 1 / B in matrix
     log_Pr_G_Rn[is.infinite(log_Pr_G_Rn) | is.nan(log_Pr_G_Rn)] = NA # Set -Inf due to log(0) and NAN due to division by 0 to NA
-    #===================================================
-    # Uncomment when manually checking graphs make sense
-    # G = graph_lookup[[4]]
-    # plot_Vivax_model(G) 
-    #==================================================
     return(log_Pr_G_Rn)
   })
   names(log_Pr_G_Rns) = unique_vtx_count_str
+  
+  # #===================================================
+  # # Aside: uncomment when manually log_Pr_G_Rns make sense 
+  # x = unique_vtx_count_str[6]
+  # load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all Gnb for given vtx_count_str
+  # G_Rn_comp = sapply(graph_lookup, test_Rn_compatible, Rns)
+  # RR_comp_Gs = which(G_Rn_comp['LC',])
+  # par(mfrow = c(6,3), mar = c(1,1,1,1))
+  # sapply(RR_comp_Gs, function(z) plot_Vivax_model(graph_lookup[[z]]))
+  # #===================================================
   
   if(verbose){
     writeLines('\nIn the following viable graphs include only those with sufficient numbers of vertices 
