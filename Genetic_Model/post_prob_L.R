@@ -185,7 +185,11 @@ post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infection
     log_Pr_Rn = log_Pr_Rns[[Tn_chr]] # Extract log Pr( Rn | p)
     log_Pr_G_Rn = log(t(G_Rn_comp*(1/rowSums(G_Rn_comp)))) # log Pr( Gnb | Rn ) = 1 / B in matrix
     log_Pr_G_Rn[is.infinite(log_Pr_G_Rn) | is.nan(log_Pr_G_Rn)] = NA # Set -Inf due to log(0) and NAN due to division by 0 to NA
-    # plot_Vivax_model(G) # uncomment when manually checking graphs make sense
+    #===================================================
+    # Uncomment when manually checking graphs make sense
+    # G = graph_lookup[[4]]
+    # plot_Vivax_model(G) 
+    #==================================================
     return(log_Pr_G_Rn)
   })
   names(log_Pr_G_Rns) = unique_vtx_count_str
