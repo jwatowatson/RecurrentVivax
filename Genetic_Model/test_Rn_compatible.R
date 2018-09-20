@@ -26,7 +26,7 @@ test_Rn_compatible = function(G, Rns){
   
   if(Tn == 2){ # There is only one past infection to compare to
     # True if no sibs and cn[2] clones over non-block diagonal elements t1:t2
-    cn_cln_across_inf = !any(Adj_matrix[!is.na(blocks)] == 0.5,  na.rm = T) & sum(Adj_matrix[!is.na(blocks)], na.rm = T) == cns[2] 
+    cn_cln_across_inf = sum(Adj_matrix[!is.na(blocks)] == 1, na.rm = T) == cns[2] 
     # Generate the compatibility of C, L, I given collection of parasites
     G_mid_Rn = c('C' = cn_cln_across_inf, 'L' = TRUE, 'I' = all_str_across_inf)
   }
@@ -46,13 +46,13 @@ test_Rn_compatible = function(G, Rns){
     mask_13_23[sum(cns[1:2],1):sum(cns[1:3]), (cns[1]+1):sum(cns[1:2])] = NA # Mask 2:3
     mask_13_23[(cns[1]+1):sum(cns[1:2]), sum(cns[1:2],1):sum(cns[1:3])] = NA # Mask 3:2
     all_str_across_12 = all(Adj_matrix[!is.na(mask_13_23)] == 0, na.rm = T)
-    cn_cln_across_12 = !any(Adj_matrix[!is.na(mask_13_23)] == 0.5, na.rm = T) & sum(Adj_matrix[!is.na(mask_13_23)], na.rm = T) == cns[2]
+    cn_cln_across_12 = sum(Adj_matrix[!is.na(mask_13_23)] == 1, na.rm = T) == cns[2]
     
     # For Rn = "LC" mask the t=1:t=2 and t=1:t=3 non-block diagonals leaving only t=2:t=3
     mask_12_13 = mask_12
     mask_12_13[sum(cns[1:2],1):sum(cns[1:3]), 1:cns[1]] = NA # Mask 1:3
     mask_12_13[1:cns[1], sum(cns[1:2],1):sum(cns[1:3])] = NA # Mask 3:1
-    cn_cln_across_23 = !any(Adj_matrix[!is.na(mask_12_13)] == 0.5, na.rm = T) & sum(Adj_matrix[!is.na(mask_12_13)], na.rm = T) == cns[3]
+    cn_cln_across_23 = sum(Adj_matrix[!is.na(mask_12_13)] == 1, na.rm = T) == cns[3]
     
     G_mid_Rn = c("CC" = cn_cln_across_12 & cn_cln_across_23, 
                  "CI" = cn_cln_across_12 & all_str_across_13_23, 
