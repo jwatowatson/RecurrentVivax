@@ -7,7 +7,7 @@
 # Max_Tot_Vtx = 6,
 # UpperComplexity = 10^6
 
-post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
+post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
                        Fs, # MS population frequencies 
                        p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
                        alpha = 0, # Additative inbreeding constant
@@ -23,9 +23,9 @@ post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infection
   #==========================================================================
   # Retrieve population prior and recurrent eps identifiers
   #==========================================================================
-  p_pop = sapply(c('C','L','I'), function(x)as.list(formals(post_prob_L)$p)[[x]])
+  p_pop = sapply(c('C','L','I'), function(x)as.list(formals(post_prob_CLI)$p)[[x]])
   recurrent_eps_ind = as.numeric(do.call(rbind, strsplit(MS_data$Episode_Identifier, split = '_'))[,3]) > 1
-  recurrent_eps = unique(MS_data$Episode_Identifier[recurrent_eps_ind])
+  recurrent_eps = unique(MS_data$Episode_Identifier[recurrent_eps_ind]) # Based on genetic data
   
   #==========================================================================
   # Check to see if using pop prior or prior from time-to-event and comment
@@ -38,15 +38,25 @@ post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infection
     p_pop_ind = FALSE
     writeLines('Using time-to-event prior probabilities of recurrence states')
     recurrent_eps_no_prior = recurrent_eps[which(!recurrent_eps %in% p$Episode_Identifier)]
-    no_recurrent_eps_no_prior = length(recurrent_eps_no_prior)
-    if(no_recurrent_eps_no_prior == 0){
-      writeLines(sprintf('Using time-to-event prior probabilities for all recurrent infections', recurrent_eps_no_prior))
-    } else {
-      writeLines(sprintf('Using time-to-event prior probabilities for all but the following for which population prior probabilities are used: %s', 
-                         paste(recurrent_eps_no_prior, collapse = ', ')))
+    prior_with_genetic_ind = p$Episode_Identifier %in% recurrent_eps
+    prior_no_genetic = p$Episode_Identifier[!prior_with_genetic_ind]
+    if(length(prior_no_genetic) > 0){
+      writeLines(sprintf('No genetic data for following time-to-event priors (thus removed): %s', paste(prior_no_genetic, collapse = ', ')))
+      p = p[prior_with_genetic_ind, ]
     }
-    for(x in recurrent_eps_no_prior){p = rbind(c(x, p_pop), p)} # Add to episodes based on the prior to the top of the list
-  }
+    num_recurrent_eps_no_prior = length(recurrent_eps_no_prior)
+    if(num_recurrent_eps_no_prior == 0){
+      writeLines('Using time-to-event prior probabilities for all recurrent infections with genetic data')
+    } else {
+      writeLines(sprintf('Using time-to-event prior probabilities but for the following for which population prior probabilities are used: %s', 
+                         paste(recurrent_eps_no_prior, collapse = ', ')))
+      for(x in recurrent_eps_no_prior){p = rbind(c(x, p_pop), p)} # Add to episodes based on the prior to the top of the list
+    }
+    # check time-to-event and genetic now agree
+    if(!all(p$Episode_Identifier %in% recurrent_eps) & all(recurrent_eps %in% p$Episode_Identifier)){
+      stop('Disagreement between epsiodes with available time-to-event and genetic data')
+    }
+   }
   
   #==========================================================================
   # Create Post_probs store with length = num. of all infections inc. those without recurrence
@@ -346,7 +356,7 @@ post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infection
       # Calculate P(Rn | yn) 
       #==========================================================================
       # Pr_yn_Rn[] = 1 # Likelihood check: returns the prior
-      log_Pr_yn_and_Rn = log_Pr_yn_Rn[colnames(log_Pr_Rn)] + log_Pr_Rn
+      log_Pr_yn_and_Rn = log_Pr_yn_Rn[names(log_Pr_Rn)] + log_Pr_Rn
       log_Pr_yn = logSumExp(log_Pr_yn_and_Rn)
       Pr_Rn_yn = exp(log_Pr_yn_and_Rn - log_Pr_yn) 
       
