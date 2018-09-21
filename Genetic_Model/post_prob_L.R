@@ -210,6 +210,10 @@ post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infection
   # Computation of per-individual values
   #***********************************************
   Post_probs = foreach(i=1:N, .combine = c) %dopar% {
+
+    
+    # id = 'BPD_221'
+    # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
     # set id = 'BPD_402' for vtx_counts_str = "4_1_0" when checking by hand
     id = IDs[i] 
@@ -342,21 +346,29 @@ post_prob_L = function(MS_data, # MS data (assumes no NA gaps in mixed infection
       # Calculate P(Rn | yn) 
       #==========================================================================
       # Pr_yn_Rn[] = 1 # Likelihood check: returns the prior
-      log_Pr_yn_and_Rn = log_Pr_yn_Rn[names(log_Pr_Rn)] + log_Pr_Rn
+      log_Pr_yn_and_Rn = log_Pr_yn_Rn[colnames(log_Pr_Rn)] + log_Pr_Rn
       log_Pr_yn = logSumExp(log_Pr_yn_and_Rn)
       Pr_Rn_yn = exp(log_Pr_yn_and_Rn - log_Pr_yn) 
       
       #==========================================================================          
       # Calculate P(Rnt | yn) and return 
       #==========================================================================
-      if(Tn == 2){
-        Post_probs =  c(NA, Pr_Rn_yn['L'])
-      }
-      if(Tn == 3){ # Need to change 
-        Post_probs = c(NA, sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')]))
-      }
-      names(Post_probs) = infections
+      # Create recurrences names (avoid infections[-1] incase misordered)
+      inf_no = do.call(rbind, strsplit(infections, split = '_'))[,3]
+      recurrences = paste(id, inf_no[inf_no > 1], sep = '_')
       
+      if(Tn == 2){ # Return a vector C, L, I for single recurrence
+        Post_probs = matrix(Pr_Rn_yn, nrow = 1)
+        dimnames(Post_probs) = list(recurrences, names(Pr_Rn_yn))
+      }
+      if(Tn == 3){ # Return a matrix C, L, I for recurrences 1 and 2
+        Post_probs = cbind(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
+                           L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
+                           I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
+        rownames(Post_probs) = recurrences
+      }
+      Post_probs = list(Post_probs)
+      names(Post_probs) = id
       Post_probs # return vector
     }
   }
