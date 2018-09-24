@@ -1,4 +1,4 @@
-# This is not presently scalable beyond Tn = {1,2}
+# This is not presently scalable beyond 2 recurrences
 test_Rn_compatible = function(G, Rns){ 
   
   cns = as.vector(table(vertex_attr(G)$group)) # Extract COIs (as.vector removes names which otherwise get appended to names of G_mid_Rn)
