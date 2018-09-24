@@ -11,10 +11,9 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
                          p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
                          alpha = 0, # Additative inbreeding constant
                          cores = 4, 
-                         Max_Eps = 3, 
+                         Max_Eps = 3, # Limit is due to test_Rn_compatible 
                          Max_Tot_Vtx = 6,
                          verbose = FALSE){
-  
   
   if(verbose) writeLines('Setting up parameters to do computation....')
   
