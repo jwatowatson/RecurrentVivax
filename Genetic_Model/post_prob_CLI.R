@@ -5,19 +5,19 @@
 # # Can we collapse the following checks? 
 # Max_Eps = 3, 
 # Max_Tot_Vtx = 6,
-# UpperComplexity = 10^6
+# UpperComplexity = 10^6 # Is this redundant
 
 post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
-                       Fs, # MS population frequencies 
-                       p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
-                       alpha = 0, # Additative inbreeding constant
-                       cores = 4, 
-                       Max_Eps = 3, 
-                       Max_Tot_Vtx = 6,
-                       UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
-                       verbose = FALSE){
+                         Fs, # MS population frequencies 
+                         p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
+                         alpha = 0, # Additative inbreeding constant
+                         cores = 4, 
+                         Max_Eps = 3, 
+                         Max_Tot_Vtx = 6,
+                         UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
+                         verbose = FALSE){
   
-
+  
   if(verbose) writeLines('Setting up parameters to do computation....')
   
   #==========================================================================
@@ -56,7 +56,7 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
     if(!all(p$Episode_Identifier %in% recurrent_eps) & all(recurrent_eps %in% p$Episode_Identifier)){
       stop('Disagreement between epsiodes with available time-to-event and genetic data')
     }
-   }
+  }
   
   #==========================================================================
   # Create Post_probs store with length = num. of all infections inc. those without recurrence
@@ -106,14 +106,11 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   
   #==========================================================================
   # Check for individuals whose data are too complex for theta calculation
-  #++++++++++++++++++++++++++++
-  # May need to change this given added complexity of additional state
-  #++++++++++++++++++++++++++++
   #==========================================================================
-  complex = (Tns > Max_Eps) | (sum_cns >Max_Tot_Vtx)
+  complex = (Tns > Max_Eps) | (sum_cns > Max_Tot_Vtx)
   if(any(complex)){
     writeLines(sprintf('\nSkipping ID: %s, which are too complex either because they have more than %s episodes or more than %s vertices, sorry.', 
-                       paste(IDs_all[complex], collapse = ', '), Max_Eps,Max_Tot_Vtx))}
+                       paste(IDs_all[complex], collapse = ', '), Max_Eps, Max_Tot_Vtx))}
   
   #==========================================================================
   # Check for individuals that have Tn = 1 (no recurrence)
@@ -158,7 +155,7 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
     log_p_IDs = lapply(IDs, function(x){log_p[grepl(paste(x,'_', sep = ''), rownames(log_p)),]})
     names(log_p_IDs) = IDs
     log_Pr_Rns = log_p_IDs # Set log_p equal to log Pr(Rn | p)
-    for(x in names(which(unlist(Tns) > 2))){ # For those with more than recurrence sum over recurrences 
+    for(x in names(which(unlist(Tns[IDs]) > 2))){ # For those with more than recurrence sum over recurrences 
       log_Pr_Rns[[x]] = apply(Rns[[Tns_chr[[x]]]], 1, function(z) sum(diag(log_p_IDs[[x]][,z])))
     }
   }
@@ -220,7 +217,7 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   # Computation of per-individual values
   #***********************************************
   Post_probs = foreach(i=1:N, .combine = c) %dopar% {
-
+    
     
     # id = 'BPD_221'
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
