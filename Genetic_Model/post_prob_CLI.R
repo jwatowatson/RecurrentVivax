@@ -5,7 +5,6 @@
 # # Can we collapse the following checks? 
 # Max_Eps = 3, 
 # Max_Tot_Vtx = 6,
-# UpperComplexity = 10^6 # Is this redundant
 
 post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
                          Fs, # MS population frequencies 
@@ -14,7 +13,6 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
                          cores = 4, 
                          Max_Eps = 3, 
                          Max_Tot_Vtx = 6,
-                         UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
                          verbose = FALSE){
   
   
@@ -308,76 +306,61 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
                          id, A, length_graph_lookup, complexity_problem))
     }
     
-    # We do a complexity check - need to work out what an OK upper limit should be
-    # Aimee: Rather than having two complexity checks, I wonder if we might do this check
-    # outside do.par/forloop (I will give it some thought)
-    if(complexity_problem > UpperComplexity){ # Return NAs and skip to next ID
-      
-      writeLines(sprintf('\nSkipping this problem (ID %s), too complex.', id))
-      Post_probs = array(NA, dim = Tn, dimnames = list(infections)) # Return NAs
-      #Post_probs[names(Post_probs)] = Post_probs # Need to change this for parallel computation
-      
-      # return NA vector of Post_probs
-      Post_probs
-      
-    } else { # Go on to calculate posterior probabilities
-      
-      #==========================================================================          
-      # Calculate Pr(yn | Gnb) = sum from a = 1 to A over Pr(yn | Gnab) and record run time
-      #==========================================================================
-      tic() # Start clock to calculate time take per graph
-      
-      # Calculate probabilities of Gnb summed over all Gnab 
-      log_Pr_yn_Gnbs_unnormalised = sapply(graph_lookup, Log_Pr_yn_Gnb_unnormalised, 
-                                           Gabs=Gabs, cn=cn, Tn=Tn, 
-                                           log_Fs=log_Fs, MSs=MSs, alpha_terms=alpha_terms) 
-      
-      z = toc(quiet = TRUE) # Stop clock
-      ms_per_graph_space = 1000*(z$toc-z$tic) # Total time taken
-      ms_per_graph = ms_per_graph_space/complexity_problem # Time taken per graph
-      
-      if(verbose){writeLines(sprintf('Run time (ms) over all graphs in graph space: %s\nRun time (ms) per graph in graph space: %s', round(ms_per_graph_space), round(ms_per_graph)))}
-      #complexity_time[i,] = c(complexity_problem, ms_per_graph) # Store time 
-      log_Pr_yn_Gnbs = log_Pr_yn_Gnbs_unnormalised - log_A # Normalise probabilities
-      
-      #==========================================================================          
-      # Calculate P(yn | Rn) by summing over all Gnb
-      #==========================================================================
-      log_Pr_yn_Rn = array(dim = dim(log_Pr_G_Rn), dimnames = dimnames(log_Pr_G_Rn))
-      for(col_i in 1:ncol(log_Pr_G_Rn)){
-        log_Pr_yn_Rn[,col_i] = log_Pr_yn_Gnbs + log_Pr_G_Rn[,col_i]
-      }
-      log_Pr_yn_Rn = apply(log_Pr_yn_Rn, 2, logSumExp, na.rm = TRUE)
-      
-      #==========================================================================          
-      # Calculate P(Rn | yn) 
-      #==========================================================================
-      # Pr_yn_Rn[] = 1 # Likelihood check: returns the prior
-      log_Pr_yn_and_Rn = log_Pr_yn_Rn[names(log_Pr_Rn)] + log_Pr_Rn
-      log_Pr_yn = logSumExp(log_Pr_yn_and_Rn)
-      Pr_Rn_yn = exp(log_Pr_yn_and_Rn - log_Pr_yn) 
-      
-      #==========================================================================          
-      # Calculate P(Rnt | yn) and return 
-      #==========================================================================
-      # Create recurrences names (avoid infections[-1] incase misordered)
-      inf_no = do.call(rbind, strsplit(infections, split = '_'))[,3]
-      recurrences = paste(id, inf_no[inf_no > 1], sep = '_')
-      
-      if(Tn == 2){ # Return a vector C, L, I for single recurrence
-        Post_probs = matrix(Pr_Rn_yn, nrow = 1)
-        dimnames(Post_probs) = list(recurrences, names(Pr_Rn_yn))
-      }
-      if(Tn == 3){ # Return a matrix C, L, I for recurrences 1 and 2
-        Post_probs = cbind(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
-                           L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
-                           I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
-        rownames(Post_probs) = recurrences
-      }
-      Post_probs = list(Post_probs)
-      names(Post_probs) = id
-      Post_probs # return vector
+    #==========================================================================          
+    # Calculate Pr(yn | Gnb) = sum from a = 1 to A over Pr(yn | Gnab) and record run time
+    #==========================================================================
+    tic() # Start clock to calculate time take per graph
+    
+    # Calculate probabilities of Gnb summed over all Gnab 
+    log_Pr_yn_Gnbs_unnormalised = sapply(graph_lookup, Log_Pr_yn_Gnb_unnormalised, 
+                                         Gabs=Gabs, cn=cn, Tn=Tn, 
+                                         log_Fs=log_Fs, MSs=MSs, alpha_terms=alpha_terms) 
+    
+    z = toc(quiet = TRUE) # Stop clock
+    ms_per_graph_space = 1000*(z$toc-z$tic) # Total time taken
+    ms_per_graph = ms_per_graph_space/complexity_problem # Time taken per graph
+    
+    if(verbose){writeLines(sprintf('Run time (ms) over all graphs in graph space: %s\nRun time (ms) per graph in graph space: %s', round(ms_per_graph_space), round(ms_per_graph)))}
+    #complexity_time[i,] = c(complexity_problem, ms_per_graph) # Store time 
+    log_Pr_yn_Gnbs = log_Pr_yn_Gnbs_unnormalised - log_A # Normalise probabilities
+    
+    #==========================================================================          
+    # Calculate P(yn | Rn) by summing over all Gnb
+    #==========================================================================
+    log_Pr_yn_Rn = array(dim = dim(log_Pr_G_Rn), dimnames = dimnames(log_Pr_G_Rn))
+    for(col_i in 1:ncol(log_Pr_G_Rn)){
+      log_Pr_yn_Rn[,col_i] = log_Pr_yn_Gnbs + log_Pr_G_Rn[,col_i]
     }
+    log_Pr_yn_Rn = apply(log_Pr_yn_Rn, 2, logSumExp, na.rm = TRUE)
+    
+    #==========================================================================          
+    # Calculate P(Rn | yn) 
+    #==========================================================================
+    # Pr_yn_Rn[] = 1 # Likelihood check: returns the prior
+    log_Pr_yn_and_Rn = log_Pr_yn_Rn[names(log_Pr_Rn)] + log_Pr_Rn
+    log_Pr_yn = logSumExp(log_Pr_yn_and_Rn)
+    Pr_Rn_yn = exp(log_Pr_yn_and_Rn - log_Pr_yn) 
+    
+    #==========================================================================          
+    # Calculate P(Rnt | yn) and return 
+    #==========================================================================
+    # Create recurrences names (avoid infections[-1] incase misordered)
+    inf_no = do.call(rbind, strsplit(infections, split = '_'))[,3]
+    recurrences = paste(id, inf_no[inf_no > 1], sep = '_')
+    
+    if(Tn == 2){ # Return a vector C, L, I for single recurrence
+      Post_probs = matrix(Pr_Rn_yn, nrow = 1)
+      dimnames(Post_probs) = list(recurrences, names(Pr_Rn_yn))
+    }
+    if(Tn == 3){ # Return a matrix C, L, I for recurrences 1 and 2
+      Post_probs = cbind(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
+                         L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
+                         I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
+      rownames(Post_probs) = recurrences
+    }
+    Post_probs = list(Post_probs)
+    names(Post_probs) = id
+    Post_probs # return vector
   }
   
   # # Store to check relationship between problem complexity and time
