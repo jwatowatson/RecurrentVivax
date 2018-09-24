@@ -19,3 +19,6 @@ Timing_Model/TimingModelStan_cache/*
 Timing_Model/.Rhistory
 Timing_Model/.Rhistory
 Timing_Model/.Rhistory
+
+# Ignore .Rhistory 
+**/.Rhistory
