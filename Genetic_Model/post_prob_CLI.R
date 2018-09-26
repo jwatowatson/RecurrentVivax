@@ -9,7 +9,7 @@
 post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
                          Fs, # MS population frequencies 
                          p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
-                         alpha = 0, # Additative inbreeding constant
+                         alpha = 0, # Additive inbreeding constant
                          cores = 4, 
                          Max_Eps = 3, # Limit is due to test_Rn_compatible 
                          Max_Tot_Vtx = 6,
@@ -21,7 +21,8 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   # Retrieve population prior and recurrent eps identifiers
   #==========================================================================
   p_pop = sapply(c('C','L','I'), function(x)as.list(formals(post_prob_CLI)$p)[[x]])
-  recurrent_eps_ind = as.numeric(do.call(rbind, strsplit(MS_data$Episode_Identifier, split = '_'))[,3]) > 1
+  # JAMES: I've simplified this line: can you check it's OK, otherwise it's kinda bug prone
+  recurrent_eps_ind = MS_data$Episode>1#as.numeric(do.call(rbind, strsplit(MS_data$Episode_Identifier, split = '_'))[,3]) > 1
   recurrent_eps = unique(MS_data$Episode_Identifier[recurrent_eps_ind]) # Based on genetic data
   
   #==========================================================================
@@ -213,7 +214,13 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   #***********************************************
   # Computation of per-individual values
   #***********************************************
-  Post_probs = foreach(i=1:N, .combine = c) %dopar% {
+  # dopar in Windows needs the packages and functions explicitly passed to foreach command
+  # otherwise it doesn't work for more than one core. This is still compatible with Mac
+  Post_probs = foreach(i=1:N, .combine = c, 
+                       .packages = c('dplyr','igraph','gtools',
+                                     'matrixStats','Matrix','tictoc'), 
+                       .export = c('Log_Pr_yn_Gab','Log_Pr_yn_Gnb_unnormalised',
+                                   'test_Rn_compatible','test_cln_incompatible')) %dopar% {
     
     
     # id = 'BPD_221'
