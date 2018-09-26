@@ -12,7 +12,7 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
                          p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
                          alpha = 0, # Additive inbreeding constant
                          cores = 4, 
-                         Max_Eps = 3, 
+                         Max_Eps = 3, # Limit is due to test_Rn_compatible 
                          Max_Tot_Vtx = 6,
                          UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
                          verbose = FALSE){
@@ -215,9 +215,15 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   #***********************************************
   # Computation of per-individual values
   #***********************************************
-  Post_probs = foreach(i=1:N, .combine = c) %dopar% {
+  # dopar in Windows needs the packages and functions explicitly passed to foreach command
+  # otherwise it doesn't work for more than one core. This is still compatible with Mac
+  Post_probs = foreach(i=1:N, .combine = c, 
+                       .packages = c('dplyr','igraph','gtools',
+                                     'matrixStats','Matrix','tictoc'), 
+                       .export = c('Log_Pr_yn_Gab','Log_Pr_yn_Gnb_unnormalised',
+                                   'test_Rn_compatible','test_cln_incompatible')) %dopar% {
     
-    
+  
     # id = 'BPD_221'
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
