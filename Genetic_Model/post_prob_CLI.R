@@ -10,7 +10,7 @@
 post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
                          Fs, # MS population frequencies 
                          p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
-                         alpha = 0, # Additative inbreeding constant
+                         alpha = 0, # Additive inbreeding constant
                          cores = 4, 
                          Max_Eps = 3, 
                          Max_Tot_Vtx = 6,
@@ -24,8 +24,7 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   # Retrieve population prior and recurrent eps identifiers
   #==========================================================================
   p_pop = sapply(c('C','L','I'), function(x)as.list(formals(post_prob_CLI)$p)[[x]])
-  recurrent_eps_ind = as.numeric(do.call(rbind, strsplit(MS_data$Episode_Identifier, split = '_'))[,3]) > 1
-  recurrent_eps = unique(MS_data$Episode_Identifier[recurrent_eps_ind]) # Based on genetic data
+  recurrent_eps = unique(MS_data$Episode_Identifier[MS_data$Episode>1]) # Based on genetic data
   
   #==========================================================================
   # Check to see if using pop prior or prior from time-to-event and comment
