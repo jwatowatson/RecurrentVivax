@@ -1,0 +1,6 @@
+load("/Users/aimeet/Dropbox/Genotyping/RData/graph_lookup/list_1_1_0.Rdata")
+load("/Users/aimeet/Dropbox/Genotyping/RData/graph_lookup/list_1_2_0.Rdata")
+load("/Users/aimeet/Dropbox/Genotyping/RData/graph_lookup/list_1_3_0.Rdata")
+load("/Users/aimeet/Dropbox/Genotyping/RData/graph_lookup/list_2_1_0.Rdata")
+load("/Users/aimeet/Dropbox/Genotyping/RData/graph_lookup/list_2_2_0.Rdata")
+load("/Users/aimeet/Dropbox/Genotyping/RData/graph_lookup/list_3_1_0.Rdata")

@@ -1,5 +1,5 @@
 ---
-title: "Pooled Final Analysis"
+title: "Pooled Analysis"
 author: "Aimee Taylor and James Watson"
 output:
   html_document:
@@ -31,18 +31,19 @@ require(Matrix)
 require(matrixStats) # for logSumExp
 library(igraph) # For igraph
 require(RColorBrewer)
-#load('~/Documents/GitHub/RecurrentVivax/RData/TimingModel/MOD3_theta_estimates.RData')
-load('../../../RecurrentVivax/RData/TimingModel/MOD3_theta_estimates.RData')
+load('../RData/TimingModel/MOD3_theta_estimates.RData')
 
-source("../Probabilistic_Model_Functions/Data_functions.R")
-source('../Probabilistic_Model_Functions/iGraph_functions.R')
-source("../Probabilistic_Model_Functions/post_prob_CLI.R") 
-source("../Probabilistic_Model_Functions/test_Rn_compatible.R") 
-source("../DataPreparation/Data_Inflation_Functions.R")
-source('../Plotting MS Data/PlottingFunction.R')
+source("../Genetic_Model/Data_functions.R")
+source('../Genetic_Model/iGraph_functions.R')
+source("../Genetic_Model/post_prob_CLI.R") 
+source("../Genetic_Model/test_Rn_compatible.R") 
+source("../Genetic_Model/Data_Inflation_Functions.R")
 
 # The pooled MS data from BPD and VHX
-load('../../RData/MS_data_PooledAnalysis.RData')
+load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
+
+RUN_MODELS = TRUE
+CREATE_PLOTS = TRUE
 ```
 
 Define the sets of microsatellite markers for the various datasets.
@@ -119,27 +120,29 @@ Fs_Combined =  apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
 These are the observed allele frequencies in the pooled data. We show 80% credible intervals (lo)
 
 ```{r AlleleFrequencies, echo=F}
-par(mfrow=c(3,3), las=1, bty='n', cex.axis=1.2)
-
-for(ms in MSs_all){ # As bars
-  K = length(Fs_Combined[[ms]]) # Cardinality of ms 
-  xs = rdirichlet(n = 1000, alpha = Fs_Combined[[ms]]) # Sample from posterior
-  YMAX = max(apply(100*xs, 2, quantile, probs = .9)) # MC approximation of 0.9 percentile expressed as percentage
-  N_MS = length(unique(MS_pooled$ID[MS_pooled$Episode==1 & !is.na(MS_pooled[,ms])])) # Number of observations
-  plot(1:ncol(xs), rep(NA,K), 
-       main = sprintf('%s (n = %s)', ms, N_MS), # sprintf so much easier :-)
-       #main=paste(ms,' (n=',N_MS,')',sep = ''), 
-       pch = 18, ylim=c(0,YMAX),col='red',
-       ylab='%', xlab='', yaxt='n')
-  abline(h=100/K)
-  mtext(text = paste('Motif length:',MSs_Motifs[[ms]]),side = 1,line=3)
-  for(k in 1:ncol(xs)){
-    lines(rep(k,2), 100*quantile(xs[,k],probs = c(0.1,0.9)), col='blue')
-  }
-  points(1:length(Fs_Combined[[ms]]),
-         100*Fs_Combined[[ms]],col='red',pch=18)
+if(CREATE_PLOTS){
+  par(mfrow=c(3,3), las=1, bty='n', cex.axis=1.2)
   
-  axis(2, seq(0, round(YMAX), length.out = 3))
+  for(ms in MSs_all){ # As bars
+    K = length(Fs_Combined[[ms]]) # Cardinality of ms 
+    xs = rdirichlet(n = 1000, alpha = Fs_Combined[[ms]]) # Sample from posterior
+    YMAX = max(apply(100*xs, 2, quantile, probs = .9)) # MC approximation of 0.9 percentile expressed as percentage
+    N_MS = length(unique(MS_pooled$ID[MS_pooled$Episode==1 & !is.na(MS_pooled[,ms])])) # Number of observations
+    plot(1:ncol(xs), rep(NA,K), 
+         main = sprintf('%s (n = %s)', ms, N_MS), # sprintf so much easier :-)
+         #main=paste(ms,' (n=',N_MS,')',sep = ''), 
+         pch = 18, ylim=c(0,YMAX),col='red',
+         ylab='%', xlab='', yaxt='n')
+    abline(h=100/K)
+    mtext(text = paste('Motif length:',MSs_Motifs[[ms]]),side = 1,line=3)
+    for(k in 1:ncol(xs)){
+      lines(rep(k,2), 100*quantile(xs[,k],probs = c(0.1,0.9)), col='blue')
+    }
+    points(1:length(Fs_Combined[[ms]]),
+           100*Fs_Combined[[ms]],col='red',pch=18)
+    
+    axis(2, seq(0, round(YMAX), length.out = 3))
+  }
 }
 ```
 
@@ -151,10 +154,6 @@ The following iterates through each individual and computes the probability of r
 ## Load the time-to-event priors
 
 ```{r}
-# get rid of the episodes greater than 3
-# Aimee: if you comment out the next line then you'll see the bug in the next code section (running the model)
-# MS_data_reformated = filter(MS_data_reformated, !(Episode > 3))
-
 inds = grepl('mean_theta', colnames(Mod3_ThetaEstimates)) # Extract mean
 Episode_Identifier = Mod3_ThetaEstimates$Episode_Identifier
 p = data.frame(Episode_Identifier = Episode_Identifier, Mod3_ThetaEstimates[,inds],
@@ -170,27 +169,29 @@ p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,]
 
 We use all 9MS markers (when available).
 ```{r}
-#===============================================
-# Run new version (with time-to-event)
-#===============================================
-tic()
-thetas_9MS = post_prob_CLI(MS_data = MS_data_reformated, Fs = Fs_Combined, 
-                           p = p, cores = 6, verbose = T) 
-toc()
-
-#===============================================
-# Run new version (without time-to-event)
-#===============================================
-tic()
-thetas_9MS_Tagnostic = post_prob_CLI(MS_data = MS_data_reformated, Fs = Fs_Combined, 
-                                     cores = 6, verbose = T) 
-toc()
+if(RUN_MODELS){
+  #===============================================
+  # Run new version (with time-to-event)
+  #===============================================
+  tic()
+  thetas_9MS = post_prob_CLI(MS_data = MS_data_reformated, Fs = Fs_Combined, 
+                             p = p, cores = 6, verbose = T) 
+  toc()
+  
+  #===============================================
+  # Run new version (without time-to-event)
+  #===============================================
+  tic()
+  thetas_9MS_Tagnostic = post_prob_CLI(MS_data = MS_data_reformated, Fs = Fs_Combined, 
+                                       cores = 6, verbose = T) 
+  toc()
+}
 ```
 
 # Plot results
 
 
-These dataframes are sorted by episode number so the columns correspond between them
+These dataframes are sorted by episode number so the columns correspond between them. We make some data.frames that store the results for ease of plotting.
 
 ```{r}
 Theta_Matrix = data.frame(do.call(rbind, thetas_9MS))
@@ -216,14 +217,16 @@ There is some interesting correlation structure here - not quite sure what's hap
 Have broken it down by radical cure and no radical cure, as that is quite a big piece of information!
 
 ```{r}
-pmq_ind = Time_Estimates_1$arm_num == 'CHQ/PMQ'
-plot((Theta_Matrix_Agnostic$L[pmq_ind]), (Theta_Matrix$L[pmq_ind]), col=Theta_Matrix$drug)
-plot((Theta_Matrix_Agnostic$L[!pmq_ind]), (Theta_Matrix$L[!pmq_ind]), col=Theta_Matrix$drug)
-plot(log10(Time_Estimates_1$Relapse_mean_theta), log10(Theta_Matrix$L),col=as.factor(Time_Estimates_1$arm_num))
-lines(-10:10,-10:10)
-
-plot(log10(Time_Estimates_1$ReInfection_mean_theta), log10(Theta_Matrix$I),col=as.factor(Time_Estimates_1$arm_num))
-lines(-10:10,-10:10)
+if(CREATE_PLOTS){
+  pmq_ind = Time_Estimates_1$arm_num == 'CHQ/PMQ'
+  plot((Theta_Matrix_Agnostic$L[pmq_ind]), (Theta_Matrix$L[pmq_ind]), col=Theta_Matrix$drug)
+  plot((Theta_Matrix_Agnostic$L[!pmq_ind]), (Theta_Matrix$L[!pmq_ind]), col=Theta_Matrix$drug)
+  plot(log10(Time_Estimates_1$Relapse_mean_theta), log10(Theta_Matrix$L),col=as.factor(Time_Estimates_1$arm_num))
+  lines(-10:10,-10:10)
+  
+  plot(log10(Time_Estimates_1$ReInfection_mean_theta), log10(Theta_Matrix$I),col=as.factor(Time_Estimates_1$arm_num))
+  lines(-10:10,-10:10)
+}
 ```
 
 
@@ -232,38 +235,41 @@ Is this the thing you were worried about?
 
 Other problem: the complex ones (for which it returns NA) are not grouped by ID in the function output
 
-Plot for the relapse states
+Plot for the relapse states and for the reinfection states.
 
 ```{r}
-plot(log10(Time_Estimates_1$Relapse_mean_theta), 
-     log10(Theta_Matrix$L), col = as.factor(Time_Estimates_1$arm_num),
-     xlab='prior for L', ylab = 'posterior for L')
-title('Probabilities of Relapse')
-lines(-10:10,-10:10)
+if(CREATE_PLOTS){
+  par(mfrow=c(1,2),las=1, bty='n')
+  plot(log10(Time_Estimates_1$Relapse_mean_theta), 
+       log10(Theta_Matrix$L), col = as.factor(Time_Estimates_1$arm_num),
+       xlab='prior for L', ylab = 'posterior for L')
+  title('Probabilities of Relapse')
+  lines(-10:10,-10:10)
+  
+  plot(log10(Time_Estimates_1$ReInfection_mean_theta), 
+       log10(Theta_Matrix$I), col = as.factor(Time_Estimates_1$arm_num), 
+       xlab='prior for I', ylab = 'posterior for I')
+  title('Probabilities of Reinfection')
+  lines(-10:10,-10:10)
+}
 ```
 
-Plot for the reinfection states
 
-```{r}
-plot(log10(Time_Estimates_1$ReInfection_mean_theta), 
-     log10(Theta_Matrix$I), col = as.factor(Time_Estimates_1$arm_num), 
-     xlab='prior for I', ylab = 'posterior for I')
-title('Probabilities of Reinfection')
-lines(-10:10,-10:10)
-```
 
 Is this not strange: (?)
 WHy is the time agnostic model giving some of them such low probabilities?
 
 ```{r}
-plot(log10(Theta_Matrix_Agnostic$L), log10(Theta_Matrix$L),
-     col = as.factor(Theta_Matrix_Agnostic$drug))
-
-ids1 = Time_Estimates_1$patientid[which(log10(Theta_Matrix_Agnostic$L) < -4)]
-#View(MS_pooled[MS_pooled$ID %in% ids1,])
-
-Spec_case = filter(MS_pooled, ID=='VHX_485')
-post_prob_CLI(MS_data = Spec_case,Fs = Fs_Combined)
+if(CREATE_PLOTS){
+  plot(log10(Theta_Matrix_Agnostic$L), log10(Theta_Matrix$L),
+       col = as.factor(Theta_Matrix_Agnostic$drug))
+  
+  ids1 = Time_Estimates_1$patientid[which(log10(Theta_Matrix_Agnostic$L) < -4)]
+  #View(MS_pooled[MS_pooled$ID %in% ids1,])
+  
+  Spec_case = filter(MS_pooled, ID=='VHX_485')
+  post_prob_CLI(MS_data = Spec_case,Fs = Fs_Combined)
+}
 ```
 
 
@@ -289,10 +295,15 @@ for(ep in all_rec_eps){
 ```
 
 ```{r}
-tic()
-Res = post_prob_CLI(MS_data = MS_pooled_pairs, Fs = Fs_Combined, p = P_matrix, cores = 7)
-Res = do.call(rbind, Res)
-toc()
+if(RUN_MODELS){
+  tic()
+  Res = post_prob_CLI(MS_data = MS_pooled_pairs, Fs = Fs_Combined, p = P_matrix, cores = 7)
+  Res = do.call(rbind, Res)
+  save(Res, file = '../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
+  toc()
+} else {
+  load('../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
+}
 ```
 
 Construct adjacency graphs and compute probabilities of relapse and reinfection.
