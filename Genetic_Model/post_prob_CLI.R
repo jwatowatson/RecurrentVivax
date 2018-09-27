@@ -40,16 +40,19 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
     prior_with_genetic_ind = p$Episode_Identifier %in% recurrent_eps
     prior_no_genetic = p$Episode_Identifier[!prior_with_genetic_ind]
     if(length(prior_no_genetic) > 0){
-      writeLines(sprintf('No genetic data for following time-to-event priors (thus removed): %s', paste(prior_no_genetic, collapse = ', ')))
+      writeLines(sprintf('No genetic data for following time-to-event priors (thus removed): %s', 
+                         paste(prior_no_genetic, collapse = ', ')))
       p = p[prior_with_genetic_ind, ]
     }
     num_recurrent_eps_no_prior = length(recurrent_eps_no_prior)
     if(num_recurrent_eps_no_prior == 0){
       writeLines('Using time-to-event prior probabilities for all recurrent infections with genetic data')
     } else {
-      writeLines(sprintf('Using time-to-event prior probabilities but for the following for which population prior probabilities are used: %s', 
+      writeLines(sprintf('Using time-to-event prior probabilities but for the 
+                         following for which population prior probabilities are used: %s', 
                          paste(recurrent_eps_no_prior, collapse = ', ')))
-      for(x in recurrent_eps_no_prior){p = rbind(c(x, p_pop), p)} # Add to episodes based on the prior to the top of the list
+      # Add to episodes based on the prior to the top of the list
+      for(x in recurrent_eps_no_prior){p = rbind(c(x, p_pop), p)} 
     }
     # check time-to-event and genetic now agree
     if(!all(p$Episode_Identifier %in% recurrent_eps) & all(recurrent_eps %in% p$Episode_Identifier)){
@@ -108,7 +111,8 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   #==========================================================================
   complex = (Tns > Max_Eps) | (sum_cns > Max_Tot_Vtx)
   if(any(complex)){
-    writeLines(sprintf('\nSkipping ID: %s, which are too complex either because they have more than %s episodes or more than %s vertices, sorry.', 
+    writeLines(sprintf('\nSkipping ID: %s, which are too complex either because they 
+                       have more than %s episodes or more than %s vertices, sorry.', 
                        paste(IDs_all[complex], collapse = ', '), Max_Eps, Max_Tot_Vtx))}
   
   #==========================================================================
@@ -173,7 +177,7 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   # Check all the requisite graph look-ups exist before proceeding
   #==========================================================================
   graph_lookup_check = sapply(unique_vtx_count_str, function(x){
-    if(!file.exists(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x))){
+    if(!file.exists(sprintf('../RData/graph_lookup/graph_lookup_%s.Rdata', x))){
       stop(sprintf('graph_lookup %s does not exist', x))} else {
         'graph lookup exists...'
       }
@@ -183,14 +187,15 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   # log_Pr_G_Rn: matrix with rows per Gnb and cols per Rnt
   #==========================================================================
   log_Pr_G_Rns = lapply(unique_vtx_count_str, function(x){
-    load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all Gnb for given vtx_count_str
+    load(sprintf('../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all Gnb for given vtx_count_str
     G_Rn_comp = sapply(graph_lookup, test_Rn_compatible, Rns) # For each Gnb, test compatibility with Rn
     cn = as.numeric(strsplit(x, split = '_')[[1]]) # Reconstruct cn 
     Tn_chr = as.character(length(cn)) # Reconstruct Tn_chr
     Rn = Rns[[Tn_chr]] # Extract Rn 
     log_Pr_Rn = log_Pr_Rns[[Tn_chr]] # Extract log Pr( Rn | p)
     log_Pr_G_Rn = log(t(G_Rn_comp*(1/rowSums(G_Rn_comp)))) # log Pr( Gnb | Rn ) = 1 / B in matrix
-    log_Pr_G_Rn[is.infinite(log_Pr_G_Rn) | is.nan(log_Pr_G_Rn)] = NA # Set -Inf due to log(0) and NAN due to division by 0 to NA
+    # Set -Inf due to log(0) and NAN due to division by 0 to NA
+    log_Pr_G_Rn[is.infinite(log_Pr_G_Rn) | is.nan(log_Pr_G_Rn)] = NA 
     return(log_Pr_G_Rn)
   })
   names(log_Pr_G_Rns) = unique_vtx_count_str
@@ -217,13 +222,14 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   #***********************************************
   # dopar in Windows needs the packages and functions explicitly passed to foreach command
   # otherwise it doesn't work for more than one core. This is still compatible with Mac
-  Post_probs = foreach(i=1:N, .combine = c, 
+  Post_probs = foreach(i=1:N, .combine = rbind, 
                        .packages = c('dplyr','igraph','gtools',
                                      'matrixStats','Matrix','tictoc'), 
                        .export = c('Log_Pr_yn_Gab','Log_Pr_yn_Gnb_unnormalised',
-                                   'test_Rn_compatible','test_cln_incompatible')) %dopar% {
+                                   'test_Rn_compatible','test_cln_incompatible')
+  ) %dopar% 
+  {
     
-  
     # id = 'BPD_221'
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
@@ -303,13 +309,16 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
     #==========================================================================          
     # Load all Gnb and check complexity
     #==========================================================================
-    load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', vtx_count_str))
+    load(sprintf('../RData/graph_lookup/graph_lookup_%s.Rdata', vtx_count_str))
     length_graph_lookup = length(graph_lookup)
     # as.numeric to avoid getting integer overflow leading to an error
     complexity_problem = as.numeric(A)*as.numeric(length_graph_lookup)
     
     if(verbose){
-      writeLines(sprintf('\nComplexity of problem, ID: %s\nThe number of different viable vertex labeled graphs is: %s\nThe number of different viable edge labeled graphs is: %s\nThe number of graphs in viable graph space is therefore: %s', 
+      writeLines(sprintf('\nComplexity of problem, ID: 
+                          %s\nThe number of different viable vertex labeled graphs is: 
+                         %s\nThe number of different viable edge labeled graphs is: 
+                         %s\nThe number of graphs in viable graph space is therefore: %s', 
                          id, A, length_graph_lookup, complexity_problem))
     }
     
@@ -341,7 +350,9 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
       ms_per_graph_space = 1000*(z$toc-z$tic) # Total time taken
       ms_per_graph = ms_per_graph_space/complexity_problem # Time taken per graph
       
-      if(verbose){writeLines(sprintf('Run time (ms) over all graphs in graph space: %s\nRun time (ms) per graph in graph space: %s', round(ms_per_graph_space), round(ms_per_graph)))}
+      if(verbose){writeLines(sprintf('Run time (ms) over all graphs in graph space: 
+                                     %s\nRun time (ms) per graph in graph space: %s', 
+                                     round(ms_per_graph_space), round(ms_per_graph)))}
       #complexity_time[i,] = c(complexity_problem, ms_per_graph) # Store time 
       log_Pr_yn_Gnbs = log_Pr_yn_Gnbs_unnormalised - log_A # Normalise probabilities
       
@@ -369,21 +380,28 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
       inf_no = do.call(rbind, strsplit(infections, split = '_'))[,3]
       recurrences = paste(id, inf_no[inf_no > 1], sep = '_')
       
-      if(Tn == 2){ # Return a vector C, L, I for single recurrence
-        Post_probs = matrix(Pr_Rn_yn, nrow = 1)
-        dimnames(Post_probs) = list(recurrences, names(Pr_Rn_yn))
-      }
-      if(Tn == 3){ # Return a matrix C, L, I for recurrences 1 and 2
-        Post_probs = cbind(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
-                           L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
-                           I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
+      if(Tn == 2){ # Return a data.frame C, L, I for single recurrence
+        Post_probs = data.frame(C = Pr_Rn_yn['C'],
+                                L = Pr_Rn_yn['L'],
+                                I = Pr_Rn_yn['I'])
         rownames(Post_probs) = recurrences
       }
-      Post_probs = list(Post_probs)
-      names(Post_probs) = id
+      if(Tn == 3){ # Return a data.frame C, L, I for recurrences 1 and 2
+        Post_probs = data.frame(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
+                                L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
+                                I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
+        rownames(Post_probs) = recurrences
+      }
+      #Post_probs = list(Post_probs)
+      #names(Post_probs) = id
       Post_probs # return vector
     }
   }
+  # I realised that the weird bug I showed you via skype (time agnostic model) is because the colname order
+  # is not consistent across the list, so sorting it before returning
+  # for(i in 1:length(Post_probs)){
+  #   Post_probs[[i]] = Post_probs[[i]][,c('C','L','I')]
+  # }
   
   # # Store to check relationship between problem complexity and time
   # complexity_time = array(NA, c(N,2), dimnames = list(IDs, c('Number of graphs in viable graph space', 

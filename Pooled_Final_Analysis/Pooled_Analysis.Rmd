@@ -43,7 +43,8 @@ source("../Genetic_Model/Data_Inflation_Functions.R")
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
 
 RUN_MODELS = TRUE
-CREATE_PLOTS = TRUE
+RUN_MODELS_CLUSTER = F
+CREATE_PLOTS = T
 ```
 
 Define the sets of microsatellite markers for the various datasets.
@@ -175,7 +176,8 @@ if(RUN_MODELS){
   #===============================================
   tic()
   thetas_9MS = post_prob_CLI(MS_data = MS_data_reformated, Fs = Fs_Combined, 
-                             p = p, cores = 6, verbose = T) 
+                             p = p, cores = 6, verbose = F) 
+  thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
   toc()
   
   #===============================================
@@ -183,7 +185,8 @@ if(RUN_MODELS){
   #===============================================
   tic()
   thetas_9MS_Tagnostic = post_prob_CLI(MS_data = MS_data_reformated, Fs = Fs_Combined, 
-                                       cores = 6, verbose = T) 
+                                       cores = 6, verbose = F)
+  thetas_9MS_Tagnostic$Episode_Identifier = rownames(thetas_9MS_Tagnostic)
   toc()
 }
 ```
@@ -194,20 +197,20 @@ if(RUN_MODELS){
 These dataframes are sorted by episode number so the columns correspond between them. We make some data.frames that store the results for ease of plotting.
 
 ```{r}
-Theta_Matrix = data.frame(do.call(rbind, thetas_9MS))
-Theta_Matrix$Episode_Identifier = rownames(Theta_Matrix)
-Theta_Matrix = arrange(Theta_Matrix, Episode_Identifier)
 
-Theta_Matrix_Agnostic = data.frame(do.call(rbind, thetas_9MS_Tagnostic))
-Theta_Matrix_Agnostic$Episode_Identifier = rownames(Theta_Matrix_Agnostic)
-Theta_Matrix_Agnostic = arrange(Theta_Matrix_Agnostic, Episode_Identifier)
+thetas_9MS = arrange(thetas_9MS, Episode_Identifier)
+thetas_9MS_Tagnostic = arrange(thetas_9MS_Tagnostic, Episode_Identifier)
 
 Time_Estimates_1 = filter(Mod3_ThetaEstimates, 
-                          Episode_Identifier %in% Theta_Matrix$Episode_Identifier)
+                          Episode_Identifier %in% thetas_9MS$Episode_Identifier)
 Time_Estimates_1 = arrange(Time_Estimates_1, Episode_Identifier)
 
-Theta_Matrix$drug = as.factor(Time_Estimates_1$arm_num)
-Theta_Matrix_Agnostic$drug = as.factor(Time_Estimates_1$arm_num)
+thetas_9MS$drug = as.factor(Time_Estimates_1$arm_num)
+# for plotting
+thetas_9MS$drug_col = as.numeric(Time_Estimates_1$arm_num=='CHQ/PMQ')+1
+thetas_9MS_Tagnostic$drug_col = as.numeric(Time_Estimates_1$arm_num=='CHQ/PMQ')+1
+
+thetas_9MS_Tagnostic$drug = as.factor(Time_Estimates_1$arm_num)
 ```
 
 
@@ -218,60 +221,81 @@ Have broken it down by radical cure and no radical cure, as that is quite a big 
 
 ```{r}
 if(CREATE_PLOTS){
-  pmq_ind = Time_Estimates_1$arm_num == 'CHQ/PMQ'
-  plot((Theta_Matrix_Agnostic$L[pmq_ind]), (Theta_Matrix$L[pmq_ind]), col=Theta_Matrix$drug)
-  plot((Theta_Matrix_Agnostic$L[!pmq_ind]), (Theta_Matrix$L[!pmq_ind]), col=Theta_Matrix$drug)
-  plot(log10(Time_Estimates_1$Relapse_mean_theta), log10(Theta_Matrix$L),col=as.factor(Time_Estimates_1$arm_num))
-  lines(-10:10,-10:10)
-  
-  plot(log10(Time_Estimates_1$ReInfection_mean_theta), log10(Theta_Matrix$I),col=as.factor(Time_Estimates_1$arm_num))
-  lines(-10:10,-10:10)
-}
-```
-
-
-Currently all the recrudescence probabilities are exactly 0...
-Is this the thing you were worried about?
-
-Other problem: the complex ones (for which it returns NA) are not grouped by ID in the function output
-
-Plot for the relapse states and for the reinfection states.
-
-```{r}
-if(CREATE_PLOTS){
   par(mfrow=c(1,2),las=1, bty='n')
-  plot(log10(Time_Estimates_1$Relapse_mean_theta), 
-       log10(Theta_Matrix$L), col = as.factor(Time_Estimates_1$arm_num),
-       xlab='prior for L', ylab = 'posterior for L')
-  title('Probabilities of Relapse')
-  lines(-10:10,-10:10)
+  # Time agnostic versus full posterior 
+  plot(log10(thetas_9MS_Tagnostic$L), log10(thetas_9MS$L), 
+       col=thetas_9MS$drug_col, main = 'Relapse',
+       xlab = 'Time agnostic', ylab = 'Time included')
+  lines(-10:0,-10:0)
+  plot(log10(thetas_9MS_Tagnostic$I), log10(thetas_9MS$I), 
+       col=thetas_9MS$drug_col, main = 'Reinfection',
+       xlab = 'Time agnostic', ylab = 'Time included')
+  lines(-20:0,-20:0)
   
-  plot(log10(Time_Estimates_1$ReInfection_mean_theta), 
-       log10(Theta_Matrix$I), col = as.factor(Time_Estimates_1$arm_num), 
-       xlab='prior for I', ylab = 'posterior for I')
-  title('Probabilities of Reinfection')
+  ##### Prior versusfull posterior
+  plot(log10(Time_Estimates_1$Relapse_mean_theta),
+       log10(thetas_9MS$L),main = 'Relapse',
+       col=thetas_9MS$drug_col,
+       xlab = 'Time based prior', ylab = 'Full posterior')
+  lines(-10:10,-10:10)
+  plot(log10(Time_Estimates_1$ReInfection_mean_theta),
+       log10(thetas_9MS$I),main = 'Reinfection',
+       col=thetas_9MS$drug_col,
+       xlab = 'Time based prior', ylab = 'Full posterior')
   lines(-10:10,-10:10)
 }
 ```
 
-
-
-Is this not strange: (?)
-WHy is the time agnostic model giving some of them such low probabilities?
-
+Probability of relapse, ordered from most to least likely:
 ```{r}
-if(CREATE_PLOTS){
-  plot(log10(Theta_Matrix_Agnostic$L), log10(Theta_Matrix$L),
-       col = as.factor(Theta_Matrix_Agnostic$drug))
-  
-  ids1 = Time_Estimates_1$patientid[which(log10(Theta_Matrix_Agnostic$L) < -4)]
-  #View(MS_pooled[MS_pooled$ID %in% ids1,])
-  
-  Spec_case = filter(MS_pooled, ID=='VHX_485')
-  post_prob_CLI(MS_data = Spec_case,Fs = Fs_Combined)
-}
+par(las=1, bty='n')
+reLapse_ordered = sort.int(thetas_9MS$L, decreasing = TRUE, index.return = TRUE)
+plot(reLapse_ordered$x, pch=18, col = thetas_9MS$drug_col[reLapse_ordered$ix],
+     xlab = 'Recurrence index', ylab = 'Probability of relapse state',
+     main = 'Full posterior: reLapse')
+legend('topright',col = 1:2, legend = c('No PMQ','PMQ'),pch=19)
+
+reLapse_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$L, decreasing = TRUE, index.return = TRUE)
+plot(reLapse_ordered_Tagn$x, pch=18, cex=.8,
+     col = thetas_9MS_Tagnostic$drug_col[reLapse_ordered_Tagn$ix],
+     xlab = 'Recurrence index', ylab = 'Probability of relapse state',
+     main = 'Time agnostic posterior: reLapse')
+legend('topright',col = 1:2, legend = c('No PMQ','PMQ'),pch=19)
 ```
 
+Probability of reinfection, ordered from most to least likely:
+```{r}
+par(las=1, bty='n')
+reinfection_ordered = sort.int(thetas_9MS$I, decreasing = TRUE, index.return = TRUE)
+plot(reinfection_ordered$x, pch=18, col = thetas_9MS$drug_col[reinfection_ordered$ix],
+     xlab = 'Recurrence index', ylab = 'Probability of reinfection state',
+     main = 'Full posterior: reInfection')
+legend('topright',col = 1:2, legend = c('No PMQ','PMQ'),pch=19)
+
+reinfection_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$I, decreasing = TRUE, index.return = TRUE)
+plot(reinfection_ordered_Tagn$x, pch=18, cex=.8,
+     col = thetas_9MS_Tagnostic$drug_col[reinfection_ordered_Tagn$ix],
+     xlab = 'Recurrence index', ylab = 'Probability of reinfection state',
+     main = 'Time agnostic posterior: reInfection')
+legend('topright',col = 1:2, legend = c('No PMQ','PMQ'),pch=19)
+```
+
+Probability of recrudescence, ordered from most to least likely:
+```{r}
+par(las=1, bty='n')
+recrud_ordered = sort.int(thetas_9MS$C, decreasing = TRUE, index.return = TRUE)
+plot(recrud_ordered$x, pch=18, col = thetas_9MS$drug_col[recrud_ordered$ix],
+     xlab = 'Recurrence index', ylab = 'Probability of recrudescence state',
+     main = 'Full posterior: reCrudescence')
+legend('topright',col = 1:2, legend = c('No PMQ','PMQ'),pch=19)
+
+recrud_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$C, decreasing = TRUE, index.return = TRUE)
+plot(recrud_ordered_Tagn$x, pch=18, cex=.8,
+     col = thetas_9MS_Tagnostic$drug_col[recrud_ordered_Tagn$ix],
+     xlab = 'Recurrence index', ylab = 'Probability of recrudescence state',
+     main = 'Time agnostic posterior: reCrudescence')
+legend('topright',col = 1:2, legend = c('No PMQ','PMQ'),pch=19)
+```
 
 # Extra computations for VHX: too complex episodes
 
@@ -295,63 +319,66 @@ for(ep in all_rec_eps){
 ```
 
 ```{r}
-if(RUN_MODELS){
-  tic()
-  Res = post_prob_CLI(MS_data = MS_pooled_pairs, Fs = Fs_Combined, p = P_matrix, cores = 7)
-  Res = do.call(rbind, Res)
-  save(Res, file = '../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
-  toc()
-} else {
-  load('../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
-}
+# This takes a while to run....
+# if(RUN_MODELS_CLUSTER){
+#   tic()
+#   Res = post_prob_CLI(MS_data = MS_pooled_pairs, Fs = Fs_Combined, p = P_matrix, cores = 42)
+#   Res = do.call(rbind, Res)
+#   save(Res, file = '../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
+#   toc()
+# } else {
+#   load('../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
+# }
 ```
 
 Construct adjacency graphs and compute probabilities of relapse and reinfection.
 ```{r}
-MS_pooled$TotalEpisodes = MS_pooled$ClusterID = NA
-
-for(id in unique(MS_pooled$ID)){
-  MS_pooled$TotalEpisodes[MS_pooled$ID==id] = max(MS_pooled$Episode[MS_pooled$ID==id])
-}
-# Arrange by complexity
-MS_pooled = arrange(MS_pooled, TotalEpisodes, ID)
-# Get single rows per episode (throw away the extra MOI information)
-Pooled_Data = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
-Pooled_Data$ID = as.factor(Pooled_Data$ID)
-Pooled_Data$NumberClusters = NA
-mycols = brewer.pal(3,'Set1')
-
-## Threshold value
-Epsilon = .5
-ids = names(table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)]))
-ind = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)]) > 1
-Multi_Eps_IDs = ids[ind]
-
-
-Graphs=list()
-
-for(i in 1:length(Multi_Eps_IDs)){
-  id = Multi_Eps_IDs[i]
-  Neps = max(MS_pooled$Episode[MS_pooled$ID==id])
-  Adj_Matrix = array(0, dim = c(Neps,Neps))
-  diag(Adj_Matrix) = 1/2
-  colnames(Adj_Matrix) = 1:Neps
-  rownames(Adj_Matrix) = 1:Neps
-  # Going to sum the reLapse probability and the reCrudescence probability
-  Doubles_Thetas = filter(Res, ID_True==id)
-  Doubles_Thetas = Doubles_Thetas[duplicated(Doubles_Thetas$ID),]
-  Is = Doubles_Thetas$First_EpNumber
-  Js = Doubles_Thetas$Second_EpNumber
-  for(k in 1:nrow(Doubles_Thetas)){
-    Adj_Matrix[Is[k],Js[k]] = Doubles_Thetas$Thetas[k]
-  }
-  Adj_Matrix = Adj_Matrix + t(Adj_Matrix)
-  Adj_Matrix[ Adj_Matrix < Epsilon ] = 0
-  Adj_Matrix[ Adj_Matrix >= Epsilon ] = 1
-  Graphs[[i]] = graph_from_adjacency_matrix(Adj_Matrix, mode = "undirected",diag = F)
-  # Add the number of clusters
-  Pooled_Data$NumberClusters[Pooled_Data$ID==id] = components(Graphs[[i]])$no
-  # Add the membership of each cluster
-  Pooled_Data$ClusterID[Pooled_Data$ID==id] = components(Graphs[[i]])$membership
-}
+# if(CREATE_PLOTS){
+#   MS_pooled$TotalEpisodes = MS_pooled$ClusterID = NA
+#   
+#   for(id in unique(MS_pooled$ID)){
+#     MS_pooled$TotalEpisodes[MS_pooled$ID==id] = max(MS_pooled$Episode[MS_pooled$ID==id])
+#   }
+#   # Arrange by complexity
+#   MS_pooled = arrange(MS_pooled, TotalEpisodes, ID)
+#   # Get single rows per episode (throw away the extra MOI information)
+#   Pooled_Data = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
+#   Pooled_Data$ID = as.factor(Pooled_Data$ID)
+#   Pooled_Data$NumberClusters = NA
+#   mycols = brewer.pal(3,'Set1')
+#   
+#   ## Threshold value
+#   Epsilon = .5
+#   ids = names(table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)]))
+#   ind = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)]) > 1
+#   Multi_Eps_IDs = ids[ind]
+#   
+#   
+#   Graphs=list()
+#   
+#   for(i in 1:length(Multi_Eps_IDs)){
+#     id = Multi_Eps_IDs[i]
+#     Neps = max(MS_pooled$Episode[MS_pooled$ID==id])
+#     Adj_Matrix = array(0, dim = c(Neps,Neps))
+#     diag(Adj_Matrix) = 1/2
+#     colnames(Adj_Matrix) = 1:Neps
+#     rownames(Adj_Matrix) = 1:Neps
+#     # Going to sum the reLapse probability and the reCrudescence probability
+#     Doubles_Thetas = filter(Res, ID_True==id)
+#     Doubles_Thetas = Doubles_Thetas[duplicated(Doubles_Thetas$ID),]
+#     Is = Doubles_Thetas$First_EpNumber
+#     Js = Doubles_Thetas$Second_EpNumber
+#     for(k in 1:nrow(Doubles_Thetas)){
+#       Adj_Matrix[Is[k],Js[k]] = Doubles_Thetas$Thetas[k]
+#     }
+#     Adj_Matrix = Adj_Matrix + t(Adj_Matrix)
+#     Adj_Matrix[ Adj_Matrix < Epsilon ] = 0
+#     Adj_Matrix[ Adj_Matrix >= Epsilon ] = 1
+#     Graphs[[i]] = graph_from_adjacency_matrix(Adj_Matrix, mode = "undirected",diag = F)
+#     # Add the number of clusters
+#     Pooled_Data$NumberClusters[Pooled_Data$ID==id] = components(Graphs[[i]])$no
+#     # Add the membership of each cluster
+#     Pooled_Data$ClusterID[Pooled_Data$ID==id] = components(Graphs[[i]])$membership
+#   }
+# }
 ```
