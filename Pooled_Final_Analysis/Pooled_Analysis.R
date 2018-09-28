@@ -1,19 +1,4 @@
----
-title: "Pooled Analysis"
-author: "Aimee Taylor and James Watson"
-output:
-  html_document:
-    df_print: paged
-  html_notebook: default
-  keep_md: TRUE
-  pdf_document: default
----
-
-# Preamble
-
-Load R packages, functions and data.
-
-```{r, echo=FALSE, include=FALSE}
+## ---- echo=FALSE, include=FALSE------------------------------------------
 #==========================================================================
 # Set up
 #==========================================================================
@@ -36,7 +21,6 @@ load('../RData/TimingModel/MOD3_theta_estimates.RData')
 source("../Genetic_Model/Data_functions.R")
 source('../Genetic_Model/iGraph_functions.R')
 source("../Genetic_Model/post_prob_CLI.R") 
-source("../Genetic_Model/post_prob_CLI_sequential.R") 
 source("../Genetic_Model/test_Rn_compatible.R") 
 source("../Genetic_Model/Data_Inflation_Functions.R")
 
@@ -44,21 +28,17 @@ source("../Genetic_Model/Data_Inflation_Functions.R")
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
 
 RUN_MODELS = T
-RUN_MODELS_CLUSTER = F
-CREATE_PLOTS = T
-```
+RUN_MODELS_CLUSTER = T
+CREATE_PLOTS = F
 
-Define the sets of microsatellite markers for the various datasets.
-
-```{r}
+## ------------------------------------------------------------------------
 MSs_VHX = c("PV.3.502","PV.3.27","PV.ms8","PV.1.501","PV.ms1","PV.ms5","PV.ms6")
 MSs_all = c("PV.3.502","PV.3.27","PV.ms8","PV.1.501","PV.ms1","PV.ms5","PV.ms6",
             "PV.ms7","PV.ms16")
 MSs_BPD = MSs_all
 MSs_Main = c('PV.3.27', 'PV.3.502', 'PV.ms8') # These are typed for all episodes (the core group)
-```
 
-```{r}
+## ------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 # Reformat the data s.t. there are no NA gaps in mixed infections
 #--------------------------------------------------------------------------
@@ -67,21 +47,8 @@ MS_data_reformated = reformat_MSdata(MSdata = MS_pooled, MSs=MSs_all)
 
 N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
 MS_data_reformated = filter(MS_data_reformated, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
-```
 
-
-
-The approach is fully Bayesian and consists of the following:
-
-* A prior probability vector for the recurrence state
-* A likelihood based on the genetic data of being a *relapse*, a *recrudescence*, or a *reinfection* given the observed microsatellite data.
-
-# Allele frequencies
-
-There are a few ways of computing these. A natural first approach is to use the monoclonal data. However, some alleles are only seen in polyclonal infections, rending this approach not viable. A statistically rigorous approach would be to use a model for MS allele frequencies (e.g. Escalante 2015). At the moment we are using the empirical allele frequencies from the a specified dataset, with a Dirichlet-esque weight of 5 (5 pseudo-observations). 
-Setting the weight to 0 recovers unweighted empirical allele frequencies. 
-
-```{r, echo=F}
+## ---- echo=F-------------------------------------------------------------
 #--------------------------------------------------------------------------
 # Estimate allele frequencies from reformated data ignoring NAs.
 
@@ -98,13 +65,14 @@ MSs_Motifs = list("PV.3.502"=8,'PV.3.27' = 4,
                   "PV.ms7" = 3)
 
 # This is an important parameter: pseudo weight in the Dirichlet prior
-D_weight_Prior = 1
+D_weight_Prior = 10
 
 writeLines(paste('Number of episodes used to compute frequencies:',
                  sum(MS_pooled$Episode==1 & MS_pooled$MOI_id==1)))
 Ind_Primary = which(MS_pooled$Episode==1)
 
 # I wrote the following to check I understood - suggest as a more-readable alternative (agrees with ms text)
+# Nice: have replaced the previous one
 Fs_Combined =  apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
   # Extract xmax 
   xmax = max(x,na.rm=T)
@@ -119,31 +87,13 @@ Fs_Combined =  apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
   return(posterior_mean)
 })
 
-Alpha_Posteriors = apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
-  # Extract xmax 
-  xmax = max(x,na.rm=T)
-  # prior parameter vector (iterpolates unobserved repeat lengths < xmax)
-  param_vector = array(D_weight_Prior, dim = xmax, dimnames = list(1:xmax)) 
-  # observed data summarised as counts
-  obs_counts = table(x[Ind_Primary]) 
-  # posterior parameter vector
-  param_vector[names(obs_counts)] = param_vector[names(obs_counts)] + obs_counts
-  return(param_vector)
-})
-```
-
-
-## Plotting allele frequencies
-
-These are the observed allele frequencies in the pooled data. We show 80% credible intervals (lo)
-
-```{r AlleleFrequencies, echo=F}
+## ----AlleleFrequencies, echo=F-------------------------------------------
 if(CREATE_PLOTS){
   par(mfrow=c(3,3), las=1, bty='n', cex.axis=1.2)
   
   for(ms in MSs_all){ # As bars
     K = length(Fs_Combined[[ms]]) # Cardinality of ms 
-    xs = rdirichlet(n = 1000, alpha = Alpha_Posteriors[[ms]]) # Sample from posterior
+    xs = rdirichlet(n = 1000, alpha = Fs_Combined[[ms]]) # Sample from posterior
     YMAX = max(apply(100*xs, 2, quantile, probs = .9)) # MC approximation of 0.9 percentile expressed as percentage
     N_MS = length(unique(MS_pooled$ID[MS_pooled$Episode==1 & !is.na(MS_pooled[,ms])])) # Number of observations
     plot(1:ncol(xs), rep(NA,K), 
@@ -162,16 +112,8 @@ if(CREATE_PLOTS){
     axis(2, seq(0, round(YMAX), length.out = 3))
   }
 }
-```
 
-
-# Computing the probability of relatedness across infections
-
-The following iterates through each individual and computes the probability of relatedness states.
-
-## Load the time-to-event priors
-
-```{r}
+## ------------------------------------------------------------------------
 inds = grepl('mean_theta', colnames(Mod3_ThetaEstimates)) # Extract mean
 Episode_Identifier = Mod3_ThetaEstimates$Episode_Identifier
 p = data.frame(Episode_Identifier = Episode_Identifier, Mod3_ThetaEstimates[,inds],
@@ -180,20 +122,15 @@ colnames(p) = c('Episode_Identifier', 'C', 'L', 'I')
 
 genetic_AND_time_data_eps = intersect(p$Episode_Identifier, MS_data_reformated$Episode_Identifier)
 p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,]
-```
 
-
-## Computation using full dataset 
-
-We use all 9MS markers (when available).
-```{r}
+## ------------------------------------------------------------------------
 if(RUN_MODELS){
   #===============================================
   # Run new version (with time-to-event)
   #===============================================
   tic()
   thetas_9MS = post_prob_CLI(MS_data = MS_data_reformated, Fs = Fs_Combined, 
-                             p = p, cores = 6, verbose = F) 
+                             p = p, cores = 1, verbose = F) 
   thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
   toc()
   
@@ -206,19 +143,12 @@ if(RUN_MODELS){
   thetas_9MS_Tagnostic$Episode_Identifier = rownames(thetas_9MS_Tagnostic)
   toc()
 }
-```
 
-# Plot results
-
-```{r}
+## ------------------------------------------------------------------------
 MS_summary = filter(MS_data_reformated, MOI_id == 1)
 sum(MS_summary$Episode>1)
-```
 
-
-These dataframes are sorted by episode number so the columns correspond between them. We make some data.frames that store the results for ease of plotting.
-
-```{r}
+## ------------------------------------------------------------------------
 
 thetas_9MS = arrange(thetas_9MS, Episode_Identifier)
 thetas_9MS_Tagnostic = arrange(thetas_9MS_Tagnostic, Episode_Identifier)
@@ -233,15 +163,8 @@ thetas_9MS$drug_col = as.numeric(Time_Estimates_1$arm_num=='CHQ/PMQ')+1
 thetas_9MS_Tagnostic$drug_col = as.numeric(Time_Estimates_1$arm_num=='CHQ/PMQ')+1
 
 thetas_9MS_Tagnostic$drug = as.factor(Time_Estimates_1$arm_num)
-```
 
-
-## Going from time-to-event prior to posterior
-
-There is some interesting correlation structure here - not quite sure what's happening exactly.
-Have broken it down by radical cure and no radical cure, as that is quite a big piece of information!
-
-```{r}
+## ------------------------------------------------------------------------
 if(CREATE_PLOTS){
   par(mfrow=c(1,2),las=1, bty='n')
   # Time agnostic versus full posterior 
@@ -266,10 +189,8 @@ if(CREATE_PLOTS){
        xlab = 'Time based prior', ylab = 'Full posterior')
   lines(-10:10,-10:10)
 }
-```
 
-Probability of relapse, ordered from most to least likely:
-```{r}
+## ------------------------------------------------------------------------
 if(CREATE_PLOTS){
   par(las=1, bty='n')
   reLapse_ordered = sort.int(thetas_9MS$L, decreasing = TRUE, index.return = TRUE)
@@ -285,10 +206,8 @@ if(CREATE_PLOTS){
        main = 'Time agnostic posterior: reLapse')
   legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),pch=18)
 }
-```
 
-Probability of reinfection, ordered from most to least likely:
-```{r}
+## ------------------------------------------------------------------------
 if(CREATE_PLOTS){
   
   par(las=1, bty='n')
@@ -305,10 +224,8 @@ if(CREATE_PLOTS){
        main = 'Time agnostic posterior: reInfection')
   legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),pch=18)
 }
-```
 
-Probability of recrudescence, ordered from most to least likely:
-```{r}
+## ------------------------------------------------------------------------
 if(CREATE_PLOTS){
   par(las=1, bty='n')
   recrud_ordered = sort.int(thetas_9MS$C, decreasing = TRUE, index.return = TRUE)
@@ -324,46 +241,38 @@ if(CREATE_PLOTS){
        main = 'Time agnostic posterior: reCrudescence')
   legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),pch=18)
 }
-```
 
-# Extra computations for VHX: too complex episodes
+## ------------------------------------------------------------------------
+MS_pooled_pairs = Inflate_into_pairs(MS_data = MS_pooled)
+all_rec_eps = unique(MS_pooled_pairs$Episode_Identifier[MS_pooled_pairs$Episode==2])
+P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
+colnames(P_matrix) = c('Episode_Identifier','C','I','L')
+P_matrix$Episode_Identifier = all_rec_eps
+for(ep in all_rec_eps){
+  i = which(P_matrix$Episode_Identifier==ep)
+  j = which(MS_pooled_pairs$Episode_Identifier==ep)[1]
+  k = which(Mod3_ThetaEstimates$Episode_Identifier == paste(MS_pooled_pairs$ID_True[j],
+                                                            MS_pooled_pairs$Second_EpNumber[j],
+                                                            sep='_'))
+  P_matrix[i,c('C','I','L')] = Mod3_ThetaEstimates[k,c('Recrudescence_mean_theta',
+                                                       'ReInfection_mean_theta',
+                                                       'Relapse_mean_theta')]
+}
 
-First we blow up the pooled analysis into all doubles
-```{r}
-# ids_lots_eps = unique(MS_pooled$ID[MS_pooled$Episode>9])
-# MS_pooled = filter(MS_pooled, ID %in% ids_lots_eps)
-# MS_pooled_pairs = Inflate_into_pairs(MS_data = MS_pooled)
-# all_rec_eps = unique(MS_pooled_pairs$Episode_Identifier[MS_pooled_pairs$Episode==2])
-# P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
-# colnames(P_matrix) = c('Episode_Identifier','C','I','L')
-# P_matrix$Episode_Identifier = all_rec_eps
-# for(ep in all_rec_eps){
-#   i = which(P_matrix$Episode_Identifier==ep)
-#   j = which(MS_pooled_pairs$Episode_Identifier==ep)[1]
-#   k = which(Mod3_ThetaEstimates$Episode_Identifier == paste(MS_pooled_pairs$ID_True[j],
-#                                                             MS_pooled_pairs$Second_EpNumber[j],
-#                                                             sep='_'))
-#   P_matrix[i,c('C','I','L')] = Mod3_ThetaEstimates[k,c('Recrudescence_mean_theta',
-#                                                        'ReInfection_mean_theta',
-#                                                        'Relapse_mean_theta')]
-# }
-```
-
-```{r}
+## ------------------------------------------------------------------------
 #This takes a while to run....
-# if(RUN_MODELS_CLUSTER){
-#   tic()
-#   Res = post_prob_CLI_sequential(MS_data = MS_pooled_pairs, Fs = Fs_Combined, p = P_matrix, 
-#                                  UpperComplexity = 10^5, verbose = F)
-#   save(Res, file = '../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
-#   toc()
-# } else {
-#   load('../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
-# }
-```
+if(RUN_MODELS_CLUSTER){
+  tic()
+  Res = post_prob_CLI(MS_data = MS_pooled_pairs, Fs = Fs_Combined, p = P_matrix, 
+                      cores = 42, UpperComplexity = 10^5, verbose = F)
+  Res = do.call(rbind, Res)
+  save(Res, file = '../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
+  toc()
+} else {
+  load('../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
+}
 
-Construct adjacency graphs and compute probabilities of relapse and reinfection.
-```{r}
+## ------------------------------------------------------------------------
 # if(CREATE_PLOTS){
 #   MS_pooled$TotalEpisodes = MS_pooled$ClusterID = NA
 #   
@@ -412,4 +321,4 @@ Construct adjacency graphs and compute probabilities of relapse and reinfection.
 #     Pooled_Data$ClusterID[Pooled_Data$ID==id] = components(Graphs[[i]])$membership
 #   }
 # }
-```
+

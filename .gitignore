@@ -13,6 +13,10 @@ StanModels_mod*
 *.tex
 
 Timing_Model/TimingModelStan_cache/*
+Pooled_Final_Analysis/*_cache/
+Pooled_Final_Analysis/*_files/
+Simulation_Study/*_cache/
+Simulation_Study/*_files/
 
 # Ignore all the DS_Stores
 **/.DS_Store

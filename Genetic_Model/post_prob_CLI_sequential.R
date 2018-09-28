@@ -7,15 +7,14 @@
 # Max_Tot_Vtx = 6,
 # UpperComplexity = 10^6 # Is this redundant
 
-post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
-                         Fs, # MS population frequencies 
-                         p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
-                         alpha = 0, # Additive inbreeding constant
-                         cores = 4, 
-                         Max_Eps = 3, # Limit is due to test_Rn_compatible 
-                         Max_Tot_Vtx = 6,
-                         UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
-                         verbose = FALSE){
+post_prob_CLI_sequential = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
+                                    Fs, # MS population frequencies 
+                                    p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
+                                    alpha = 0, # Additive inbreeding constant
+                                    Max_Eps = 3, # Limit is due to test_Rn_compatible 
+                                    Max_Tot_Vtx = 6,
+                                    UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
+                                    verbose = FALSE){
   #==========================================================================
   # Check the MS_data has the correct structure
   #========================================================================== 
@@ -71,7 +70,7 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   # Create Post_probs store with length = num. of all infections inc. those without recurrence
   #==========================================================================
   all_infections = unique(MS_data$Episode_Identifier)
-
+  
   #==========================================================================
   # Extract microsatellites, related quantities and calculate log pop prior
   #==========================================================================
@@ -220,22 +219,15 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
     writeLines('\nIn the following viable graphs include only those with sufficient numbers of vertices 
                and appropriate vertex labels to fully represent each individual\'s data.')}
   
-  # If cores=1 then this does normal sequential computation
-  if(cores>1) registerDoParallel(cores = cores)
-  
+  Post_probs = data.frame(array(dim = c(length(unique(MS_data$Episode_Identifier)),3)))
+  rownames(Post_probs) = unique(MS_data$Episode_Identifier)
   #***********************************************
   # Computation of per-individual values
   #***********************************************
-  # dopar in Windows needs the packages and functions explicitly passed to foreach command
-  # otherwise it doesn't work for more than one core. This is still compatible with Mac
-  Post_probs = foreach(i=1:N, .combine = rbind, 
-                       .packages = c('dplyr','igraph','gtools',
-                                     'matrixStats','Matrix','tictoc'), 
-                       .export = c('Log_Pr_yn_Gab','Log_Pr_yn_Gnb_unnormalised',
-                                   'test_Rn_compatible','test_cln_incompatible')
-  ) %dopar%
-  {
-    
+  
+  pb = txtProgressBar(min = 1, max = N, style = 3)
+  for(i in 1:N){
+    setTxtProgressBar(pb = pb, value = i)
     # id = 'BPD_221'
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
@@ -334,15 +326,15 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
     # We do a complexity check - need to work out what an OK upper limit should be
     # Aimee: Rather than having two complexity checks, I wonder if we might do this check
     # outside do.par/forloop (I will give it some thought)
-    if(complexity_problem > UpperComplexity){ # Return NAs and skip to next ID
+    if(complexity_problem > UpperComplexity){ 
       
-      writeLines(sprintf('\nSkipping this problem (ID %s), too complex (%s).', id, complexity_problem))
-      Post_probs = data.frame(C=rep(NA,length(recurrences)),
-                              L=rep(NA,length(recurrences)),
-                              I=rep(NA,length(recurrences)))
-      rownames(Post_probs) = recurrences
-      # return NA vector of Post_probs
-      Post_probs
+      writeLines(sprintf('\nSkipping this problem (ID %s), too complex.', id))
+      # Post_probs = data.frame(C=rep(NA,length(recurrences)),
+      #                         L=rep(NA,length(recurrences)),
+      #                         I=rep(NA,length(recurrences)))
+      # rownames(Post_probs) = recurrences
+      # # return NA vector of Post_probs
+      # Post_probs
       
     } else { # Go on to calculate posterior probabilities
       
@@ -386,24 +378,24 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
       #==========================================================================          
       # Calculate P(Rnt | yn) and return 
       #==========================================================================
-      
+      inds = which(rownames(Post_probs) == infections)
       if(Tn == 2){ # Return a data.frame C, L, I for single recurrence
-        Post_probs = data.frame(C = Pr_Rn_yn['C'],
-                                L = Pr_Rn_yn['L'],
-                                I = Pr_Rn_yn['I'])
-        rownames(Post_probs) = recurrences
+        Post_probs[inds,] = data.frame(C = Pr_Rn_yn['C'],
+                                       L = Pr_Rn_yn['L'],
+                                       I = Pr_Rn_yn['I'])
       }
       if(Tn == 3){ # Return a data.frame C, L, I for recurrences 1 and 2
-        Post_probs = data.frame(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
-                                L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
-                                I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
-        rownames(Post_probs) = recurrences
+        
+        Post_probs[inds,] = data.frame(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
+                                       L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
+                                       I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
+        
       }
       
-      Post_probs # return vector
+      
     }
   }
-
+  
   # # Store to check relationship between problem complexity and time
   # complexity_time = array(NA, c(N,2), dimnames = list(IDs, c('Number of graphs in viable graph space', 
   #                                                            'Run time (ms) per graph')))
