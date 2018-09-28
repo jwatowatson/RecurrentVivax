@@ -8,6 +8,8 @@
 
 # Massive stan output files
 StanModels_mod*
+# Special code for big RData files
+*.bigRData
 
 *.html
 *.tex
