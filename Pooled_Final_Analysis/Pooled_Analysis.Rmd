@@ -208,6 +208,34 @@ if(RUN_MODELS){
 }
 ```
 
+## Run full MC on genetic model
+
+```{r, include=FALSE}
+tic()
+K_MC = 10
+Theta_post = foreach(i = 1:K_MC, .combine = cbind) %do% {
+  # generate a random draw from the posterior distribution over allele frequencies
+  FS_random = lapply(Alpha_Posteriors, rdirichlet, n=1)
+  thetas_9MS = post_prob_CLI(MS_data = MS_data_reformated, Fs = FS_random, 
+                             p = p, cores = 6, verbose = F) 
+  thetas_9MS
+}
+toc()
+```
+
+Summarise into median and upper 10-90 percentiles
+```{r}
+Theta_Full_Posterior = rbind(apply(Theta_post[,grep('C', colnames(Theta_post))],1,
+                                   quantile, probs = c(0.1,0.5,0.9)),
+                             apply(Theta_post[,grep('L', colnames(Theta_post))],1,
+                                   quantile, probs = c(0.1,0.5,0.9)),
+                             apply(Theta_post[,grep('I', colnames(Theta_post))],1,
+                                   quantile, probs = c(0.1,0.5,0.9)))
+rownames(Theta_Full_Posterior) = c(paste('C', c(10,50,90), sep='_'),
+                                   paste('C', c(10,50,90), sep='_'),
+                                   paste('C', c(10,50,90), sep='_'))
+```
+
 # Plot results
 
 ```{r}
@@ -326,90 +354,60 @@ if(CREATE_PLOTS){
 }
 ```
 
+
+Plot for the paper: overview of the three recurrent states:
+```{r full_posterior_predictive}
+par(las=1, mfrow=c(1,3), bty='n')
+plot(recrud_ordered$x, pch=18, col = thetas_9MS$drug_col[recrud_ordered$ix],
+     xlab = 'Recurrence index', ylab = 'Probability of recrudescence state',
+     main = 'reCrudescence',xaxt='n')
+legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),
+       bty='n',pch=18)
+axis(1, at = c(1,30,90,length(recrud_ordered$x)))
+plot(reLapse_ordered$x, pch=18, col = thetas_9MS$drug_col[reLapse_ordered$ix],
+     xlab = 'Recurrence index', ylab = 'Probability of relapse state',
+     main = 'reLapse',xaxt='n')
+axis(1, at = c(1,30,90,length(recrud_ordered$x)))
+plot(reinfection_ordered$x, pch=18, col = thetas_9MS$drug_col[reinfection_ordered$ix],
+     xlab = 'Recurrence index', ylab = 'Probability of reinfection state',
+     main = 'reInfection',xaxt='n')
+axis(1, at = c(1,30,90,length(recrud_ordered$x)))
+```
+
 # Extra computations for VHX: too complex episodes
 
 First we blow up the pooled analysis into all doubles
+
+Do we need to add a check in the function for NA values?
+
 ```{r}
-# ids_lots_eps = unique(MS_pooled$ID[MS_pooled$Episode>9])
-# MS_pooled = filter(MS_pooled, ID %in% ids_lots_eps)
-# MS_pooled_pairs = Inflate_into_pairs(MS_data = MS_pooled)
-# all_rec_eps = unique(MS_pooled_pairs$Episode_Identifier[MS_pooled_pairs$Episode==2])
-# P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
-# colnames(P_matrix) = c('Episode_Identifier','C','I','L')
-# P_matrix$Episode_Identifier = all_rec_eps
-# for(ep in all_rec_eps){
-#   i = which(P_matrix$Episode_Identifier==ep)
-#   j = which(MS_pooled_pairs$Episode_Identifier==ep)[1]
-#   k = which(Mod3_ThetaEstimates$Episode_Identifier == paste(MS_pooled_pairs$ID_True[j],
-#                                                             MS_pooled_pairs$Second_EpNumber[j],
-#                                                             sep='_'))
-#   P_matrix[i,c('C','I','L')] = Mod3_ThetaEstimates[k,c('Recrudescence_mean_theta',
-#                                                        'ReInfection_mean_theta',
-#                                                        'Relapse_mean_theta')]
+# registerDoParallel(cores = 6)
+# IDS = unique(MS_data_reformated$ID)
+# thetas_all_INF = foreach(id = 1:length(IDS), .combine = rbind) %dopar% {
+#   MS_pooled_id = filter(MS_data_reformated, ID %in% IDS[id])
+#   MS_pooled_pairs = Inflate_into_pairs(MS_data = MS_pooled_id)
+#   all_rec_eps = unique(MS_pooled_pairs$Episode_Identifier[MS_pooled_pairs$Episode==2])
+#   P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
+#   colnames(P_matrix) = c('Episode_Identifier','C','I','L')
+#   P_matrix$Episode_Identifier = all_rec_eps
+#   for(ep in all_rec_eps){
+#     i = which(P_matrix$Episode_Identifier==ep)
+#     j = which(MS_pooled_pairs$Episode_Identifier==ep)[1]
+#     k = which(Mod3_ThetaEstimates$Episode_Identifier == paste(MS_pooled_pairs$ID_True[j],
+#                                                               MS_pooled_pairs$Second_EpNumber[j],
+#                                                               sep='_'))
+#     P_matrix[i,c('C','I','L')] = Mod3_ThetaEstimates[k,c('Recrudescence_mean_theta',
+#                                                          'ReInfection_mean_theta',
+#                                                          'Relapse_mean_theta')]
+#     
+#     
+#   }
+#   print(IDS[id])
+#   Res = post_prob_CLI_sequential(MS_data = MS_pooled_pairs, 
+#                                  Fs = Fs_Combined, 
+#                                  p = P_matrix,
+#                                  UpperComplexity = 10^6, 
+#                                  verbose = F)
 # }
 ```
 
-```{r}
-#This takes a while to run....
-# if(RUN_MODELS_CLUSTER){
-#   tic()
-#   Res = post_prob_CLI_sequential(MS_data = MS_pooled_pairs, Fs = Fs_Combined, p = P_matrix, 
-#                                  UpperComplexity = 10^5, verbose = F)
-#   save(Res, file = '../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
-#   toc()
-# } else {
-#   load('../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
-# }
-```
-
-Construct adjacency graphs and compute probabilities of relapse and reinfection.
-```{r}
-# if(CREATE_PLOTS){
-#   MS_pooled$TotalEpisodes = MS_pooled$ClusterID = NA
-#   
-#   for(id in unique(MS_pooled$ID)){
-#     MS_pooled$TotalEpisodes[MS_pooled$ID==id] = max(MS_pooled$Episode[MS_pooled$ID==id])
-#   }
-#   # Arrange by complexity
-#   MS_pooled = arrange(MS_pooled, TotalEpisodes, ID)
-#   # Get single rows per episode (throw away the extra MOI information)
-#   Pooled_Data = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
-#   Pooled_Data$ID = as.factor(Pooled_Data$ID)
-#   Pooled_Data$NumberClusters = NA
-#   mycols = brewer.pal(3,'Set1')
-#   
-#   ## Threshold value
-#   Epsilon = .5
-#   ids = names(table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)]))
-#   ind = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)]) > 1
-#   Multi_Eps_IDs = ids[ind]
-#   
-#   
-#   Graphs=list()
-#   
-#   for(i in 1:length(Multi_Eps_IDs)){
-#     id = Multi_Eps_IDs[i]
-#     Neps = max(MS_pooled$Episode[MS_pooled$ID==id])
-#     Adj_Matrix = array(0, dim = c(Neps,Neps))
-#     diag(Adj_Matrix) = 1/2
-#     colnames(Adj_Matrix) = 1:Neps
-#     rownames(Adj_Matrix) = 1:Neps
-#     # Going to sum the reLapse probability and the reCrudescence probability
-#     Doubles_Thetas = filter(Res, ID_True==id)
-#     Doubles_Thetas = Doubles_Thetas[duplicated(Doubles_Thetas$ID),]
-#     Is = Doubles_Thetas$First_EpNumber
-#     Js = Doubles_Thetas$Second_EpNumber
-#     for(k in 1:nrow(Doubles_Thetas)){
-#       Adj_Matrix[Is[k],Js[k]] = Doubles_Thetas$Thetas[k]
-#     }
-#     Adj_Matrix = Adj_Matrix + t(Adj_Matrix)
-#     Adj_Matrix[ Adj_Matrix < Epsilon ] = 0
-#     Adj_Matrix[ Adj_Matrix >= Epsilon ] = 1
-#     Graphs[[i]] = graph_from_adjacency_matrix(Adj_Matrix, mode = "undirected",diag = F)
-#     # Add the number of clusters
-#     Pooled_Data$NumberClusters[Pooled_Data$ID==id] = components(Graphs[[i]])$no
-#     # Add the membership of each cluster
-#     Pooled_Data$ClusterID[Pooled_Data$ID==id] = components(Graphs[[i]])$membership
-#   }
-# }
-```

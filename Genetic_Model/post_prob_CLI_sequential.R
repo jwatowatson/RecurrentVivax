@@ -225,9 +225,10 @@ post_prob_CLI_sequential = function(MS_data, # MS data (assumes no NA gaps in mi
   # Computation of per-individual values
   #***********************************************
   
-  pb = txtProgressBar(min = 1, max = N, style = 3)
+  # uncomment for debuggin
+  #pb = txtProgressBar(min = 0, max = N, style = 3)
   for(i in 1:N){
-    setTxtProgressBar(pb = pb, value = i)
+    #setTxtProgressBar(pb = pb, value = i)
     # id = 'BPD_221'
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
@@ -354,7 +355,7 @@ post_prob_CLI_sequential = function(MS_data, # MS data (assumes no NA gaps in mi
       
       if(verbose){writeLines(sprintf('Run time (ms) over all graphs in graph space: 
                                      %s\nRun time (ms) per graph in graph space: %s', 
-                                     round(ms_per_graph_space), round(ms_per_graph)))}
+                                     round(ms_per_graph_space), round(ms_per_graph,2)))}
       #complexity_time[i,] = c(complexity_problem, ms_per_graph) # Store time 
       log_Pr_yn_Gnbs = log_Pr_yn_Gnbs_unnormalised - log_A # Normalise probabilities
       

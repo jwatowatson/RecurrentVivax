@@ -362,7 +362,7 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
       
       if(verbose){writeLines(sprintf('Run time (ms) over all graphs in graph space: 
                                      %s\nRun time (ms) per graph in graph space: %s', 
-                                     round(ms_per_graph_space), round(ms_per_graph)))}
+                                     round(ms_per_graph_space), round(ms_per_graph,2)))}
       #complexity_time[i,] = c(complexity_problem, ms_per_graph) # Store time 
       log_Pr_yn_Gnbs = log_Pr_yn_Gnbs_unnormalised - log_A # Normalise probabilities
       

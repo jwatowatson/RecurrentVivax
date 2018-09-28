@@ -8,7 +8,7 @@ Inflate_into_pairs = function(MS_data){
   inflated_data$ID_True = NA
   inflated_data$First_EpNumber = NA
   inflated_data$Second_EpNumber = NA
-  pb = txtProgressBar(min=1, max = length(ids),style = 3)
+  pb = txtProgressBar(min=0, max = length(ids),style = 3)
   for(id in ids){
     setTxtProgressBar(pb, value = which(id==ids))
     sub_data = filter(MS_data, ID==id)
