@@ -219,6 +219,7 @@ if(RUN_MODELS){
 if(RUN_MODELS_CLUSTER){
   #===============================================
   # Run full Bayesian with sampling at random from time prior
+  # takes about 220 seconds on 6 cores
   #===============================================
   registerDoParallel(cores = 6)
   Ksamples = length(grep('C',colnames(Post_samples_matrix)))
@@ -241,8 +242,10 @@ if(RUN_MODELS_CLUSTER){
     thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
     thetas_9MS
   }
-  
+  save(Thetas_full_post, file = '../RData/GeneticModel/Full_Posterior_Model_samples.RData')
   toc()
+} else {
+  load(file = '../RData/GeneticModel/Full_Posterior_Model_samples.RData')
 }
 ```
 
@@ -315,13 +318,16 @@ if(CREATE_PLOTS){
   plot(reLapse_ordered$x, pch=18, col = thetas_9MS$drug_col[reLapse_ordered$ix],
        xlab = 'Recurrence index', ylab = 'Probability of relapse state',
        main = 'Full posterior: reLapse')
-  CI = cbind(apply(Thetas_full_post[reLapse_ordered$i,grep('L',colnames(Thetas_full_post)),],
-                   1, quantile, probs = 0.025), 
-             apply(Thetas_full_post[reLapse_ordered$i,grep('L',colnames(Thetas_full_post)),],
-                   1, quantile, probs = 0.975))
+  CI = cbind(apply(
+    Thetas_full_post[reLapse_ordered$i,grep('L',colnames(Thetas_full_post)),],
+    1, quantile, probs = 0.025), 
+    apply(Thetas_full_post[reLapse_ordered$i,grep('L',colnames(Thetas_full_post)),],
+          1, quantile, probs = 0.975))
   for(i in 1:length(reLapse_ordered$x)){
-    if(diff(CI[i,]) > 0.005) arrows(i,CI[i,1],i,CI[i,2], length = 0.02,angle = 90, 
-                                    code = 3, col='blue')
+    if(diff(CI[i,]) > 0.005) arrows(i,CI[i,1],i,CI[i,2], 
+                                    length = 0.02,angle = 90, 
+                                    code = 3,
+                                    col=thetas_9MS$drug_col[reLapse_ordered$ix[i]])
   }
   
   legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),pch=18)
@@ -415,7 +421,7 @@ if(RUN_MODELS_CLUSTER){
 Construct adjacency graphs and compute probabilities of relapse and reinfection.
 ```{r}
 MS_pooled = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
-MS_pooled$L_or_C_state = MS_pooled$ClusterID = MS_pooled$TotalEpisodes = NA
+MS_pooled$L_or_C_state_UP = MS_pooled$L_or_C_state_LP = MS_pooled$ClusterID = MS_pooled$TotalEpisodes = NA
 
 # Arrange by complexity
 MS_inflated = arrange(MS_inflated, ID, Second_EpNumber)
@@ -428,9 +434,9 @@ MS_inflated$ID = as.factor(MS_inflated$ID)
 MS_inflated$NumberClusters = NA
 
 ## Threshold value
-Epsilon = .5
+Epsilons = c(0.1, 0.9)
 ids = unique(MS_inflated$ID_True)
-Graphs=list()
+Graphs_lower = Graphs_upper =list()
 
 for(i in 1:length(ids)){
   id = ids[i]
@@ -447,22 +453,34 @@ for(i in 1:length(ids)){
     Adj_Matrix[Is[k],Js[k]] = Doubles_Thetas$L[k]+Doubles_Thetas$C[k]
   }
   Adj_Matrix = Adj_Matrix + t(Adj_Matrix)
-  Adj_Matrix[ Adj_Matrix < Epsilon ] = 0
-  Adj_Matrix[ Adj_Matrix >= Epsilon ] = 1
-  Graphs[[i]] = graph_from_adjacency_matrix(Adj_Matrix, mode = "undirected",diag = F)
+  
+  # We're using two Epsilon values to see the uncertain ones
+  Adj_Matrix_lower = Adj_Matrix_upper = Adj_Matrix
+  Adj_Matrix_lower[ Adj_Matrix < Epsilons[1] ] = 0
+  Adj_Matrix_lower[ Adj_Matrix >= Epsilons[1] ] = 1
+  Graphs_lower[[i]] = graph_from_adjacency_matrix(Adj_Matrix_lower, 
+                                                  mode = "undirected",diag = F)
+  
+  Adj_Matrix_upper[ Adj_Matrix < Epsilons[2] ] = 0
+  Adj_Matrix_upper[ Adj_Matrix >= Epsilons[2] ] = 1
+  Graphs_upper[[i]] = graph_from_adjacency_matrix(Adj_Matrix_upper, 
+                                                  mode = "undirected",diag = F)
+  
+  
   # Add the number of clusters to the non-inflated MS dataset
   MS_pooled$TotalEpisodes[MS_pooled$ID==id] = Neps
-  MS_pooled$NumberClusters[MS_pooled$ID==id] = components(Graphs[[i]])$no
+  MS_pooled$NumberClusters[MS_pooled$ID==id] = components(Graphs_lower[[i]])$no
   # Add the membership of each cluster
-  MS_pooled$ClusterID[MS_pooled$ID==id] = components(Graphs[[i]])$membership
-  MS_pooled$L_or_C_state[MS_pooled$ID==id] = duplicated(components(Graphs[[i]])$membership)
+  MS_pooled$ClusterID[MS_pooled$ID==id] = components(Graphs_lower[[i]])$membership
+  MS_pooled$L_or_C_state_LP[MS_pooled$ID==id] = duplicated(components(Graphs_lower[[i]])$membership)
+  MS_pooled$L_or_C_state_UP[MS_pooled$ID==id] = duplicated(components(Graphs_upper[[i]])$membership)
 }
+MS_pooled$L_or_C_state = apply(MS_pooled[, c('L_or_C_state_UP','L_or_C_state_LP')],1 , sum)
 ```
 
 ```{r}
 ## Time series data colored by genetic STATE
-mycols = brewer.pal(4,'Set1')
-
+mycols = brewer.pal(5,'Set2')
 par(las=1, bty='n', cex.axis=.3, mar=c(3,0,1,1))
 plot(NA, NA, xlim = c(0,370), ylim = c(1,length(ids)),
      xaxt='n', yaxt='n')
@@ -478,12 +496,12 @@ for(i in 1:length(ids)){
   Neps = length(ind)
   
   drug_col = as.numeric(
-    Combined_Time_Data$arm_num[Combined_Time_Data$patientid==id][1] == 'CHQ/PMQ') + 3 
+    Combined_Time_Data$arm_num[Combined_Time_Data$patientid==id][1] == 'CHQ/PMQ') + 4 
   lines(c(0,Combined_Time_Data$FU_time[Combined_Time_Data$patientid==id][1]), 
         c(i,i), lty=1, 
         lwd=.5, col= mycols[drug_col])
   if(Neps > 0){
-    cols = mycols[as.numeric(MS_pooled$L_or_C_state[ind])+1]
+    cols = mycols[MS_pooled$L_or_C_state[ind]+1]
     points(MS_pooled$timeSinceEnrolment[ind], rep(i,Neps), pch=19, col=cols,cex=.6)
   }
 }
