@@ -14,14 +14,15 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
                          cores = 4, 
                          Max_Eps = 3, # Limit is due to test_Rn_compatible 
                          Max_Tot_Vtx = 6,
-                         UpperComplexity = 10^6, # Assuming 10ms per operation -> 55 hours
+                         UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
                          verbose = FALSE){
   #==========================================================================
-  # Check the MS_data has the correct structure
+  # Check the MS_data and p have the correct structures
   #========================================================================== 
   if(any(!c('Episode','ID','Episode_Identifier','MOI_id') %in% colnames(MS_data))){
     stop('MS_data needs to include the following columns: ID,Episode,Episode_Identifier,MOI_id')
   }
+  
   # Make sure that the data are sorted correctly
   MS_data = arrange(MS_data, ID, Episode, MOI_id)
   
@@ -40,8 +41,15 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
     p_pop_ind = TRUE
     writeLines('Using population prior probabilities of recurrence states')
     if(sum(p) != 1) stop('Population prior probabilities do not sum to one')
+    
   } else {
     p_pop_ind = FALSE
+    
+    # make sure p contains the correct columns
+    if(any(!c('Episode_Identifier','C','L','I') %in% names(p))){
+      stop('p needs to include the following columns: Episode_Identifier,C,L,I')
+    }
+    
     writeLines('Using time-to-event prior probabilities of recurrence states')
     recurrent_eps_no_prior = recurrent_eps[which(!recurrent_eps %in% p$Episode_Identifier)]
     prior_with_genetic_ind = p$Episode_Identifier %in% recurrent_eps
@@ -81,9 +89,9 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   if(p_pop_ind){
     log_p = log(p)
   } else {
-    log_p = t(apply(p, 1, function(x)log(as.numeric(x[-1]))))
-    rownames(log_p) = p[,1]
-    colnames(log_p) = colnames(p)[-1]
+    log_p = t(apply(p, 1, function(x)log(as.numeric(x[ names(x) %in% c('C','L','I')]))))
+    rownames(log_p) = p[,'Episode_Identifier']
+    colnames(log_p) = colnames(p[,names(p) %in% c('C','L','I')])
   }
   
   #==========================================================================

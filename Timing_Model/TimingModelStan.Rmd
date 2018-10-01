@@ -714,6 +714,26 @@ save(Mod3_ThetaEstimates, file = '../RData/TimingModel/MOD3_theta_estimates.RDat
 Combined_Time_Data = Combined_Time_Data[order(-log10(Combined_Time_Data$Relapse_mean_theta)),]
 ```
 
+We also save a matrix of posterior samples to be used by the genetic model for full computation of the posterior:
+```{r}
+labels = extract(mod3_RE, 'prob_labels')$prob_labels
+
+ind_Observed = which(!Combined_Time_Data$Censored)
+K_samples = min(100, dim(labels)[1])
+Relapse_labels = labels[,,2,drop=T] + labels[,,3,drop=T]
+random_ind = sample(1:dim(labels)[1], K_samples)
+Post_samples_matrix = data.frame(cbind(t(labels[random_ind,ind_Observed,4,drop=T]),
+                                       t(Relapse_labels[random_ind,ind_Observed]),
+                                       t(labels[random_ind,ind_Observed,1,drop=T])))
+colnames(Post_samples_matrix) = c(sapply(c('C','L','I'), rep, K_samples))
+Post_samples_matrix$Episode_Identifier = apply(Combined_Time_Data[!Combined_Time_Data$Censored,], 1, 
+                                               function(x) {
+                                                 paste(x['patientid'], as.integer(x['episode'])+1, 
+                                                       sep = '_')} )
+save(Post_samples_matrix, file = '../RData/TimingModel/MOD3_Posterior_samples.RData')
+```
+
+
 
 ```{r UncertaintyOutputsModel3}
 par(las = 1, mfcol=c(2,2), bty='n')
