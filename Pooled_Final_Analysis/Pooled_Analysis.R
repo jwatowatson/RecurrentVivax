@@ -17,10 +17,13 @@ require(matrixStats) # for logSumExp
 library(igraph) # For igraph
 require(RColorBrewer)
 load('../RData/TimingModel/MOD3_theta_estimates.RData')
+load('../RData/TimingModel/MOD3_Posterior_samples.RData')
+load('../RData/TimingModel/Combined_Time_Event.RData')
 
 source("../Genetic_Model/Data_functions.R")
 source('../Genetic_Model/iGraph_functions.R')
 source("../Genetic_Model/post_prob_CLI.R") 
+source("../Genetic_Model/post_prob_CLI_sequential.R") 
 source("../Genetic_Model/test_Rn_compatible.R") 
 source("../Genetic_Model/Data_Inflation_Functions.R")
 
@@ -39,14 +42,9 @@ MSs_BPD = MSs_all
 MSs_Main = c('PV.3.27', 'PV.3.502', 'PV.ms8') # These are typed for all episodes (the core group)
 
 ## ------------------------------------------------------------------------
-#--------------------------------------------------------------------------
-# Reformat the data s.t. there are no NA gaps in mixed infections
-#--------------------------------------------------------------------------
 # We also remove MS data for which there are no recurrent data
-MS_data_reformated = reformat_MSdata(MSdata = MS_pooled, MSs=MSs_all)
-
 N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
-MS_data_reformated = filter(MS_data_reformated, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
+MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
 
 ## ---- echo=F-------------------------------------------------------------
 #--------------------------------------------------------------------------
@@ -65,14 +63,13 @@ MSs_Motifs = list("PV.3.502"=8,'PV.3.27' = 4,
                   "PV.ms7" = 3)
 
 # This is an important parameter: pseudo weight in the Dirichlet prior
-D_weight_Prior = 10
+D_weight_Prior = 1
 
 writeLines(paste('Number of episodes used to compute frequencies:',
                  sum(MS_pooled$Episode==1 & MS_pooled$MOI_id==1)))
 Ind_Primary = which(MS_pooled$Episode==1)
 
 # I wrote the following to check I understood - suggest as a more-readable alternative (agrees with ms text)
-# Nice: have replaced the previous one
 Fs_Combined =  apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
   # Extract xmax 
   xmax = max(x,na.rm=T)
@@ -87,13 +84,25 @@ Fs_Combined =  apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
   return(posterior_mean)
 })
 
+Alpha_Posteriors = apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
+  # Extract xmax 
+  xmax = max(x,na.rm=T)
+  # prior parameter vector (iterpolates unobserved repeat lengths < xmax)
+  param_vector = array(D_weight_Prior, dim = xmax, dimnames = list(1:xmax)) 
+  # observed data summarised as counts
+  obs_counts = table(x[Ind_Primary]) 
+  # posterior parameter vector
+  param_vector[names(obs_counts)] = param_vector[names(obs_counts)] + obs_counts
+  return(param_vector)
+})
+
 ## ----AlleleFrequencies, echo=F-------------------------------------------
 if(CREATE_PLOTS){
   par(mfrow=c(3,3), las=1, bty='n', cex.axis=1.2)
   
   for(ms in MSs_all){ # As bars
     K = length(Fs_Combined[[ms]]) # Cardinality of ms 
-    xs = rdirichlet(n = 1000, alpha = Fs_Combined[[ms]]) # Sample from posterior
+    xs = rdirichlet(n = 1000, alpha = Alpha_Posteriors[[ms]]) # Sample from posterior
     YMAX = max(apply(100*xs, 2, quantile, probs = .9)) # MC approximation of 0.9 percentile expressed as percentage
     N_MS = length(unique(MS_pooled$ID[MS_pooled$Episode==1 & !is.na(MS_pooled[,ms])])) # Number of observations
     plot(1:ncol(xs), rep(NA,K), 
@@ -104,7 +113,7 @@ if(CREATE_PLOTS){
     abline(h=100/K)
     mtext(text = paste('Motif length:',MSs_Motifs[[ms]]),side = 1,line=3)
     for(k in 1:ncol(xs)){
-      lines(rep(k,2), 100*quantile(xs[,k],probs = c(0.1,0.9)), col='blue')
+      lines(rep(k,2), 100*quantile(xs[,k],probs = c(0.025,0.975)), col='blue')
     }
     points(1:length(Fs_Combined[[ms]]),
            100*Fs_Combined[[ms]],col='red',pch=18)
@@ -120,36 +129,70 @@ p = data.frame(Episode_Identifier = Episode_Identifier, Mod3_ThetaEstimates[,ind
                stringsAsFactors = F) # Reformat
 colnames(p) = c('Episode_Identifier', 'C', 'L', 'I')
 
-genetic_AND_time_data_eps = intersect(p$Episode_Identifier, MS_data_reformated$Episode_Identifier)
+genetic_AND_time_data_eps = intersect(p$Episode_Identifier, MS_pooled$Episode_Identifier)
 p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,]
+Post_samples_matrix = Post_samples_matrix[Post_samples_matrix$Episode_Identifier %in% genetic_AND_time_data_eps,]
 
-## ------------------------------------------------------------------------
+## ---- include=FALSE------------------------------------------------------
 if(RUN_MODELS){
   #===============================================
   # Run new version (with time-to-event)
   #===============================================
   tic()
-  thetas_9MS = post_prob_CLI(MS_data = MS_data_reformated, Fs = Fs_Combined, 
-                             p = p, cores = 1, verbose = F) 
+  thetas_9MS = post_prob_CLI(MS_data = MS_pooled, Fs = Fs_Combined, 
+                             p = p, cores = 6, verbose = F) 
   thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
+  save(thetas_9MS, file = '../RData/GeneticModel/thetas_9MS.RData')
   toc()
   
   #===============================================
   # Run new version (without time-to-event)
   #===============================================
   tic()
-  thetas_9MS_Tagnostic = post_prob_CLI(MS_data = MS_data_reformated, Fs = Fs_Combined, 
+  thetas_9MS_Tagnostic = post_prob_CLI(MS_data = MS_pooled, Fs = Fs_Combined, 
                                        cores = 6, verbose = F)
   thetas_9MS_Tagnostic$Episode_Identifier = rownames(thetas_9MS_Tagnostic)
+  save(thetas_9MS_Tagnostic, file = '../RData/GeneticModel/thetas_9MS_Tagnostic.RData')
   toc()
+} else {
+  load('../RData/GeneticModel/thetas_9MS.RData')
+  load('../RData/GeneticModel/thetas_9MS_Tagnostic.RData')
+}
+
+## ---- include=FALSE------------------------------------------------------
+if(RUN_MODELS_CLUSTER){
+  #===============================================
+  # Run full Bayesian with sampling at random from time prior
+  # takes about 220 seconds on 6 cores
+  #===============================================
+  registerDoParallel(cores = 42)
+  Ksamples = length(grep('C',colnames(Post_samples_matrix)))
+  tic()
+  Thetas_full_post = foreach(ss = 1:Ksamples, .combine = cbind) %dopar% {
+    # draw a random distribution over the allele frequencies from posterior
+    Fs_random = lapply(Alpha_Posteriors, rdirichlet, n=1)
+    # I'm not sure if this is needed - how are these called deep inside?
+    for(i in 1:length(Fs_random)){
+      names(Fs_random[[i]]) = 1:length(Fs_random[[i]])
+    }
+    # take the ss sample from the time prior
+    indices = c(grep('C',colnames(Post_samples_matrix))[ss],
+                grep('L',colnames(Post_samples_matrix))[ss],
+                grep('I',colnames(Post_samples_matrix))[ss],
+                grep('Episode_Identifier',colnames(Post_samples_matrix)))
+    p = Post_samples_matrix[,indices]
+    thetas_9MS = post_prob_CLI(MS_data = MS_pooled, Fs = Fs_random, 
+                               p = p, cores = 1, verbose = F) 
+    thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
+    thetas_9MS
+  }
+  save(Thetas_full_post, file = '../RData/GeneticModel/Full_Posterior_Model_samples.RData')
+  toc()
+} else {
+  load(file = '../RData/GeneticModel/Full_Posterior_Model_samples.RData')
 }
 
 ## ------------------------------------------------------------------------
-MS_summary = filter(MS_data_reformated, MOI_id == 1)
-sum(MS_summary$Episode>1)
-
-## ------------------------------------------------------------------------
-
 thetas_9MS = arrange(thetas_9MS, Episode_Identifier)
 thetas_9MS_Tagnostic = arrange(thetas_9MS_Tagnostic, Episode_Identifier)
 
@@ -159,8 +202,8 @@ Time_Estimates_1 = arrange(Time_Estimates_1, Episode_Identifier)
 
 thetas_9MS$drug = as.factor(Time_Estimates_1$arm_num)
 # for plotting
-thetas_9MS$drug_col = as.numeric(Time_Estimates_1$arm_num=='CHQ/PMQ')+1
-thetas_9MS_Tagnostic$drug_col = as.numeric(Time_Estimates_1$arm_num=='CHQ/PMQ')+1
+thetas_9MS$drug_col = c('blue','green')[as.numeric(Time_Estimates_1$arm_num=='CHQ/PMQ')+1]
+thetas_9MS_Tagnostic$drug_col = c('blue','green')[as.numeric(Time_Estimates_1$arm_num=='CHQ/PMQ')+1]
 
 thetas_9MS_Tagnostic$drug = as.factor(Time_Estimates_1$arm_num)
 
@@ -197,14 +240,26 @@ if(CREATE_PLOTS){
   plot(reLapse_ordered$x, pch=18, col = thetas_9MS$drug_col[reLapse_ordered$ix],
        xlab = 'Recurrence index', ylab = 'Probability of relapse state',
        main = 'Full posterior: reLapse')
-  legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),pch=18)
+  CI = cbind(apply(
+    Thetas_full_post[reLapse_ordered$i,grep('L',colnames(Thetas_full_post)),],
+    1, quantile, probs = 0.025), 
+    apply(Thetas_full_post[reLapse_ordered$i,grep('L',colnames(Thetas_full_post)),],
+          1, quantile, probs = 0.975))
+  for(i in 1:length(reLapse_ordered$x)){
+    if(diff(CI[i,]) > 0.005) arrows(i,CI[i,1],i,CI[i,2], 
+                                    length = 0.02,angle = 90, 
+                                    code = 3,
+                                    col=thetas_9MS$drug_col[reLapse_ordered$ix[i]])
+  }
+  
+  legend('topright',col = c('green','blue'), legend = c('No radical cure','Radical cure'),pch=18)
   
   reLapse_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$L, decreasing = TRUE, index.return = TRUE)
   plot(reLapse_ordered_Tagn$x, pch=18, cex=.8,
        col = thetas_9MS_Tagnostic$drug_col[reLapse_ordered_Tagn$ix],
        xlab = 'Recurrence index', ylab = 'Probability of relapse state',
        main = 'Time agnostic posterior: reLapse')
-  legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),pch=18)
+  legend('topright',col = c('green','blue'), legend = c('No radical cure','Radical cure'),pch=18)
 }
 
 ## ------------------------------------------------------------------------
@@ -243,82 +298,134 @@ if(CREATE_PLOTS){
 }
 
 ## ------------------------------------------------------------------------
-MS_pooled_pairs = Inflate_into_pairs(MS_data = MS_pooled)
-all_rec_eps = unique(MS_pooled_pairs$Episode_Identifier[MS_pooled_pairs$Episode==2])
-P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
-colnames(P_matrix) = c('Episode_Identifier','C','I','L')
-P_matrix$Episode_Identifier = all_rec_eps
-for(ep in all_rec_eps){
-  i = which(P_matrix$Episode_Identifier==ep)
-  j = which(MS_pooled_pairs$Episode_Identifier==ep)[1]
-  k = which(Mod3_ThetaEstimates$Episode_Identifier == paste(MS_pooled_pairs$ID_True[j],
-                                                            MS_pooled_pairs$Second_EpNumber[j],
-                                                            sep='_'))
-  P_matrix[i,c('C','I','L')] = Mod3_ThetaEstimates[k,c('Recrudescence_mean_theta',
-                                                       'ReInfection_mean_theta',
-                                                       'Relapse_mean_theta')]
-}
+ind_calculated = which(MS_pooled$Episode_Identifier %in% thetas_9MS$Episode_Identifier)
+IDs_calculated = unique(MS_pooled$ID[ind_calculated])
+IDs_remaining = unique(MS_pooled$ID[! MS_pooled$ID %in% IDs_calculated])
 
-## ------------------------------------------------------------------------
-#This takes a while to run....
-if(RUN_MODELS_CLUSTER){
-  tic()
-  Res = post_prob_CLI(MS_data = MS_pooled_pairs, Fs = Fs_Combined, p = P_matrix, 
-                      cores = 42, UpperComplexity = 10^5, verbose = F)
-  Res = do.call(rbind, Res)
-  save(Res, file = '../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
-  toc()
+## ---- include=FALSE------------------------------------------------------
+MS_inflate = filter(MS_pooled, MS_pooled$ID %in% IDs_remaining)
+MS_inflated = Inflate_into_pairs(MS_data = MS_inflate)
+
+if(RUN_MODELS_CLUSTER){  
+  all_rec_eps = unique(MS_inflated$Episode_Identifier[MS_inflated$Episode==2])
+  P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
+  colnames(P_matrix) = c('Episode_Identifier','C','I','L')
+  P_matrix$Episode_Identifier = all_rec_eps
+  
+  registerDoParallel(cores = 42)
+  ThetasInflated_full_post = foreach(ss = 1:Ksamples, .combine = cbind) %dopar% {
+    # draw a random distribution over the allele frequencies from posterior
+    Fs_random = lapply(Alpha_Posteriors, rdirichlet, n=1)
+    # I'm not sure if this is needed - how are these called deep inside?
+    for(i in 1:length(Fs_random)){
+      names(Fs_random[[i]]) = 1:length(Fs_random[[i]])
+    }
+    # take the ss sample from the time prior
+    indices = c(grep('C',colnames(Post_samples_matrix))[ss],
+                grep('L',colnames(Post_samples_matrix))[ss],
+                grep('I',colnames(Post_samples_matrix))[ss])
+    for(ep in all_rec_eps){
+      i = which(P_matrix$Episode_Identifier==ep)
+      j = which(MS_inflated$Episode_Identifier==ep)[1]
+      k = which(Post_samples_matrix$Episode_Identifier == paste(MS_inflated$ID_True[j],
+                                                                MS_inflated$Second_EpNumber[j],
+                                                                sep='_'))
+      P_matrix[i,c('C','I','L')] = Post_samples_matrix[k,indices]
+    }
+    
+    Res = post_prob_CLI_sequential(MS_data = MS_inflated, 
+                                   Fs = Fs_Combined, 
+                                   p = P_matrix,
+                                   UpperComplexity = 10^6, 
+                                   verbose = F)
+    Res
+  }
+  save(ThetasInflated_full_post, file = 'FullPosterior_INF.bigRData')
 } else {
-  load('../RData/GeneticModel/Pooled_Analysis_Inflation_Results.RData')
+  load('FullPosterior_INF.bigRData')
 }
 
 ## ------------------------------------------------------------------------
-# if(CREATE_PLOTS){
-#   MS_pooled$TotalEpisodes = MS_pooled$ClusterID = NA
-#   
-#   for(id in unique(MS_pooled$ID)){
-#     MS_pooled$TotalEpisodes[MS_pooled$ID==id] = max(MS_pooled$Episode[MS_pooled$ID==id])
-#   }
-#   # Arrange by complexity
-#   MS_pooled = arrange(MS_pooled, TotalEpisodes, ID)
-#   # Get single rows per episode (throw away the extra MOI information)
-#   Pooled_Data = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
-#   Pooled_Data$ID = as.factor(Pooled_Data$ID)
-#   Pooled_Data$NumberClusters = NA
-#   mycols = brewer.pal(3,'Set1')
-#   
-#   ## Threshold value
-#   Epsilon = .5
-#   ids = names(table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)]))
-#   ind = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)]) > 1
-#   Multi_Eps_IDs = ids[ind]
-#   
-#   
-#   Graphs=list()
-#   
-#   for(i in 1:length(Multi_Eps_IDs)){
-#     id = Multi_Eps_IDs[i]
-#     Neps = max(MS_pooled$Episode[MS_pooled$ID==id])
-#     Adj_Matrix = array(0, dim = c(Neps,Neps))
-#     diag(Adj_Matrix) = 1/2
-#     colnames(Adj_Matrix) = 1:Neps
-#     rownames(Adj_Matrix) = 1:Neps
-#     # Going to sum the reLapse probability and the reCrudescence probability
-#     Doubles_Thetas = filter(Res, ID_True==id)
-#     Doubles_Thetas = Doubles_Thetas[duplicated(Doubles_Thetas$ID),]
-#     Is = Doubles_Thetas$First_EpNumber
-#     Js = Doubles_Thetas$Second_EpNumber
-#     for(k in 1:nrow(Doubles_Thetas)){
-#       Adj_Matrix[Is[k],Js[k]] = Doubles_Thetas$Thetas[k]
-#     }
-#     Adj_Matrix = Adj_Matrix + t(Adj_Matrix)
-#     Adj_Matrix[ Adj_Matrix < Epsilon ] = 0
-#     Adj_Matrix[ Adj_Matrix >= Epsilon ] = 1
-#     Graphs[[i]] = graph_from_adjacency_matrix(Adj_Matrix, mode = "undirected",diag = F)
-#     # Add the number of clusters
-#     Pooled_Data$NumberClusters[Pooled_Data$ID==id] = components(Graphs[[i]])$no
-#     # Add the membership of each cluster
-#     Pooled_Data$ClusterID[Pooled_Data$ID==id] = components(Graphs[[i]])$membership
-#   }
-# }
+MS_pooled = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
+MS_pooled$L_or_C_state_UP = MS_pooled$L_or_C_state_LP = MS_pooled$ClusterID = MS_pooled$TotalEpisodes = NA
+
+# Arrange by complexity
+MS_inflated = arrange(MS_inflated, ID, Second_EpNumber)
+# Get single rows per episode (throw away the extra MOI information)
+MS_inflated = MS_inflated[!duplicated(MS_inflated$Episode_Identifier) & MS_inflated$Episode>1,]
+Res$ID_True = MS_inflated$ID_True
+Res$First_EpNumber = MS_inflated$First_EpNumber
+Res$Second_EpNumber = MS_inflated$Second_EpNumber
+MS_inflated$ID = as.factor(MS_inflated$ID)
+MS_inflated$NumberClusters = NA
+
+## Threshold value
+Epsilons = c(0.1, 0.9)
+ids = unique(MS_inflated$ID_True)
+Graphs_lower = Graphs_upper =list()
+
+for(i in 1:length(ids)){
+  id = ids[i]
+  Neps = max(MS_inflated$Second_EpNumber[MS_inflated$ID_True==id])
+  Adj_Matrix = array(0, dim = c(Neps,Neps))
+  diag(Adj_Matrix) = 1/2
+  colnames(Adj_Matrix) = 1:Neps
+  rownames(Adj_Matrix) = 1:Neps
+  # Going to sum the reLapse probability and the reCrudescence probability
+  Doubles_Thetas = filter(Res, ID_True==id)
+  Is = Doubles_Thetas$First_EpNumber
+  Js = Doubles_Thetas$Second_EpNumber
+  for(k in 1:nrow(Doubles_Thetas)){
+    Adj_Matrix[Is[k],Js[k]] = Doubles_Thetas$L[k]+Doubles_Thetas$C[k]
+  }
+  Adj_Matrix = Adj_Matrix + t(Adj_Matrix)
+  
+  # We're using two Epsilon values to see the uncertain ones
+  Adj_Matrix_lower = Adj_Matrix_upper = Adj_Matrix
+  Adj_Matrix_lower[ Adj_Matrix < Epsilons[1] ] = 0
+  Adj_Matrix_lower[ Adj_Matrix >= Epsilons[1] ] = 1
+  Graphs_lower[[i]] = graph_from_adjacency_matrix(Adj_Matrix_lower, 
+                                                  mode = "undirected",diag = F)
+  
+  Adj_Matrix_upper[ Adj_Matrix < Epsilons[2] ] = 0
+  Adj_Matrix_upper[ Adj_Matrix >= Epsilons[2] ] = 1
+  Graphs_upper[[i]] = graph_from_adjacency_matrix(Adj_Matrix_upper, 
+                                                  mode = "undirected",diag = F)
+  
+  
+  # Add the number of clusters to the non-inflated MS dataset
+  MS_pooled$TotalEpisodes[MS_pooled$ID==id] = Neps
+  MS_pooled$NumberClusters[MS_pooled$ID==id] = components(Graphs_lower[[i]])$no
+  # Add the membership of each cluster
+  MS_pooled$ClusterID[MS_pooled$ID==id] = components(Graphs_lower[[i]])$membership
+  MS_pooled$L_or_C_state_LP[MS_pooled$ID==id] = duplicated(components(Graphs_lower[[i]])$membership)
+  MS_pooled$L_or_C_state_UP[MS_pooled$ID==id] = duplicated(components(Graphs_upper[[i]])$membership)
+}
+MS_pooled$L_or_C_state = apply(MS_pooled[, c('L_or_C_state_UP','L_or_C_state_LP')],1 , sum)
+
+## ------------------------------------------------------------------------
+## Time series data colored by genetic STATE
+mycols = brewer.pal(5,'Set2')
+par(las=1, bty='n', cex.axis=.3, mar=c(3,0,1,1))
+plot(NA, NA, xlim = c(0,370), ylim = c(1,length(ids)),
+     xaxt='n', yaxt='n')
+mtext(text = 'Days from start of study', side = 1, line=2, cex=1.3)
+axis(1, at = seq(0,370, by=60), cex.axis=1.5)
+cc = 0
+for(i in 1:length(ids)){
+  
+  id = ids[i]
+  ind = which(MS_pooled$ID==id & MS_pooled$Episode>1)
+  Neps = length(ind)
+  
+  drug_col = as.numeric(
+    Combined_Time_Data$arm_num[Combined_Time_Data$patientid==id][1] == 'CHQ/PMQ') + 4 
+  lines(c(0,Combined_Time_Data$FU_time[Combined_Time_Data$patientid==id][1]), 
+        c(i,i), lty=1, 
+        lwd=.5, col= mycols[drug_col])
+  if(Neps > 0){
+    cols = mycols[MS_pooled$L_or_C_state[ind]+1]
+    points(MS_pooled$timeSinceEnrolment[ind], rep(i,Neps), pch=19, col=cols,cex=.6)
+  }
+}
 

@@ -24,6 +24,11 @@ post_prob_CLI_sequential = function(MS_data, # MS data (assumes no NA gaps in mi
   # Make sure that the data are sorted correctly
   MS_data = arrange(MS_data, ID, Episode, MOI_id)
   
+  #--------------------------------------------------------------------------
+  # Reformat the data s.t. there are no NA gaps in mixed infections
+  #--------------------------------------------------------------------------
+  MS_data = reformat_MSdata(MSdata = MS_data, MSs=names(Fs))
+  
   if(verbose) writeLines('Setting up parameters to do computation....')
   
   #==========================================================================

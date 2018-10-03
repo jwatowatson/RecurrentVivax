@@ -23,6 +23,11 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
     stop('MS_data needs to include the following columns: ID,Episode,Episode_Identifier,MOI_id')
   }
   
+  #--------------------------------------------------------------------------
+  # Reformat the data s.t. there are no NA gaps in mixed infections
+  #--------------------------------------------------------------------------
+  MS_data = reformat_MSdata(MSdata = MS_data, MSs=names(Fs))
+  
   # Make sure that the data are sorted correctly
   MS_data = arrange(MS_data, ID, Episode, MOI_id)
   
