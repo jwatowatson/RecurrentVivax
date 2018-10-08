@@ -318,7 +318,6 @@ if(RUN_MODELS_CLUSTER){
   Res_total = array(NA, dim = c(K_results, 3*Ksamples))
   
   tic()
-  Ksamples = 10
   Res_total=foreach(ss = 1:Ksamples, .combine = cbind) %do% {
     
     # draw a random distribution over the allele frequencies from posterior
