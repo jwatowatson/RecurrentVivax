@@ -225,6 +225,7 @@ post_prob_CLI_sequential = function(MS_data, # MS data (assumes no NA gaps in mi
                and appropriate vertex labels to fully represent each individual\'s data.')}
   
   Post_probs = data.frame(array(dim = c(length(unique(MS_data$Episode_Identifier)),3)))
+  colnames(Post_probs) = c('C','L','I')
   rownames(Post_probs) = unique(MS_data$Episode_Identifier)
   #***********************************************
   # Computation of per-individual values
@@ -392,9 +393,12 @@ post_prob_CLI_sequential = function(MS_data, # MS data (assumes no NA gaps in mi
       }
       if(Tn == 3){ # Return a data.frame C, L, I for recurrences 1 and 2
         
-        Post_probs[inds,] = data.frame(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
-                                       L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
-                                       I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
+        Post_probs[inds,] = data.frame(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), 
+                                             sum(Pr_Rn_yn[c('LC','CC','IC')])), 
+                                       L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), 
+                                             sum(Pr_Rn_yn[c('LL','CL','IL')])), 
+                                       I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), 
+                                             sum(Pr_Rn_yn[c('LI','CI','II')])))
         
       }
       

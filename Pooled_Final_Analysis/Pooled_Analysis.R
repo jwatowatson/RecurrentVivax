@@ -307,13 +307,20 @@ MS_inflate = filter(MS_pooled, MS_pooled$ID %in% IDs_remaining)
 MS_inflated = Inflate_into_pairs(MS_data = MS_inflate)
 
 if(RUN_MODELS_CLUSTER){  
+  
   all_rec_eps = unique(MS_inflated$Episode_Identifier[MS_inflated$Episode==2])
   P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
   colnames(P_matrix) = c('Episode_Identifier','C','I','L')
   P_matrix$Episode_Identifier = all_rec_eps
+  Ksamples = length(grep('C',colnames(Post_samples_matrix)))
   
-  registerDoParallel(cores = 42)
-  ThetasInflated_full_post = foreach(ss = 1:Ksamples, .combine = cbind) %dopar% {
+  K_results = sum(!duplicated(MS_inflated$Episode_Identifier[MS_inflated$Episode>1]))
+  Res_total = array(NA, dim = c(K_results, 3*Ksamples))
+  
+  tic()
+  Ksamples = 10
+  Res_total=foreach(ss = 1:Ksamples, .combine = cbind) %do% {
+    
     # draw a random distribution over the allele frequencies from posterior
     Fs_random = lapply(Alpha_Posteriors, rdirichlet, n=1)
     # I'm not sure if this is needed - how are these called deep inside?
@@ -321,111 +328,31 @@ if(RUN_MODELS_CLUSTER){
       names(Fs_random[[i]]) = 1:length(Fs_random[[i]])
     }
     # take the ss sample from the time prior
-    indices = c(grep('C',colnames(Post_samples_matrix))[ss],
-                grep('L',colnames(Post_samples_matrix))[ss],
-                grep('I',colnames(Post_samples_matrix))[ss])
+    rec_states = c('C','L','I')
+    indices = c(grep(rec_states[1],colnames(Post_samples_matrix))[ss],
+                grep(rec_states[2],colnames(Post_samples_matrix))[ss],
+                grep(rec_states[3],colnames(Post_samples_matrix))[ss])
     for(ep in all_rec_eps){
       i = which(P_matrix$Episode_Identifier==ep)
       j = which(MS_inflated$Episode_Identifier==ep)[1]
       k = which(Post_samples_matrix$Episode_Identifier == paste(MS_inflated$ID_True[j],
                                                                 MS_inflated$Second_EpNumber[j],
                                                                 sep='_'))
-      P_matrix[i,c('C','I','L')] = Post_samples_matrix[k,indices]
+      P_matrix[i,rec_states] = Post_samples_matrix[k,indices]
     }
     
-    Res = post_prob_CLI_sequential(MS_data = MS_inflated, 
-                                   Fs = Fs_Combined, 
-                                   p = P_matrix,
-                                   UpperComplexity = 10^6, 
-                                   verbose = F)
+    Res = post_prob_CLI(MS_data = MS_inflated, 
+                        Fs = Fs_random, 
+                        p = P_matrix,
+                        UpperComplexity = 10^6, 
+                        verbose = F,
+                        cores = 42)
     Res
   }
-  save(ThetasInflated_full_post, file = 'FullPosterior_INF.bigRData')
+  rownames(Res_total) = rownames(Res)
+  save(Res_total, file = 'FullPosterior_INF.bigRData')
+  toc()
 } else {
   load('FullPosterior_INF.bigRData')
-}
-
-## ------------------------------------------------------------------------
-MS_pooled = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
-MS_pooled$L_or_C_state_UP = MS_pooled$L_or_C_state_LP = MS_pooled$ClusterID = MS_pooled$TotalEpisodes = NA
-
-# Arrange by complexity
-MS_inflated = arrange(MS_inflated, ID, Second_EpNumber)
-# Get single rows per episode (throw away the extra MOI information)
-MS_inflated = MS_inflated[!duplicated(MS_inflated$Episode_Identifier) & MS_inflated$Episode>1,]
-Res$ID_True = MS_inflated$ID_True
-Res$First_EpNumber = MS_inflated$First_EpNumber
-Res$Second_EpNumber = MS_inflated$Second_EpNumber
-MS_inflated$ID = as.factor(MS_inflated$ID)
-MS_inflated$NumberClusters = NA
-
-## Threshold value
-Epsilons = c(0.1, 0.9)
-ids = unique(MS_inflated$ID_True)
-Graphs_lower = Graphs_upper =list()
-
-for(i in 1:length(ids)){
-  id = ids[i]
-  Neps = max(MS_inflated$Second_EpNumber[MS_inflated$ID_True==id])
-  Adj_Matrix = array(0, dim = c(Neps,Neps))
-  diag(Adj_Matrix) = 1/2
-  colnames(Adj_Matrix) = 1:Neps
-  rownames(Adj_Matrix) = 1:Neps
-  # Going to sum the reLapse probability and the reCrudescence probability
-  Doubles_Thetas = filter(Res, ID_True==id)
-  Is = Doubles_Thetas$First_EpNumber
-  Js = Doubles_Thetas$Second_EpNumber
-  for(k in 1:nrow(Doubles_Thetas)){
-    Adj_Matrix[Is[k],Js[k]] = Doubles_Thetas$L[k]+Doubles_Thetas$C[k]
-  }
-  Adj_Matrix = Adj_Matrix + t(Adj_Matrix)
-  
-  # We're using two Epsilon values to see the uncertain ones
-  Adj_Matrix_lower = Adj_Matrix_upper = Adj_Matrix
-  Adj_Matrix_lower[ Adj_Matrix < Epsilons[1] ] = 0
-  Adj_Matrix_lower[ Adj_Matrix >= Epsilons[1] ] = 1
-  Graphs_lower[[i]] = graph_from_adjacency_matrix(Adj_Matrix_lower, 
-                                                  mode = "undirected",diag = F)
-  
-  Adj_Matrix_upper[ Adj_Matrix < Epsilons[2] ] = 0
-  Adj_Matrix_upper[ Adj_Matrix >= Epsilons[2] ] = 1
-  Graphs_upper[[i]] = graph_from_adjacency_matrix(Adj_Matrix_upper, 
-                                                  mode = "undirected",diag = F)
-  
-  
-  # Add the number of clusters to the non-inflated MS dataset
-  MS_pooled$TotalEpisodes[MS_pooled$ID==id] = Neps
-  MS_pooled$NumberClusters[MS_pooled$ID==id] = components(Graphs_lower[[i]])$no
-  # Add the membership of each cluster
-  MS_pooled$ClusterID[MS_pooled$ID==id] = components(Graphs_lower[[i]])$membership
-  MS_pooled$L_or_C_state_LP[MS_pooled$ID==id] = duplicated(components(Graphs_lower[[i]])$membership)
-  MS_pooled$L_or_C_state_UP[MS_pooled$ID==id] = duplicated(components(Graphs_upper[[i]])$membership)
-}
-MS_pooled$L_or_C_state = apply(MS_pooled[, c('L_or_C_state_UP','L_or_C_state_LP')],1 , sum)
-
-## ------------------------------------------------------------------------
-## Time series data colored by genetic STATE
-mycols = brewer.pal(5,'Set2')
-par(las=1, bty='n', cex.axis=.3, mar=c(3,0,1,1))
-plot(NA, NA, xlim = c(0,370), ylim = c(1,length(ids)),
-     xaxt='n', yaxt='n')
-mtext(text = 'Days from start of study', side = 1, line=2, cex=1.3)
-axis(1, at = seq(0,370, by=60), cex.axis=1.5)
-cc = 0
-for(i in 1:length(ids)){
-  
-  id = ids[i]
-  ind = which(MS_pooled$ID==id & MS_pooled$Episode>1)
-  Neps = length(ind)
-  
-  drug_col = as.numeric(
-    Combined_Time_Data$arm_num[Combined_Time_Data$patientid==id][1] == 'CHQ/PMQ') + 4 
-  lines(c(0,Combined_Time_Data$FU_time[Combined_Time_Data$patientid==id][1]), 
-        c(i,i), lty=1, 
-        lwd=.5, col= mycols[drug_col])
-  if(Neps > 0){
-    cols = mycols[MS_pooled$L_or_C_state[ind]+1]
-    points(MS_pooled$timeSinceEnrolment[ind], rep(i,Neps), pch=19, col=cols,cex=.6)
-  }
 }
 

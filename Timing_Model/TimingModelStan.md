@@ -56,7 +56,7 @@ A random effects term is used to adjust for inter-individual variability in prop
 
 * Relapses are broken into two components (same as in Model 2).
 
-* Primaquine is not assumed to have 100% efficacy and a random effects terms describes the propensity to relapse after primaquine.
+* Primaquine is not assumed to have 100% efficacy and a random effects term describes the propensity to relapse after primaquine.
 
 
 
@@ -129,7 +129,8 @@ Prior_params_M1 = list(mu_inv_lambda = 400,
                        Hyper_logit_mean_p = -3,
                        Hyper_logit_sd_p = .2,
                        Hyper_logit_c1_mean = -3,
-                       Hyper_logit_c1_sd = .25)
+                       Hyper_logit_c1_sd = .25,
+                       Hyper_logit_exp_p = 1)
 # Model 2 has the same parameters with a few extra
 Prior_params_M2 = c(Prior_params_M1, 
                     Early_L_logit_mean = 0,
@@ -150,9 +151,9 @@ Set up parameters for the MCMC runs.
 # Choose as many chains as available cores
 Chains = 6
 options(mc.cores = Chains)
-IT = 2*10^5
+IT = 2*10^4
 WarmUp = .5*IT
-thin = Chains*100
+thin = 1000
 
 # put the data into stan format
 # For models 1 & 2
@@ -241,7 +242,7 @@ if(PLOT_Censored_Obs){
 }
 
 # We jitter the time to event (days) to improve plotting
-Combined_Time_Data$Time_to_event = jitter(Combined_Time_Data$Time_to_event, amount = 1)
+# Combined_Time_Data$Time_to_event = jitter(Combined_Time_Data$Time_to_event, amount = 1)
 ```
 
 
@@ -738,20 +739,24 @@ for(i in 1:length(Ts)){
   prob_labels_raw_CQ[,i] = prob_labels_raw_CQ[,i]/sum(prob_labels_raw_CQ[,i])
   prob_labels_raw_CQPMQ[,i] = prob_labels_raw_CQPMQ[,i]/sum(prob_labels_raw_CQPMQ[,i])
 }
+```
 
+
+
+```r
 layout(mat = matrix(data = c(1,1,2,2,1,1,2,2,3,3,4,5,3,3,6,7),byrow = T,nrow = 4))
 par(las=1,bty='n', cex.lab=1.3, cex.axis=1.3, mar=c(3,4,1,1))
 #****************************** Reinfection ******************************
 labels = extract(mod3_RE, 'prob_labels')$prob_labels
 mean_labels_Reinfection = apply(labels[,ind_plotting,1,drop=T], 2, mean)
-plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfection), 
-     col = mycols[numeric_drug[ind_plotting]+1], 
-     pch = '*', 
+plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfection),
+     col = mycols[numeric_drug[ind_plotting]+1],
+     pch = 20,
      cex=1,
      ylab='', yaxt='n',xaxt='n',
      xlab='', xlim=c(0,400))
 mtext(text = 'Probability of ReInfection',side = 2, las=3,line=3,cex=.8)
-mtext(text = 'Months from last episode',side = 1,line=2,cex=.8)
+mtext(text = 'Months from last episode',side = 1,line=2,cex=1)
 axis(1, at = seq(0, 360, by=60), labels = seq(0, 360, by=60)/30)
 axis(2, at = -2:0, labels= 10^(-2:0))
 axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
@@ -759,37 +764,37 @@ axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
 axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
 legend('bottomright',legend = c('Artesunate mono-therapy',
                                 'Chloroquine mono-therapy',
-                                'Chloroquine\nPrimaquine'), 
-       col=mycols,pch = rep(1,3), bty='n',lwd=2,lty=NA)
+                                'Chloroquine+Primaquine'),
+       col=mycols,pch = 20, bty='n',lwd=2,lty=NA)
 
-lines(Ts, log10(prob_labels_raw_AS[1,]), col='red', lwd=2, lty=2)
-lines(Ts, log10(prob_labels_raw_CQ[1,]), col='blue', lwd=2, lty=2)
-lines(Ts, log10(prob_labels_raw_CQPMQ[1,]), col='green', lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_AS[1,]), col=mycols[1], lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_CQ[1,]), col=mycols[2], lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_CQPMQ[1,]), col=mycols[3], lwd=2, lty=2)
 
 
 #****************************** Recrudescence ****************************
 mean_labels_ReCrud = apply(labels[,ind_plotting,4,drop=T], 2, mean)
-plot(Combined_Time_Data$Time_to_event[ind_plotting], (mean_labels_ReCrud), 
+plot(Combined_Time_Data$Time_to_event[ind_plotting], (mean_labels_ReCrud),
      col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
-     pch = '*',#as.numeric(Combined_Time_Data$Censored[ind_plotting])+1,
-     cex=1, 
+     pch = 20,#as.numeric(Combined_Time_Data$Censored[ind_plotting])+1,
+     cex=1,
      ylab='Probability of ReCrudescence',yaxt='n',
      xlab='', xlim=c(0,30))
 mtext(text = 'Months from last episode',side = 1,line=2,cex=1)
 axis(1, at = c(0,15,30), labels = c(0,0.5,1))
 axis(2, at = c(0,.1,.2))
 
-lines(Ts, (prob_labels_raw_AS[4,]), col='red', lwd=2, lty=2)
-lines(Ts, (prob_labels_raw_CQ[4,]), col='blue', lwd=2, lty=2)
-lines(Ts, (prob_labels_raw_CQPMQ[4,]), col='green', lwd=2, lty=2)
+lines(Ts, (prob_labels_raw_AS[4,]), col=mycols[1], lwd=2, lty=2)
+lines(Ts, (prob_labels_raw_CQ[4,]), col=mycols[2], lwd=2, lty=2)
+lines(Ts, (prob_labels_raw_CQPMQ[4,]), col=mycols[3], lwd=2, lty=2)
 
 #****************************** Relapse **********************************
 mean_labels_ReLap1= apply(labels[,ind_plotting,2,drop=T], 2, mean)
 mean_labels_ReLap2= apply(labels[,ind_plotting,3,drop=T], 2, mean)
 mean_labels_ReLap = mean_labels_ReLap1 + mean_labels_ReLap2
-plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap), 
+plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap),
      col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
-     pch = '*',#as.numeric(Combined_Time_Data$Censored[ind_plotting])+16, 
+     pch = 20,#as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
      cex=1,
      ylab='Probability of ReLapse',yaxt='n',
      xlab='', xlim=c(0,400))
@@ -800,37 +805,42 @@ axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
 axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
 mtext(text = 'Months from last episode',side = 1,line=2,cex=1)
 
-lines(Ts, log10(prob_labels_raw_AS[2,]+prob_labels_raw_AS[3,]), col='red', lwd=2, lty=2)
-lines(Ts, log10(prob_labels_raw_CQ[2,]+prob_labels_raw_CQ[3,]), col='blue', lwd=2, lty=2)
-lines(Ts, log10(prob_labels_raw_CQPMQ[2,]+prob_labels_raw_CQPMQ[3,]), col='green', lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_AS[2,]+prob_labels_raw_AS[3,]), col=mycols[1], lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_CQ[2,]+prob_labels_raw_CQ[3,]), col=mycols[2], lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_CQPMQ[2,]+prob_labels_raw_CQPMQ[3,]), col=mycols[3], lwd=2, lty=2)
 
-#****************************** Histograms of key model parameters **********************************
+#****************************** Histograms of key model parameters ***********************
 
 par(cex.lab=.8, cex.axis=1)
-hist(inv.logit(apply(thetas$logit_p,2,mean)), xaxt='n',
+indAS = drug_received[which(N_noPMQ_index>0)] == 0
+indCQ = drug_received[which(N_noPMQ_index>0)] == 1
+plot(density(inv.logit(apply(thetas$logit_p,2,mean)[indAS])), xaxt='n',
      xlab = '', main = '',
+     col = mycols[1], lwd=3,
      yaxt='n',ylab='', xlim=c(0,1))
+lines(density(inv.logit(apply(thetas$logit_p,2,mean)[indCQ])),
+     col = mycols[2], lwd=3)
 mtext(text = 'Reinfection: no PMQ',side = 1,line=2,cex=.8)
 axis(1, at=c(0,.5,1))
-hist(inv.logit(apply(thetas$logit_p_PMQ,2,mean)), 
-     xlab = '', main = '',
+
+plot(density(inv.logit(apply(thetas$logit_p_PMQ,2,mean))),
+     xlab = '', main = '', col=mycols[3],lwd=3,
      yaxt='n',ylab='')
 mtext(text = 'Reinfection: PMQ',side = 1,line=2,cex=.8)
-#hist(inv.logit(thetas$logit_c1), xlab = '', main='',yaxt='n',ylab='')
-plot(density(100*inv.logit(thetas$logit_c1_AS)), col = mycols[1],lwd=3,
-     xlab = 'Recrudescence (%)', main='',yaxt='n',ylab='', xlim=c(0,10))
-lines(density(100*inv.logit(thetas$logit_c1_CQ)), col = mycols[2],lwd=3)
-lines(density(100*inv.logit(thetas$logit_c1_CQ_PMQ)), col = mycols[3], lwd=3)
-#legend('topright',col=mycols, legend = c('AS','CQ','CQ+PMQ'),lwd=3)
+
+plot(density(inv.logit(thetas$logit_c1_AS)), col = mycols[1],lwd=3,
+     xlab = 'Recrudescence', main='',yaxt='n',ylab='', xlim=c(0.01,.08))
+lines(density(inv.logit(thetas$logit_c1_CQ)), col = mycols[2],lwd=3)
+lines(density(inv.logit(thetas$logit_c1_CQ_PMQ)), col = mycols[3], lwd=3)
 
 
 mtext(text = 'Recrudescence',side = 1,line=2,cex=.8)
-hist(inv.logit(thetas$logit_EarlyL), xlab = '',
-     main='',yaxt='n',ylab='')
+plot(density(inv.logit(thetas$logit_EarlyL)), xlab = '',
+     main='',yaxt='n',ylab='', col = 'black', lwd=3)
 mtext(text = 'Early Relapse',side = 1,line=2,cex=.8)
 ```
 
-![](TimingModelStan_files/figure-html/Model3_Output-1.png)<!-- -->
+![](TimingModelStan_files/figure-html/Model3FinalPlot-1.png)<!-- -->
 
 
 
@@ -860,17 +870,41 @@ Combined_Time_Data$ReInfection_025_theta = apply(labels[,,1,drop=T],2,quantile,
                                                  probs = 0.025)
 
 # Save this for use by the genetic model
-Mod3_ThetaEstimates = Combined_Time_Data
+Mod3_ThetaEstimates = Combined_Time_Data[!Combined_Time_Data$Censored,]
+Mod3_ThetaEstimates$episode = as.integer(Mod3_ThetaEstimates$episode)
 Mod3_ThetaEstimates$episode = Mod3_ThetaEstimates$episode+1
 Mod3_ThetaEstimates$patientid = as.character(Mod3_ThetaEstimates$patientid)
-Mod3_ThetaEstimates$Episode_Identifier = apply(Mod3_ThetaEstimates,
-                                                             1, function(x) {
-                                                               paste(x['patientid'], x['episode'], sep='_')
-                                                             } )
-save(Mod3_ThetaEstimates, file = '../RData/TimingModel/MOD2_theta_estimates.RData')
+Mod3_ThetaEstimates$Episode_Identifier = 
+  apply(Mod3_ThetaEstimates,
+        1, 
+        function(x) {
+          paste(x['patientid'], as.integer(x['episode']), sep = '_')
+        } )
+save(Mod3_ThetaEstimates, file = '../RData/TimingModel/MOD3_theta_estimates.RData')
 # Order by difference in posterior interval
 Combined_Time_Data = Combined_Time_Data[order(-log10(Combined_Time_Data$Relapse_mean_theta)),]
 ```
+
+We also save a matrix of posterior samples to be used by the genetic model for full computation of the posterior:
+
+```r
+labels = extract(mod3_RE, 'prob_labels')$prob_labels
+
+ind_Observed = which(!Combined_Time_Data$Censored)
+K_samples = min(100, dim(labels)[1])
+Relapse_labels = labels[,,2,drop=T] + labels[,,3,drop=T]
+random_ind = sample(1:dim(labels)[1], K_samples)
+Post_samples_matrix = data.frame(cbind(t(labels[random_ind,ind_Observed,4,drop=T]),
+                                       t(Relapse_labels[random_ind,ind_Observed]),
+                                       t(labels[random_ind,ind_Observed,1,drop=T])))
+colnames(Post_samples_matrix) = c(sapply(c('C','L','I'), rep, K_samples))
+Post_samples_matrix$Episode_Identifier = apply(Combined_Time_Data[!Combined_Time_Data$Censored,], 1, 
+                                               function(x) {
+                                                 paste(x['patientid'], as.integer(x['episode'])+1, 
+                                                       sep = '_')} )
+save(Post_samples_matrix, file = '../RData/TimingModel/MOD3_Posterior_samples.RData')
+```
+
 
 
 
@@ -924,23 +958,8 @@ mtext(text = 'Time to event (days)',side = 1, line = 2)
 Some rough calculations to make sure we're not completely off track with the model output
 
 
-```r
-#Follow up time in PMQ individuals
-FU_pmq = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'])/365
-FU_Nopmq = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num!='CHQ/PMQ'])/365
-
-NumEps_pmq = sum(Combined_Time_Data$arm_num=='CHQ/PMQ' & !Combined_Time_Data$Censored)
-NumEps_Nopmq = sum(Combined_Time_Data$arm_num!='CHQ/PMQ' & !Combined_Time_Data$Censored)
-
-writeLines(paste('No radical cure: episodes per year: ',round(NumEps_Nopmq/FU_Nopmq,2)))
-```
-
 ```
 ## No radical cure: episodes per year:  3.97
-```
-
-```r
-writeLines(paste('Radical cure: episodes per year: ',round(NumEps_pmq/FU_pmq,2)))
 ```
 
 ```
@@ -951,156 +970,44 @@ writeLines(paste('Radical cure: episodes per year: ',round(NumEps_pmq/FU_pmq,2))
 We look at weighted averages of relapses, recrudescences and reinfections.
 We pick 500 random draws from the posterior to calculate credible intervals.
 
-```r
-# We sum over the observed recurrences
-indAS = which(Mod3_ThetaEstimates$arm_num=='AS' & !Mod3_ThetaEstimates$Censored)
-indCQ = which(Mod3_ThetaEstimates$arm_num=='CHQ' & !Mod3_ThetaEstimates$Censored)
-indPMQ = which(Mod3_ThetaEstimates$arm_num=='CHQ/PMQ' & !Mod3_ThetaEstimates$Censored)
-
-labels = extract(mod3_RE, 'prob_labels')$prob_labels
-
-K = 500
-res_estimates = as.data.frame(array(dim = c(K, 9)))
-colnames(res_estimates) = c('AS_L','AS_I','AS_C',
-                            'CQ_L','CQ_I','CQ_C',
-                            'PQ_L','PQ_I','PQ_C')
-Nsamples = length(thetas$lambda)
-for(i in 1:K){
-  j = sample(1:Nsamples,1)
-  res_estimates$AS_L[i] = sum(labels[j,indAS,2]+labels[j,indAS,3])/length(indAS)
-  res_estimates$AS_I[i] = sum(labels[j,indAS,1])/length(indAS)
-  res_estimates$AS_C[i] = sum(labels[j,indAS,4])/length(indAS)
-
-  res_estimates$CQ_L[i] = sum(labels[j,indCQ,2]+labels[j,indCQ,3])/length(indCQ)
-  res_estimates$CQ_I[i] = sum(labels[j,indCQ,1])/length(indCQ)
-  res_estimates$CQ_C[i] = sum(labels[j,indCQ,4])/length(indCQ)
-
-  res_estimates$PQ_L[i] = sum(labels[j,indPMQ,2]+labels[j,indPMQ,3])/length(indPMQ)
-  res_estimates$PQ_I[i] = sum(labels[j,indPMQ,1])/length(indPMQ)
-  res_estimates$PQ_C[i] = sum(labels[j,indPMQ,4])/length(indPMQ)
-}
-```
 
 
 The labels on the observed recurrences along with 95% credible intervals:
 
 
-```r
-#************ AS monotherapy **************
-writeLines(paste('Relapses are approximately ',
-                 round(100*mean(res_estimates$AS_L),2),'(', 
-                 round(100*quantile(res_estimates$AS_L, probs = 0.025),1),'-',
-                 round(100*quantile(res_estimates$AS_L, probs = 0.975),1),')',
-                 '% of recurrences after AS'))
+```
+## Relapses are approximately  36.64 ( 35.2 - 38 ) % of recurrences after AS
 ```
 
 ```
-## Relapses are approximately  95.41 ( 94 - 96.7 ) % of recurrences after AS
-```
-
-```r
-writeLines(paste('Recrudescences are approximately ',
-                 round(100*mean(res_estimates$AS_C),2),'(', 
-                 round(100*quantile(res_estimates$AS_C, probs = 0.025),1),'-',
-                 round(100*quantile(res_estimates$AS_C, probs = 0.975),1),')',
-                 '% of recurrences after AS'))
+## Recrudescences are approximately  0.3 ( 0.1 - 0.4 ) % of recurrences after AS
 ```
 
 ```
-## Recrudescences are approximately  0.71 ( 0.1 - 1.3 ) % of recurrences after AS
-```
-
-```r
-writeLines(paste('Reinfections are approximately ',
-                 round(100*mean(res_estimates$AS_I),2),'(', 
-                 round(100*quantile(res_estimates$AS_I, probs = 0.025),1),'-',
-                 round(100*quantile(res_estimates$AS_I, probs = 0.975),1),')',
-                 '% of recurrences after AS'))
+## Reinfections are approximately  63.05 ( 61.7 - 64.5 ) % of recurrences after AS
 ```
 
 ```
-## Reinfections are approximately  3.88 ( 2.8 - 5.2 ) % of recurrences after AS
-```
-
-```r
-writeLines('\n')
-```
-
-```r
-#******** CQ montherapy ***************
-writeLines(paste('Relapses are approximately ',
-                 round(100*mean(res_estimates$CQ_L),1),'(', 
-                 round(100*quantile(res_estimates$CQ_L, probs = 0.025),1),'-',
-                 round(100*quantile(res_estimates$CQ_L, probs = 0.975),1),')',
-                 '% of recurrences after CQ'))
+## Relapses are approximately  39.8 ( 38.4 - 41.2 ) % of recurrences after CQ
 ```
 
 ```
-## Relapses are approximately  94.3 ( 92.6 - 95.9 ) % of recurrences after CQ
-```
-
-```r
-writeLines(paste('Recrudescences are approximately ',
-                 round(100*mean(res_estimates$CQ_C),2),'(', 
-                 round(100*quantile(res_estimates$CQ_C, probs = 0.025),1),'-',
-                 round(100*quantile(res_estimates$CQ_C, probs = 0.975),1),')',
-                 '% of recurrences after CQ'))
+## Recrudescences are approximately  0.37 ( 0.2 - 0.6 ) % of recurrences after CQ
 ```
 
 ```
-## Recrudescences are approximately  0.63 ( 0.1 - 1.2 ) % of recurrences after CQ
-```
-
-```r
-writeLines(paste('Reinfections are approximately ',
-                 round(100*mean(res_estimates$CQ_I),2),'(', 
-                 round(100*quantile(res_estimates$CQ_I, probs = 0.025),1),'-',
-                 round(100*quantile(res_estimates$CQ_I, probs = 0.975),1),')',
-                 '% of recurrences after CQ'))
+## Reinfections are approximately  59.79 ( 58.4 - 61.3 ) % of recurrences after CQ
 ```
 
 ```
-## Reinfections are approximately  5.05 ( 3.7 - 6.7 ) % of recurrences after CQ
-```
-
-```r
-writeLines('\n')
-```
-
-```r
-#******** CQ + PMQ ***************
-writeLines(paste('Relapses are approximately ',
-                 round(100*mean(res_estimates$PQ_L),2),'(', 
-                 round(100*quantile(res_estimates$PQ_L, probs = 0.025),1),'-',
-                 round(100*quantile(res_estimates$PQ_L, probs = 0.975),1),')',
-                 '% of recurrences after CQ+PMQ'))
+## Relapses are approximately  13.37 ( 12.3 - 14.3 ) % of recurrences after CQ+PMQ
 ```
 
 ```
-## Relapses are approximately  6.46 ( 4.7 - 8.7 ) % of recurrences after CQ+PMQ
-```
-
-```r
-writeLines(paste('Recrudescences are approximately ',
-                 round(100*mean(res_estimates$PQ_C),2),'(', 
-                 round(100*quantile(res_estimates$PQ_C, probs = 0.025),1),'-',
-                 round(100*quantile(res_estimates$PQ_C, probs = 0.975),1),')',
-                 '% of recurrences after CQ+PMQ'))
+## Recrudescences are approximately  0.14 ( 0.1 - 0.2 ) % of recurrences after CQ+PMQ
 ```
 
 ```
-## Recrudescences are approximately  0.06 ( 0 - 0.1 ) % of recurrences after CQ+PMQ
-```
-
-```r
-writeLines(paste('Reinfections are approximately ',
-                 round(100*mean(res_estimates$PQ_I),2),'(', 
-                 round(100*quantile(res_estimates$PQ_I, probs = 0.025),1),'-',
-                 round(100*quantile(res_estimates$PQ_I, probs = 0.975),1),')',
-                 '% of recurrences after CQ+PMQ'))
-```
-
-```
-## Reinfections are approximately  93.48 ( 91.3 - 95.3 ) % of recurrences after CQ+PMQ
+## Reinfections are approximately  86.49 ( 85.5 - 87.5 ) % of recurrences after CQ+PMQ
 ```
 
