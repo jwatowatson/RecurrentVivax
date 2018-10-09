@@ -1,6 +1,7 @@
 ---
 title: "Simulation study to test vivax relatedness model"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
