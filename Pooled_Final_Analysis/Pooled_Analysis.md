@@ -331,60 +331,59 @@ if(CREATE_PLOTS){
 
 
 ```r
-MS_pooled = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
-par(mfrow=c(1,2),las=1, bty='n')
-reLapse_ordered = sort.int(Thetas_BPD$L, decreasing = TRUE, index.return = TRUE)
-plot(reLapse_ordered$x, pch=20, col = Thetas_BPD$drug_col[reLapse_ordered$ix],
-     xlab = 'Recurrence index', ylab = 'Probability of relapse',
-     main = '')
-CI = cbind(apply(
-  BPD_data[reLapse_ordered$ix,grep('L',colnames(BPD_data)),],
-  1, quantile, probs = 0.025), 
-  apply(BPD_data[reLapse_ordered$ix,grep('L',colnames(BPD_data)),],
-        1, quantile, probs = 0.975))
-for(i in 1:length(reLapse_ordered$x)){
-  if(diff(CI[i,]) > 0.005) arrows(i,CI[i,1],i,CI[i,2], 
-                                  length = 0.02,angle = 90, 
-                                  code = 3,
-                                  col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
+if(CREATE_PLOTS){
+  MS_pooled = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
+  par(mfrow=c(1,2),las=1, bty='n')
+  reLapse_ordered = sort.int(Thetas_BPD$L, decreasing = TRUE, index.return = TRUE)
+  plot(reLapse_ordered$x, pch=20, col = Thetas_BPD$drug_col[reLapse_ordered$ix],
+       xlab = 'Recurrence index', ylab = 'Probability of relapse',
+       main = '')
+  CI = cbind(apply(
+    BPD_data[reLapse_ordered$ix,grep('L',colnames(BPD_data)),],
+    1, quantile, probs = 0.025), 
+    apply(BPD_data[reLapse_ordered$ix,grep('L',colnames(BPD_data)),],
+          1, quantile, probs = 0.975))
+  for(i in 1:length(reLapse_ordered$x)){
+    if(diff(CI[i,]) > 0.005) arrows(i,CI[i,1],i,CI[i,2], 
+                                    length = 0.02,angle = 90, 
+                                    code = 3,
+                                    col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
+  }
+  # # Annotate by examples
+  # points(reLapse_ordered$ix[example_inds],
+  #        Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
+  # text(x = example_inds_times, y = Thetas_BPD$L[example_inds], labels = example_ids, pos = 3)
+  
+  
+  writeLines(sprintf('The mean percentage of recurrences which are estimated to be relapses is %s%%',
+                     round(100*sum(Thetas_BPD$L + Thetas_BPD$C)/nrow(Thetas_BPD))))
+  
+  
+  plot(NA,NA,xlim=c(0,max(MS_pooled$timeSinceLastEpisode,na.rm=T)), ylim=c(0,1),
+       ylab = 'Probability of relapse', xlab = 'Time since last episode')
+  for(i in 1:length(reLapse_ordered$x)){
+    kk = reLapse_ordered$ix[i]
+    x_time = MS_pooled$timeSinceLastEpisode[Thetas_BPD$Episode_Identifier[kk]==
+                                              MS_pooled$Episode_Identifier]
+    points(x_time,
+           Thetas_BPD$L[kk], pch=20, col=mycols[3])
+    if(diff(CI[i,]) > 0.005) arrows(x_time,CI[i,1],x_time,CI[i,2], 
+                                    length = 0.02,angle = 90, 
+                                    code = 3,
+                                    col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
+  }
+  
+  # # Annotate by examples
+  # points(example_inds_times,Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
+  # text(x = example_inds_times, y = Thetas_BPD$L[example_inds], labels = example_ids, pos = 3)
 }
-# # Annotate by examples
-# points(reLapse_ordered$ix[example_inds],
-#        Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
-# text(x = example_inds_times, y = Thetas_BPD$L[example_inds], labels = example_ids, pos = 3)
-
-
-writeLines(sprintf('The mean percentage of recurrences which are estimated to be relapses is %s%%',
-                   round(100*sum(Thetas_BPD$L + Thetas_BPD$C)/nrow(Thetas_BPD))))
 ```
 
 ```
 ## The mean percentage of recurrences which are estimated to be relapses is 15%
 ```
 
-```r
-plot(NA,NA,xlim=c(0,max(MS_pooled$timeSinceLastEpisode,na.rm=T)), ylim=c(0,1),
-     ylab = 'Probability of relapse', xlab = 'Time since last episode')
-for(i in 1:length(reLapse_ordered$x)){
-  kk = reLapse_ordered$ix[i]
-  x_time = MS_pooled$timeSinceLastEpisode[Thetas_BPD$Episode_Identifier[kk]==
-                                            MS_pooled$Episode_Identifier]
-  points(x_time,
-         Thetas_BPD$L[kk], pch=20, col=mycols[3])
-  if(diff(CI[i,]) > 0.005) arrows(x_time,CI[i,1],x_time,CI[i,2], 
-                                  length = 0.02,angle = 90, 
-                                  code = 3,
-                                  col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
-}
-```
-
 ![](Pooled_Analysis_files/figure-html/BPD_efficacy-1.png)<!-- -->
-
-```r
-# # Annotate by examples
-# points(example_inds_times,Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
-# text(x = example_inds_times, y = Thetas_BPD$L[example_inds], labels = example_ids, pos = 3)
-```
 
 
 # Extra computations for VHX: too complex episodes
@@ -407,6 +406,8 @@ Construct adjacency graphs and compute probabilities of relapse and reinfection.
 ```r
 MS_pooled$L_or_C_state = MS_pooled$TotalEpisodes = NA
 MS_pooled$L_lower = MS_pooled$L_upper = MS_pooled$L_mean = NA
+MS_pooled$C_lower = MS_pooled$C_upper = MS_pooled$C_mean = NA
+MS_pooled$I_lower = MS_pooled$I_upper = MS_pooled$I_mean = NA
 # Arrange by complexity
 # Get single rows per episode (throw away the extra MOI information)
 MS_inflated = MS_inflated[!duplicated(MS_inflated$Episode_Identifier) & MS_inflated$Episode>1,]
@@ -448,8 +449,16 @@ for(i in 1:length(IDs_remaining)){
     
     MS_pooled$L_lower[ind1] = mean(Doubles_Thetas$L_min[ind2])
     MS_pooled$L_upper[ind1] = mean(Doubles_Thetas$L_max[ind2])
-    
     MS_pooled$L_mean[ind1] = mean(Doubles_Thetas$L_mean[ind2])
+    
+    MS_pooled$C_lower[ind1] = mean(Doubles_Thetas$C_min[ind2])
+    MS_pooled$C_upper[ind1] = mean(Doubles_Thetas$C_max[ind2])
+    MS_pooled$C_mean[ind1] = mean(Doubles_Thetas$C_mean[ind2])
+
+    MS_pooled$I_lower[ind1] = mean(Doubles_Thetas$I_min[ind2])
+    MS_pooled$I_upper[ind1] = mean(Doubles_Thetas$I_max[ind2])
+    MS_pooled$I_mean[ind1] = mean(Doubles_Thetas$I_mean[ind2])
+
     if(!is.na(MS_pooled$L_upper[ind1])){
       if(MS_pooled$L_upper[ind1] < MS_pooled$L_lower[ind1]){
         print(id)
@@ -562,4 +571,51 @@ mtext(side = 2, text = 'Relapse probability', line = 3,las=3)
 ```
 
 ![](Pooled_Analysis_files/figure-html/CompleteDataPlot-1.png)<!-- -->
+
+
+The summaries of the final dataset:
+
+```r
+table(MS_final$Drug[!duplicated(MS_final$ID)])
+```
+
+```
+## 
+##  2  3 
+## 80 79
+```
+
+```r
+ind_CQ = MS_final$Drug==2
+writeLines(sprintf('The weighted average of relapses is %s (%s-%s)',
+                   round(100*sum(MS_final$L_mean[ind_CQ])/sum(ind_CQ),1),
+                   round(100*sum(MS_final$L_lower[ind_CQ])/sum(ind_CQ),1),
+                   round(100*sum(MS_final$L_upper[ind_CQ])/sum(ind_CQ),1)))
+```
+
+```
+## The weighted average of relapses is 98.3 (92.7-100)
+```
+
+```r
+writeLines(sprintf('The weighted average of recrudescences is %s (%s-%s)',
+                   round(100*sum(MS_final$C_mean[ind_CQ],na.rm=T)/sum(ind_CQ),3),
+                   round(100*sum(MS_final$C_lower[ind_CQ],na.rm=T)/sum(ind_CQ),3),
+                   round(100*sum(MS_final$C_upper[ind_CQ],na.rm=T)/sum(ind_CQ),3)))
+```
+
+```
+## The weighted average of recrudescences is 0 (0-0)
+```
+
+```r
+writeLines(sprintf('The weighted average of reinfections is %s (%s-%s)',
+                   round(100*sum(MS_final$I_mean[ind_CQ],na.rm=T)/sum(ind_CQ),3),
+                   round(100*sum(MS_final$I_lower[ind_CQ],na.rm=T)/sum(ind_CQ),3),
+                   round(100*sum(MS_final$I_upper[ind_CQ],na.rm=T)/sum(ind_CQ),3)))
+```
+
+```
+## The weighted average of reinfections is 0 (0-0)
+```
 
