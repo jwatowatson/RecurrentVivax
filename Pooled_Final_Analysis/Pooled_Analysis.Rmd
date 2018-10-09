@@ -2,10 +2,10 @@
 title: "Pooled Analysis"
 author: "Aimee Taylor and James Watson"
 output:
+  html_notebook: default
   html_document:
     df_print: paged
     keep_md: TRUE
-  html_notebook: default
   keep_md: TRUE
   pdf_document: default
 ---
@@ -274,6 +274,20 @@ thetas_9MS_Tagnostic$drug_col = mapvalues(x = thetas_9MS_Tagnostic$drug,
 
 ```
 
+```{r}
+# Added by Aimee: some examples
+# Colour some specific examples 
+example_inds = grepl('_644_', Thetas_BPD$Episode_Identifier) | 
+  grepl('BPD_598_', Thetas_BPD$Episode_Identifier) | 
+  grepl('BPD_562_', Thetas_BPD$Episode_Identifier) |
+  grepl('BPD_53_', Thetas_BPD$Episode_Identifier) 
+example_ids = Thetas_BPD$Episode_Identifier[example_inds]
+example_inds_times = MS_pooled$timeSinceLastEpisode[MS_pooled$Episode_Identifier %in% example_ids]
+Tagnostic_example_inds = thetas_9MS_Tagnostic$Episode_Identifier %in% example_ids
+thetas9MS_example_inds = thetas_9MS$Episode_Identifier %in% example_ids
+Time1_example_inds = Time_Estimates_1$Episode_Identifier %in% example_ids
+```
+
 
 ## Going from time-to-event prior to posterior
 
@@ -287,10 +301,22 @@ if(CREATE_PLOTS){
        col = thetas_9MS$drug_col, main = 'Relapse',pch=20,
        xlab = 'Time agnostic', ylab = 'Time included')
   lines(-10:0,-10:0)
+  
+  # Annotate by examples
+  points(x = log10(thetas_9MS_Tagnostic$L[Tagnostic_example_inds]), 
+         y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
+         pch=1, cex = 1.5, col='black')
+  text(x = log10(thetas_9MS_Tagnostic$L[Tagnostic_example_inds]), 
+       y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
+       labels = example_ids, pos = 2, cex = 0.7)
+  
+  
   plot(log10(thetas_9MS_Tagnostic$I), log10(thetas_9MS$I), 
        col=thetas_9MS$drug_col, main = 'Reinfection',pch=20,
        xlab = 'Time agnostic', ylab = 'Time included')
   lines(-20:0,-20:0)
+  
+  
   
   ##### Prior versus full posterior
   plot(log10(Time_Estimates_1$Relapse_mean_theta),
@@ -298,6 +324,15 @@ if(CREATE_PLOTS){
        col=thetas_9MS$drug_col,pch=20,
        xlab = 'Time based prior', ylab = 'Full posterior')
   lines(-10:10,-10:10)
+  
+    # Annotate by examples
+  points(x = log10(Time_Estimates_1$Relapse_mean_theta[Time1_example_inds]), 
+         y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
+         pch=1, cex = 1.5, col='black')
+  text(x = log10(Time_Estimates_1$Relapse_mean_theta[Time1_example_inds]), 
+       y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
+       labels = example_ids, pos = 2, cex = 0.7)
+  
   plot(log10(Time_Estimates_1$ReInfection_mean_theta),
        log10(thetas_9MS$I),main = 'Reinfection',
        col=thetas_9MS$drug_col,pch=20,
@@ -405,6 +440,10 @@ for(i in 1:length(reLapse_ordered$x)){
                                   code = 3,
                                   col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
 }
+# # Annotate by examples
+# points(reLapse_ordered,Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
+# text(x = example_inds_times, y = Thetas_BPD$L[example_inds], labels = example_ids, pos = 3)
+
 
 writeLines(sprintf('The mean percentage of recurrences which are estimated to be relapses is %s%%',
                    round(100*sum(Thetas_BPD$L + Thetas_BPD$C)/nrow(Thetas_BPD))))
@@ -423,6 +462,11 @@ for(i in 1:length(reLapse_ordered$x)){
                                   code = 3,
                                   col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
 }
+
+# Annotate by examples
+points(example_inds_times,Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
+text(x = example_inds_times, y = Thetas_BPD$L[example_inds], labels = example_ids, pos = 3)
+
 ```
 
 
