@@ -1002,14 +1002,17 @@ summary(mod)
 So there is a predictive effect of carboxy primaquine on drug failure. 
 
 ```{r}
-BPD_data = filter(BPD_data, episode==1)
+#BPD_data = filter(BPD_data, episode==1)
 BPD_data$Failure_YN = as.numeric(BPD_data$Failure > 0.5)
-mod1 = glm(Failure_YN ~ log10_carboxyPMQ, data = BPD_data, family='binomial')
+mod1 = glmer(Failure_YN ~ log10_carboxyPMQ + (1 | patientid), 
+             data = BPD_data, family='binomial')
 summary(mod1)
-plot(BPD_data$log10_carboxyPMQ, BPD_data$Failure_YN,
-     xlab = 'Carboxy PMQ', ylab = 'PMQ', pch=20)
+plot(BPD_data$log10_carboxyPMQ, BPD_data$Failure_YN,pch='+',
+     xlab = 'Carboxy PMQ', ylab = 'Failure probability')
 xs=seq(0,4,by=.01)
-lines(xs, predict(mod1, newdata = data.frame(log10_carboxyPMQ=xs),
+lines(xs, predict(mod1, newdata = data.frame(log10_carboxyPMQ=xs,
+                                             patientid='new'),
+                  allow.new.levels=T,
                     type = 'response'), col='red', lwd=3)
 ```
 
@@ -1020,6 +1023,8 @@ Does 2D6 correlate with carboxy ?
 ```{r}
 TwoD6_dat = read.csv('../RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
 TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],as.integer(x['Patient.ID']),sep = '_'))
+TwoD6_dat$Phenotype = mapvalues(TwoD6_dat$X2D6.Phenotype, 
+                                from = c('PM','IM', 'EM'), to = 1:3)
 BPD_data$ASscore = NA
 for(i in 1:nrow(BPD_data)){
   id = BPD_data$patientid[i]
