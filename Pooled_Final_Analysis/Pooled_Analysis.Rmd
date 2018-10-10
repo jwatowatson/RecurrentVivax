@@ -19,7 +19,7 @@ Load R packages, functions and data.
 # Set up
 #==========================================================================
 knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
-                      echo = TRUE, include = TRUE, 
+                      echo = FALSE, include = TRUE, 
                       fig.width = 7, fig.height = 7,
                       fig.pos = 'H', 
                       dev = 'png', dpi = 300)
