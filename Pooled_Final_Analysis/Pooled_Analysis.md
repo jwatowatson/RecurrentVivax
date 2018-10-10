@@ -5,9 +5,9 @@ output:
   html_document:
     df_print: paged
     keep_md: TRUE
-  html_notebook: default
-  keep_md: TRUE
   pdf_document: default
+  keep_md: TRUE
+  html_notebook: default
 ---
 
 # Preamble
@@ -17,56 +17,33 @@ Load R packages, functions and data.
 
 
 
-Summary of the data:
-
-```r
-writeLines(sprintf('Number of individuals with at least one episode typed: %s',
-                   length(unique(MS_pooled$ID))))
-```
+Summary of the data and the whole of the VHX data versus the subset typed (in terms of number of episodes):
 
 ```
 ## Number of individuals with at least one episode typed: 164
-```
-
-```r
-writeLines(sprintf('Number of episodes typed: %s',
-                   length(unique(MS_pooled$Episode_Identifier))))
 ```
 
 ```
 ## Number of episodes typed: 599
 ```
 
-```r
-writeLines(sprintf('Number of recurrences typed: %s',
-                   length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
-```
-
 ```
 ## Number of recurrences typed: 435
 ```
 
-```r
-# We also remove MS data for which there are no recurrent data
-N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
-MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
-
-writeLines(sprintf('Number of individuals with at least two episodes typed: %s',
-                   length(unique(MS_pooled$ID))))
+```
+## Warning: package 'bindrcpp' was built under R version 3.4.4
 ```
 
 ```
 ## Number of individuals with at least two episodes typed: 159
 ```
 
-```r
-writeLines(sprintf('Number of recurrences typed: %s',
-                   length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
-```
-
 ```
 ## Number of recurrences typed: 435
 ```
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
 
 
 Define the sets of microsatellite markers for the various datasets.
@@ -89,8 +66,7 @@ The approach is fully Bayesian and consists of the following:
 
 # Allele frequencies
 
-There are a few ways of computing these. A natural first approach is to use the monoclonal data. However, some alleles are only seen in polyclonal infections, rending this approach not viable. A statistically rigorous approach would be to use a model for MS allele frequencies (e.g. Escalante 2015). At the moment we are using the empirical allele frequencies from the a specified dataset, with a Dirichlet-esque weight of 5 (5 pseudo-observations). 
-Setting the weight to 0 recovers unweighted empirical allele frequencies. 
+We use a multinomial-dirichlet model with subjective weight. Setting the weight to 0 recovers unweighted empirical allele frequencies. 
 
 
 ```
@@ -100,7 +76,7 @@ Setting the weight to 0 recovers unweighted empirical allele frequencies.
 
 ## Plotting allele frequencies
 
-These are the observed allele frequencies in the pooled data. We show 80% credible intervals (lo)
+These are the observed allele frequencies in the pooled data. We show 80% credible intervals (lo) (Aimee: seems to be 95%)
 
 ![](Pooled_Analysis_files/figure-html/AlleleFrequencies-1.png)<!-- -->
 
@@ -211,12 +187,10 @@ if(CREATE_PLOTS){
        y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
        labels = example_ids, pos = 2, cex = 0.7)
   
-  
   plot(log10(thetas_9MS_Tagnostic$I), log10(thetas_9MS$I), 
        col=thetas_9MS$drug_col, main = 'Reinfection',pch=20,
        xlab = 'Time agnostic', ylab = 'Time included')
   lines(-20:0,-20:0)
-  
   
   
   ##### Prior versus full posterior
@@ -226,7 +200,7 @@ if(CREATE_PLOTS){
        xlab = 'Time based prior', ylab = 'Full posterior')
   lines(-10:10,-10:10)
   
-    # Annotate by examples
+  # Annotate by examples
   points(x = log10(Time_Estimates_1$Relapse_mean_theta[Time1_example_inds]), 
          y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
          pch=1, cex = 1.5, col='black')
@@ -239,6 +213,7 @@ if(CREATE_PLOTS){
        col=thetas_9MS$drug_col,pch=20,
        xlab = 'Time based prior', ylab = 'Full posterior')
   lines(-10:10,-10:10)
+  
 }
 ```
 
@@ -267,7 +242,8 @@ if(CREATE_PLOTS){
                                     col=thetas_9MS$drug_col[reLapse_ordered$ix[i]])
   }
   
-  legend('topright',col = mycols[2:3], legend = c('No radical cure','Radical cure'),pch=20)
+  legend('topright',col = mycols[2:3], bty = 'n', 
+         legend = c('No radical cure','Radical cure'),pch=20)
   
   reLapse_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$L, 
                                   decreasing = TRUE, index.return = TRUE)
@@ -275,7 +251,7 @@ if(CREATE_PLOTS){
        col = thetas_9MS_Tagnostic$drug_col[reLapse_ordered_Tagn$ix],
        xlab = 'Recurrence index', ylab = 'Probability of relapse state',
        main = 'Time agnostic posterior: reLapse')
-  legend('topright',col = mycols[2:3], 
+  legend('topright',col = mycols[2:3], bty = 'n', 
          legend = c('No radical cure','Radical cure'),pch=20)
 }
 ```
@@ -292,14 +268,16 @@ if(CREATE_PLOTS){
   plot(reinfection_ordered$x, pch=20, col = thetas_9MS$drug_col[reinfection_ordered$ix],
        xlab = 'Recurrence index', ylab = 'Probability of reinfection state',
        main = 'Full posterior: reInfection')
-  legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),pch=18)
+  legend('topright',col = mycols[2:3],bty = 'n',  
+         legend = c('No radical cure','Radical cure'),pch=20)
   
   reinfection_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$I, decreasing = TRUE, index.return = TRUE)
   plot(reinfection_ordered_Tagn$x, pch=20, cex=.8,
        col = thetas_9MS_Tagnostic$drug_col[reinfection_ordered_Tagn$ix],
        xlab = 'Recurrence index', ylab = 'Probability of reinfection state',
        main = 'Time agnostic posterior: reInfection')
-  legend('topright',col = mycols[2:3], legend = c('No radical cure','Radical cure'),pch=20)
+  legend('topright',col = mycols[2:3],bty = 'n',  
+         legend = c('No radical cure','Radical cure'),pch=20)
 }
 ```
 
@@ -314,14 +292,16 @@ if(CREATE_PLOTS){
   plot(recrud_ordered$x, pch=20, col = thetas_9MS$drug_col[recrud_ordered$ix],
        xlab = 'Recurrence index', ylab = 'Probability of recrudescence state',
        main = 'Full posterior: reCrudescence')
-  legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),pch=18)
+  legend('topright',col = mycols[2:3],bty = 'n',  
+         legend = c('No radical cure','Radical cure'),pch=20)
   
   recrud_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$C, decreasing = TRUE, index.return = TRUE)
   plot(recrud_ordered_Tagn$x, pch=20, cex=.8,
        col = thetas_9MS_Tagnostic$drug_col[recrud_ordered_Tagn$ix],
        xlab = 'Recurrence index', ylab = 'Probability of recrudescence state',
        main = 'Time agnostic posterior: reCrudescence')
-  legend('topright',col = mycols[2:3], legend = c('No radical cure','Radical cure'),pch=20)
+  legend('topright',col = mycols[2:3],bty = 'n',  
+         legend = c('No radical cure','Radical cure'),pch=20)
 }
 ```
 
@@ -332,7 +312,9 @@ if(CREATE_PLOTS){
 
 ```r
 if(CREATE_PLOTS){
-  MS_pooled = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
+  
+  # Get rid of duplicated episode IDs (MOI > 1)
+  MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
   par(mfrow=c(1,2),las=1, bty='n')
   reLapse_ordered = sort.int(Thetas_BPD$L, decreasing = TRUE, index.return = TRUE)
   plot(reLapse_ordered$x, pch=20, col = Thetas_BPD$drug_col[reLapse_ordered$ix],
@@ -349,22 +331,19 @@ if(CREATE_PLOTS){
                                     code = 3,
                                     col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
   }
-  # # Annotate by examples
-  # points(reLapse_ordered$ix[example_inds],
-  #        Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
-  # text(x = example_inds_times, y = Thetas_BPD$L[example_inds], labels = example_ids, pos = 3)
+  
   
   
   writeLines(sprintf('The mean percentage of recurrences which are estimated to be relapses is %s%%',
                      round(100*sum(Thetas_BPD$L + Thetas_BPD$C)/nrow(Thetas_BPD))))
   
   
-  plot(NA,NA,xlim=c(0,max(MS_pooled$timeSinceLastEpisode,na.rm=T)), ylim=c(0,1),
+  plot(NA,NA,xlim=c(0,max(MS_pooled_summary$timeSinceLastEpisode,na.rm=T)), ylim=c(0,1),
        ylab = 'Probability of relapse', xlab = 'Time since last episode')
   for(i in 1:length(reLapse_ordered$x)){
     kk = reLapse_ordered$ix[i]
-    x_time = MS_pooled$timeSinceLastEpisode[Thetas_BPD$Episode_Identifier[kk]==
-                                              MS_pooled$Episode_Identifier]
+    x_time = MS_pooled_summary$timeSinceLastEpisode[Thetas_BPD$Episode_Identifier[kk]==
+                                                      MS_pooled_summary$Episode_Identifier]
     points(x_time,
            Thetas_BPD$L[kk], pch=20, col=mycols[3])
     if(diff(CI[i,]) > 0.005) arrows(x_time,CI[i,1],x_time,CI[i,2], 
@@ -373,9 +352,10 @@ if(CREATE_PLOTS){
                                     col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
   }
   
-  # # Annotate by examples
+  # Annotate by examples
   # points(example_inds_times,Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
-  # text(x = example_inds_times, y = Thetas_BPD$L[example_inds], labels = example_ids, pos = 3)
+  # text(x = example_inds_times, y = Thetas_BPD$L[example_inds], 
+  #      labels = example_ids, pos =3)
 }
 ```
 
@@ -392,9 +372,9 @@ if(CREATE_PLOTS){
 We remove the IDs that can be straightforwardly calculated:
 
 ```r
-ind_calculated = which(MS_pooled$Episode_Identifier %in% thetas_9MS$Episode_Identifier)
-IDs_calculated = unique(MS_pooled$ID[ind_calculated])
-IDs_remaining = unique(MS_pooled$ID[! MS_pooled$ID %in% IDs_calculated])
+ind_calculated = which(MS_pooled_summary$Episode_Identifier %in% thetas_9MS$Episode_Identifier)
+IDs_calculated = unique(MS_pooled_summary$ID[ind_calculated])
+IDs_remaining = unique(MS_pooled_summary$ID[! MS_pooled_summary$ID %in% IDs_calculated])
 ```
 
 We blow up the pooled analysis into all pairs within individuals:
@@ -404,10 +384,10 @@ We blow up the pooled analysis into all pairs within individuals:
 Construct adjacency graphs and compute probabilities of relapse and reinfection.
 
 ```r
-MS_pooled$L_or_C_state = MS_pooled$TotalEpisodes = NA
-MS_pooled$L_lower = MS_pooled$L_upper = MS_pooled$L_mean = NA
-MS_pooled$C_lower = MS_pooled$C_upper = MS_pooled$C_mean = NA
-MS_pooled$I_lower = MS_pooled$I_upper = MS_pooled$I_mean = NA
+MS_pooled_summary$L_or_C_state = MS_pooled_summary$TotalEpisodes = NA
+MS_pooled_summary$L_lower = MS_pooled_summary$L_upper = MS_pooled_summary$L_mean = NA
+MS_pooled_summary$C_lower = MS_pooled_summary$C_upper = MS_pooled_summary$C_mean = NA
+MS_pooled_summary$I_lower = MS_pooled_summary$I_upper = MS_pooled_summary$I_mean = NA
 # Arrange by complexity
 # Get single rows per episode (throw away the extra MOI information)
 MS_inflated = MS_inflated[!duplicated(MS_inflated$Episode_Identifier) & MS_inflated$Episode>1,]
@@ -421,21 +401,43 @@ Epsilon = 0.5
 
 # Iterate through the ones we can calculate in one go
 episodes_full_model = unique(Thetas_full_post$Episode_Identifier)
+cols_remove = grep('Episode_Identifier', colnames(Thetas_full_post))
+Thetas_full_post = Thetas_full_post[, -cols_remove]
 for(ep in episodes_full_model){
-  ind1 = (MS_pooled$Episode_Identifier==ep)
-  ind2 = (Thetas_full_post$Episode_Identifier==ep)
-  MS_pooled$L_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
-                                     probs=0.975)
-  MS_pooled$L_lower[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
-                                     probs=0.025)
-  MS_pooled$L_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
-                                    probs=0.5)
-  if(MS_pooled$L_upper[ind1] < Epsilon){
-    MS_pooled$L_or_C_state[ind1] = 'I'
-  } else if(MS_pooled$L_lower[ind1] > Epsilon){
-    MS_pooled$L_or_C_state[ind1] = 'L'
-  } else if(MS_pooled$L_upper[ind1] > Epsilon & MS_pooled$L_lower[ind1] < Epsilon){
-    MS_pooled$L_or_C_state[ind1] = 'Uncertain'
+  ind1 = (MS_pooled_summary$Episode_Identifier==ep)
+  ind2 = rownames(Thetas_full_post)==ep
+  
+  ## Summaries for relapse
+  MS_pooled_summary$L_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
+                                             probs=0.9)
+  MS_pooled_summary$L_lower[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
+                                             probs=0.1)
+  MS_pooled_summary$L_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
+                                            probs=0.5)
+  
+  ## Summaries for recrudescence
+  MS_pooled_summary$C_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('C',colnames(Thetas_full_post))]),
+                                             probs=0.9)
+  MS_pooled_summary$C_lower[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('C',colnames(Thetas_full_post))]),
+                                             probs=0.1)
+  MS_pooled_summary$C_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('C',colnames(Thetas_full_post))]),
+                                            probs=0.5)
+  
+  ## Summaries for reinfection
+  MS_pooled_summary$I_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('I',colnames(Thetas_full_post))]),
+                                             probs=0.9)
+  MS_pooled_summary$I_lower[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('I',colnames(Thetas_full_post))]),
+                                             probs=0.1)
+  MS_pooled_summary$I_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('I',colnames(Thetas_full_post))]),
+                                            probs=0.5)
+  
+  # Just going to classify on relapse versus reinfection
+  if(MS_pooled_summary$L_upper[ind1] < Epsilon){
+    MS_pooled_summary$L_or_C_state[ind1] = 'I'
+  } else if(MS_pooled_summary$L_lower[ind1] > Epsilon){
+    MS_pooled_summary$L_or_C_state[ind1] = 'L'
+  } else if(MS_pooled_summary$L_upper[ind1] > Epsilon & MS_pooled_summary$L_lower[ind1] < Epsilon){
+    MS_pooled_summary$L_or_C_state[ind1] = 'Uncertain'
   }
 }
 
@@ -444,139 +446,216 @@ for(i in 1:length(IDs_remaining)){
   Doubles_Thetas = filter(Res, ID_True==id)
   
   for(ep in unique(Doubles_Thetas$Second_EpNumber)){
-    ind1 = which(MS_pooled$ID==id & MS_pooled$Episode==ep)
+    ind1 = which(MS_pooled_summary$ID==id & MS_pooled_summary$Episode==ep)
     ind2 = which(Doubles_Thetas$Second_EpNumber == ep)
     
-    MS_pooled$L_lower[ind1] = mean(Doubles_Thetas$L_min[ind2])
-    MS_pooled$L_upper[ind1] = mean(Doubles_Thetas$L_max[ind2])
-    MS_pooled$L_mean[ind1] = mean(Doubles_Thetas$L_mean[ind2])
+    MS_pooled_summary$L_lower[ind1] = mean(Doubles_Thetas$L_min[ind2])
+    MS_pooled_summary$L_upper[ind1] = mean(Doubles_Thetas$L_max[ind2])
+    MS_pooled_summary$L_mean[ind1] = mean(Doubles_Thetas$L_mean[ind2])
     
-    MS_pooled$C_lower[ind1] = mean(Doubles_Thetas$C_min[ind2])
-    MS_pooled$C_upper[ind1] = mean(Doubles_Thetas$C_max[ind2])
-    MS_pooled$C_mean[ind1] = mean(Doubles_Thetas$C_mean[ind2])
-
-    MS_pooled$I_lower[ind1] = mean(Doubles_Thetas$I_min[ind2])
-    MS_pooled$I_upper[ind1] = mean(Doubles_Thetas$I_max[ind2])
-    MS_pooled$I_mean[ind1] = mean(Doubles_Thetas$I_mean[ind2])
-
-    if(!is.na(MS_pooled$L_upper[ind1])){
-      if(MS_pooled$L_upper[ind1] < MS_pooled$L_lower[ind1]){
+    MS_pooled_summary$C_lower[ind1] = mean(Doubles_Thetas$C_min[ind2])
+    MS_pooled_summary$C_upper[ind1] = mean(Doubles_Thetas$C_max[ind2])
+    MS_pooled_summary$C_mean[ind1] = mean(Doubles_Thetas$C_mean[ind2])
+    
+    MS_pooled_summary$I_lower[ind1] = mean(Doubles_Thetas$I_min[ind2])
+    MS_pooled_summary$I_upper[ind1] = mean(Doubles_Thetas$I_max[ind2])
+    MS_pooled_summary$I_mean[ind1] = mean(Doubles_Thetas$I_mean[ind2])
+    
+    if(!is.na(MS_pooled_summary$L_upper[ind1])){
+      if(MS_pooled_summary$L_upper[ind1] < MS_pooled_summary$L_lower[ind1]){
         print(id)
       }
-      if(MS_pooled$L_upper[ind1] < Epsilon){
-        MS_pooled$L_or_C_state[ind1] = 'I'
+      if(MS_pooled_summary$L_upper[ind1] < Epsilon){
+        MS_pooled_summary$L_or_C_state[ind1] = 'I'
       }
-      if(MS_pooled$L_lower[ind1] > Epsilon){
-        MS_pooled$L_or_C_state[ind1] = 'L'
+      if(MS_pooled_summary$L_lower[ind1] > Epsilon){
+        MS_pooled_summary$L_or_C_state[ind1] = 'L'
       }
-      if(MS_pooled$L_upper[ind1] > Epsilon & MS_pooled$L_lower[ind1] < Epsilon){
-        MS_pooled$L_or_C_state[ind1] = 'Uncertain'
+      if(MS_pooled_summary$L_upper[ind1] > Epsilon & 
+         MS_pooled_summary$L_lower[ind1] < Epsilon){
+        MS_pooled_summary$L_or_C_state[ind1] = 'Uncertain'
       }
     }
   }
   
 }
 
-MS_pooled$Drug = MS_pooled$FU = NA
-for(id in MS_pooled$ID){
-  ind = MS_pooled$ID==id
-  MS_pooled$TotalEpisodes[ind] = max(MS_pooled$Episode[ind])
-  MS_pooled$Drug[ind] = as.numeric(
+MS_pooled_summary$Drug = MS_pooled_summary$FU = NA
+for(id in MS_pooled_summary$ID){
+  ind = MS_pooled_summary$ID==id
+  MS_pooled_summary$TotalEpisodes[ind] = max(MS_pooled_summary$Episode[ind])
+  MS_pooled_summary$Drug[ind] = as.numeric(
     Combined_Time_Data$arm_num[Combined_Time_Data$patientid==id][1] == 'CHQ/PMQ') + 2
-  MS_pooled$FU[ind] = Combined_Time_Data$FU_time[Combined_Time_Data$patientid==id][1]
+  MS_pooled_summary$FU[ind] = Combined_Time_Data$FU_time[Combined_Time_Data$patientid==id][1]
 }
 
-MS_pooled$Plotting_pch_Values = as.numeric(mapvalues(MS_pooled$L_or_C_state, 
-                                                     from = c('L','Uncertain','I'), to = 15:17))
-MS_pooled$Plotting_col_Values = as.numeric(mapvalues(MS_pooled$L_or_C_state, 
-                                                     from = c('L','Uncertain','I'), to = 1:3))
+MS_pooled_summary$Plotting_pch_Values = 
+  as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, 
+                       from = c('L','Uncertain','I'), to = 15:17))
+MS_pooled_summary$Plotting_col_Values = 
+  as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, 
+                       from = c('L','Uncertain','I'), to = 1:3))
 ```
 
 
 ```r
-## Time series data colored by genetic STATE: classification
-mycols_states = c('red','yellow','black') # colors for states - need uncertain ones as well
-mycols_drugs = brewer.pal(n=3, name = 'Set1')
-
-MS_final = filter(MS_pooled, !is.na(L_mean))
-MS_final = arrange(MS_final, Drug, desc(FU), desc(TotalEpisodes))
-
-ids = unique(MS_final$ID)
-
-par(las=1, bty='n', cex.axis=.3, mar=c(3,0,1,1))
-plot(NA, NA, xlim = c(0,370), ylim = c(1,length(ids)),
-     xaxt='n', yaxt='n')
-mtext(text = 'Days from start of study', side = 1, line=2, cex=1.3)
-axis(1, at = seq(0,370, by=60), cex.axis=1.5)
-
-for(i in 1:length(ids)){
+if(CREATE_PLOTS){
+  ## Time series data colored by genetic STATE: classification
+  mycols_states = c('red','yellow','black') # colors for states - need uncertain ones as well
+  mycols_drugs = brewer.pal(n=3, name = 'Set1')
   
-  id = ids[i]
-  ind = which(MS_final$ID==id)
+  # Only the recurrences for which we can compute estimates of recurrence state
+  MS_final = filter(MS_pooled_summary, !is.na(L_mean))
+  MS_final = arrange(MS_final, desc(Drug), desc(FU), desc(TotalEpisodes))
+  ids = unique(MS_final$ID)
   
-  # Add the follow up time line
-  lines(c(0,MS_final$FU[ind[1]]), 
-        c(i,i), lty=1, 
-        lwd=.5, col= mycols_drugs[MS_final$Drug[ind[1]]])
+  par(las=1, bty='n', cex.axis=.3, mar=c(3,0,1,1))
+  plot(NA, NA, xlim = c(0,370), ylim = c(1,length(ids)),
+       xaxt='n', yaxt='n')
+  mtext(text = 'Days from start of study', side = 1, line=2, cex=1.3)
+  axis(1, at = seq(0,370, by=60), cex.axis=1.5)
   
-  cols = mycols_states[MS_final$Plotting_col_Values[ind]]
-  points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
-         pch=MS_final$Plotting_pch_Values[ind], 
-         col=cols,cex=.6)
-  
+  for(i in 1:length(ids)){
+    
+    id = ids[i]
+    ind = which(MS_final$ID==id)
+    
+    # Add the follow up time line
+    lines(c(0,MS_final$FU[ind[1]]), 
+          c(i,i), lty=1, 
+          lwd=.5, col= mycols_drugs[MS_final$Drug[ind[1]]])
+    
+    cols = mycols_states[MS_final$Plotting_col_Values[ind]]
+    points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
+           pch=MS_final$Plotting_pch_Values[ind], 
+           col=cols,cex=.6)
+    
+    # For highlighting long-latency
+    # Add the follow up time line
+    if(id == 'VHX_235' | id == 'BPD_27'){
+      lines(c(0,MS_final$FU[ind[1]]), 
+            c(i,i), lty = 'dashed', 
+            lwd=.5, col= 'black')
+      
+      cols = mycols_states[MS_final$Plotting_col_Values[ind]]
+      points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
+             pch=1, 
+             col='black',cex=1)}
+    
+  }
+  lines(x = c(0,0), y = c(0,length(ids)),lwd=3)
+  # Hacky colour legend
+  legend('topright', col = c('red', 'black', 'yellow',mycols_drugs[2:3]), 
+         pch = c(15,17,16, NA,NA), cex = 0.7, bty = 'n', 
+         lty = c(NA,NA,NA,1,1), lwd = c(NA,NA,NA,2,2),
+         legend = c('Classified relapse', 'Classified reinfection', 'Uncertain',
+                    'No radical cure', 'Radical cure'))
 }
-lines(x = c(0,0), y = c(0,length(ids)),lwd=3)
 ```
 
 ![](Pooled_Analysis_files/figure-html/CoatneyStylePLot-1.png)<!-- -->
 
 
 ```r
-par(las=1, mfcol = c(2,1), mar=c(3,4,1,1), bty='n')
-MS_final = arrange(MS_final, L_mean)
-plot(1:nrow(MS_final), MS_final$L_mean,
-     col = mycols_drugs[MS_final$Drug], 
-     pch=20, cex=.3, yaxt='n', ylab='')
-axis(2, at = c(0,.5,1))
-polygon(c(1:nrow(MS_final), rev(1:nrow(MS_final))), 
-        y = c(MS_final$L_lower,
-              rev(MS_final$L_upper)), 
-        border = NA, col = rgb(1, 0, 0,0.5))
-points(1:nrow(MS_final), MS_final$L_mean, 
+if(CREATE_PLOTS){
+  par(las=1, mfcol = c(2,1), mar=c(3,4,1,1), bty='n')
+  MS_final = arrange(MS_final, L_mean)
+  plot(1:nrow(MS_final), MS_final$L_mean,
        col = mycols_drugs[MS_final$Drug], 
-       pch=20, cex=.5)
-mtext(side = 1, text = 'Recurrence index', line = 2)
-mtext(side = 2, text = 'Relapse probability', line = 3,las=3)
-
-plot(MS_final$timeSinceLastEpisode, MS_final$L_mean,
-     col = mycols_drugs[MS_final$Drug], 
-     pch=20, cex=1, xlab = '',yaxt='n',
-     ylab = '')
-axis(2, at = c(0,.5,1))
-for(i in 1:nrow(MS_final)){
+       pch=20, cex=.3, yaxt='n', ylab='')
+  axis(2, at = c(0,.5,1))
+  polygon(c(1:nrow(MS_final), rev(1:nrow(MS_final))), 
+          y = c(MS_final$L_lower,
+                rev(MS_final$L_upper)), 
+          border = NA, col = rgb(1, 0, 0,0.5))
+  points(1:nrow(MS_final), MS_final$L_mean, 
+         col = mycols_drugs[MS_final$Drug], 
+         pch=20, cex=.5)
+  mtext(side = 1, text = 'Recurrence index', line = 2)
+  mtext(side = 2, text = 'Relapse probability', line = 3,las=3)
+  legend('bottomright', col = mycols_drugs[2:3], 
+         pch = 20, cex = 1.3, bty = 'n', 
+         legend = c('No radical cure','Radical cure'))
   
-  if(abs(MS_final$L_upper[i] - MS_final$L_lower[i]) > 0.005){
-    arrows(x0 = MS_final$timeSinceLastEpisode[i],
-           y0 = MS_final$L_lower[i],
-           x1=MS_final$timeSinceLastEpisode[i],
-           y1 = MS_final$L_upper[i],
-           length = 0.02,angle = 90, 
-           code = 3,
-           col=mycols_drugs[MS_final$Drug[i]])
+  plot(MS_final$timeSinceLastEpisode, MS_final$L_mean,
+       col = mycols_drugs[MS_final$Drug], 
+       pch=20, cex=.51, xlab = '',yaxt='n',
+       ylab = '')
+  axis(2, at = c(0,.5,1))
+  for(i in 1:nrow(MS_final)){
+    
+    if(abs(MS_final$L_upper[i] - MS_final$L_lower[i]) > 0.005){
+      arrows(x0 = MS_final$timeSinceLastEpisode[i],
+             y0 = MS_final$L_lower[i],
+             x1=MS_final$timeSinceLastEpisode[i],
+             y1 = MS_final$L_upper[i],
+             length = 0.02,angle = 90, 
+             code = 3,
+             col=mycols_drugs[MS_final$Drug[i]])
+    }
+    i=i+1
   }
-  i=i+1
+  mtext(side = 1, text = 'Days since last episode', line = 2)
+  mtext(side = 2, text = 'Relapse probability', line = 3,las=3)
 }
-mtext(side = 1, text = 'Days since last episode', line = 2)
-mtext(side = 2, text = 'Relapse probability', line = 3,las=3)
 ```
 
 ![](Pooled_Analysis_files/figure-html/CompleteDataPlot-1.png)<!-- -->
+Individuals who appear to relapse very late (more than 300 days after last episode):
+
+```r
+MS_pooled = reformat_MSdata(MS_pooled)
+IDs_late_relapse = MS_final[which(MS_final$timeSinceLastEpisode>300 & MS_final$L_lower>.9),'ID']
+
+writeLines(sprintf('The episode ids of interest are: %s',
+                   MS_final[which(MS_final$timeSinceLastEpisode>300 & MS_final$L_lower>.9),
+                            'Episode_Identifier']))
+```
+
+```
+## The episode ids of interest are: VHX_235_3
+## The episode ids of interest are: BPD_27_2
+```
+
+```r
+library(knitr)
+#ColorPlot_MSdata(MS_data = MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
+
+print( MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
+```
+
+```
+##          ID       Date MOI_id PV.1.501 PV.3.27 PV.3.502 PV.ms1 PV.ms16
+## 60   BPD_27 2012-03-28      1        3      23        7      4       9
+## 61   BPD_27 2013-01-30      1        3      23        7      4       9
+## 62   BPD_27 2013-01-30      2        3      24        7      4       9
+## 313 VHX_235 2010-07-20      1        1       6        1      3      NA
+## 314 VHX_235 2010-07-20      2        1       6        1      3      NA
+## 315 VHX_235 2010-08-10      1        1       6        2      4      NA
+## 316 VHX_235 2011-06-15      1        1       6        2      4      NA
+##     PV.ms5 PV.ms6 PV.ms7 PV.ms8 timeSinceEnrolment timeSinceLastEpisode
+## 60      11      5      2     13                  0                   NA
+## 61      11      5      2     13                308                  308
+## 62      11      5      2     13                308                  308
+## 313      7      9     NA     12                  0                   NA
+## 314      7     12     NA     32                  0                   NA
+## 315      7      9     NA     12                 21                   21
+## 316      6     12     NA     12                330                  309
+##     Episode Episode_Identifier
+## 60        1           BPD_27_1
+## 61        2           BPD_27_2
+## 62        2           BPD_27_2
+## 313       1          VHX_235_1
+## 314       1          VHX_235_1
+## 315       2          VHX_235_2
+## 316       3          VHX_235_3
+```
 
 
 The summaries of the final dataset:
 
 ```r
-table(MS_final$Drug[!duplicated(MS_final$ID)])
+table(MS_final$Drug[!duplicated(MS_final$ID)]) # James, this sums to 159 - surely should sum to 164? Have we lost 5 people somewhere? 
 ```
 
 ```
@@ -586,36 +665,338 @@ table(MS_final$Drug[!duplicated(MS_final$ID)])
 ```
 
 ```r
+# Yes: gotten rid of the 5 people who don't have recurrent episodes
+
 ind_CQ = MS_final$Drug==2
-writeLines(sprintf('The weighted average of relapses is %s (%s-%s)',
+writeLines(sprintf('In chloroquine monotherapy individuals, the weighted average of relapses is %s (%s-%s)',
                    round(100*sum(MS_final$L_mean[ind_CQ])/sum(ind_CQ),1),
                    round(100*sum(MS_final$L_lower[ind_CQ])/sum(ind_CQ),1),
                    round(100*sum(MS_final$L_upper[ind_CQ])/sum(ind_CQ),1)))
 ```
 
 ```
-## The weighted average of relapses is 98.3 (92.7-100)
+## In chloroquine monotherapy individuals, the weighted average of relapses is 98.6 (96-99.8)
 ```
 
 ```r
-writeLines(sprintf('The weighted average of recrudescences is %s (%s-%s)',
-                   round(100*sum(MS_final$C_mean[ind_CQ],na.rm=T)/sum(ind_CQ),3),
-                   round(100*sum(MS_final$C_lower[ind_CQ],na.rm=T)/sum(ind_CQ),3),
-                   round(100*sum(MS_final$C_upper[ind_CQ],na.rm=T)/sum(ind_CQ),3)))
+writeLines(sprintf('In chloroquine monotherapy individuals, the weighted average of recrudescences is %s (%s-%s)',
+                   round(100*sum(MS_final$C_mean[ind_CQ],na.rm=T)/sum(ind_CQ),1),
+                   round(100*sum(MS_final$C_lower[ind_CQ],na.rm=T)/sum(ind_CQ),1),
+                   round(100*sum(MS_final$C_upper[ind_CQ],na.rm=T)/sum(ind_CQ),1)))
 ```
 
 ```
-## The weighted average of recrudescences is 0 (0-0)
+## In chloroquine monotherapy individuals, the weighted average of recrudescences is 0.7 (0.2-1.1)
 ```
 
 ```r
-writeLines(sprintf('The weighted average of reinfections is %s (%s-%s)',
-                   round(100*sum(MS_final$I_mean[ind_CQ],na.rm=T)/sum(ind_CQ),3),
-                   round(100*sum(MS_final$I_lower[ind_CQ],na.rm=T)/sum(ind_CQ),3),
-                   round(100*sum(MS_final$I_upper[ind_CQ],na.rm=T)/sum(ind_CQ),3)))
+writeLines(sprintf('In chloroquine monotherapy individuals, the weighted average of reinfections is %s (%s-%s)',
+                   round(100*sum(MS_final$I_mean[ind_CQ],na.rm=T)/sum(ind_CQ),1),
+                   round(100*sum(MS_final$I_lower[ind_CQ],na.rm=T)/sum(ind_CQ),1),
+                   round(100*sum(MS_final$I_upper[ind_CQ],na.rm=T)/sum(ind_CQ),1)))
 ```
 
 ```
-## The weighted average of reinfections is 0 (0-0)
+## In chloroquine monotherapy individuals, the weighted average of reinfections is 0.7 (0-2.9)
 ```
+
+```r
+ind_PMQ = MS_final$Drug==3
+writeLines(sprintf('In chloroquine+primaquine individuals, the weighted average of relapses is %s (%s-%s)',
+                   round(100*sum(MS_final$L_mean[ind_PMQ])/sum(ind_PMQ),1),
+                   round(100*sum(MS_final$L_lower[ind_PMQ])/sum(ind_PMQ),1),
+                   round(100*sum(MS_final$L_upper[ind_PMQ])/sum(ind_PMQ),1)))
+```
+
+```
+## In chloroquine+primaquine individuals, the weighted average of relapses is 15 (12.8-17.4)
+```
+
+```r
+writeLines(sprintf('In chloroquine+primaquine individuals, the weighted average of recrudescences is %s (%s-%s)',
+                   round(100*sum(MS_final$C_mean[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
+                   round(100*sum(MS_final$C_lower[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
+                   round(100*sum(MS_final$C_upper[ind_PMQ],na.rm=T)/sum(ind_PMQ),1)))
+```
+
+```
+## In chloroquine+primaquine individuals, the weighted average of recrudescences is 0.3 (0-0.5)
+```
+
+```r
+writeLines(sprintf('In chloroquine+primaquine individuals, the weighted average of reinfections is %s (%s-%s)',
+                   round(100*sum(MS_final$I_mean[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
+                   round(100*sum(MS_final$I_lower[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
+                   round(100*sum(MS_final$I_upper[ind_PMQ],na.rm=T)/sum(ind_PMQ),1)))
+```
+
+```
+## In chloroquine+primaquine individuals, the weighted average of reinfections is 84.7 (82.5-86.7)
+```
+
+
+# False positive rate of relapse
+
+We want to know how often our model estimates evidence of relapse across pairs of episodes when the episodes are in different people (e.g.)
+
+
+```r
+if(RUN_MODELS_CLUSTER_INFLATED){
+  # The pooled MS data from BPD and VHX
+  load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
+  tic()
+  APC_MS_data = Make_All_Pairwise_Comparisons(MS_data = MS_pooled, ncores=42)
+  save(APC_MS_data, file = 'APC_MS_data.bigRData')
+  toc()
+  Inflated_Results = post_prob_CLI(MS_data = APC_MS_data, 
+                                   Fs = Fs_Combined, 
+                                   UpperComplexity = 10^6, 
+                                   verbose = F,
+                                   cores = 42)
+  save(Inflated_Results, file = 'Inflated_Results.bigRData')
+  
+} else {
+  # load('Inflated_Results.bigRData')
+  # load('APC_MS_data.bigRData')
+}
+```
+
+```
+## NULL
+```
+
+
+# Analysis of radical cure efficacy in BPD
+
+Almost all episodes in BPD were typed. Therefore we can estimate the true efficacy comparing with historical controls (VHX).
+
+
+```r
+BPD_data = Combined_Time_Data[grep('BPD', Combined_Time_Data$patientid),]
+hist(table(BPD_data$patientid),breaks = seq(0.5,3.5,by=1),main='',
+     xlab = '', xaxt='n')
+axis(1, at = 1:3, labels = c('Enrollment\nonly','1\nrecurrence','2\nrecurrences'),
+     tick = FALSE)
+```
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-20-1.png)<!-- -->
+
+```r
+BPD_data$Episode_Identifier = apply(BPD_data,1,
+                                              function(x){
+  paste(x['patientid'],x['episode'],sep='_')} )
+
+# iterate over recurrences and use either the joint posterior or if missing the time probability
+BPD_data$Reinfection_Probability=
+  BPD_data$Reinfection_Probability_LL=
+  BPD_data$Reinfection_Probability_UL = NA
+ind_recurrences = which(BPD_data$episode>1)
+sss=0
+for(i in ind_recurrences){
+  ep_id = BPD_data$Episode_Identifier[i]
+  if(ep_id %in% MS_final$Episode_Identifier){
+    BPD_data$Reinfection_Probability[i] =
+      MS_final$I_mean[MS_final$Episode_Identifier==ep_id]
+    BPD_data$Reinfection_Probability_UL[i] =
+      MS_final$I_upper[MS_final$Episode_Identifier==ep_id]
+    BPD_data$Reinfection_Probability_LL[i] =
+      MS_final$I_lower[MS_final$Episode_Identifier==ep_id]
+  } else {
+    BPD_data$Reinfection_Probability[i] =
+      Mod3_ThetaEstimates$ReInfection_mean_theta[Mod3_ThetaEstimates$Episode_Identifier==ep_id]
+    BPD_data$Reinfection_Probability_UL[i] =
+      Mod3_ThetaEstimates$ReInfection_975_theta[Mod3_ThetaEstimates$Episode_Identifier==ep_id]
+    BPD_data$Reinfection_Probability_LL[i] =
+      Mod3_ThetaEstimates$ReInfection_025_theta[Mod3_ThetaEstimates$Episode_Identifier==ep_id]
+    sss=sss+1
+  }
+}
+```
+
+
+
+```r
+writeLines(sprintf('%s recurrences did not have MS data to inform posterior probability',sss))
+```
+
+```
+## 5 recurrences did not have MS data to inform posterior probability
+```
+
+```r
+writeLines(sprintf('Number of recurrences without posterior probability assigned: %s',
+                   sum(is.na(BPD_data$Reinfection_Probability[ind_recurrences]))))
+```
+
+```
+## Number of recurrences without posterior probability assigned: 0
+```
+
+```r
+plot(ecdf(BPD_data$Reinfection_Probability), main='', xlab='Relapse probability')
+```
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-21-1.png)<!-- -->
+
+```r
+# now we calculate the primaquine failure rate
+# For individuals with multiple episodes this is P(Rec 1 not L)*P(Rec 2 not L)
+N = length(unique(BPD_data$patientid))
+N_recurring = 0
+P_Not_Failure = P_Not_Failure_LL = P_Not_Failure_UL = 0
+for(id in unique(BPD_data$patientid)){
+  ind = which(BPD_data$patientid==id)
+  if(length(ind)>1){
+    N_recurring = N_recurring + 1
+    P_Not_Failure = P_Not_Failure + prod(BPD_data$Reinfection_Probability[ind[-1]])
+    P_Not_Failure_LL = P_Not_Failure_LL +
+      prod(BPD_data$Reinfection_Probability_LL[ind[-1]])
+    P_Not_Failure_UL = P_Not_Failure_UL +
+      prod(BPD_data$Reinfection_Probability_UL[ind[-1]])
+  }
+}
+P_Failure = (N_recurring-P_Not_Failure)/N
+# invert the intervals here - optimistic for not failure = pessimistic for failure
+P_Failure_UL = (N_recurring-P_Not_Failure_LL)/N
+P_Failure_LL = (N_recurring-P_Not_Failure_UL)/N
+
+writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+                 N, round(100*P_Failure,2),
+                 round(100*P_Failure_LL,2),
+                 round(100*P_Failure_UL,2), round(sum(BPD_data$FU_time[!duplicated(BPD_data$patientid)])/365)))
+```
+
+```
+## The primaquine failure rate in the 655 individuals is 1.97% (1.69-2.28) over the course of 522 years total follow-up.
+```
+
+
+
+Now we look at whether the PK (carboxy-primaquine) can predict failure:
+
+```r
+BPD_data = arrange(BPD_data, patientid, episode)
+load('../RData/PK_data/BPD_pk.RData')
+BPD_pk = filter(BPD_pk, !is.na(Episode))
+BPD_data$log10_carboxyPMQ = NA
+BPD_data$log10_PMQ = NA
+BPD_data$Failure = NA
+for(i in 1:nrow(BPD_data)){
+  id = BPD_data$patientid[i]
+  ep_i = BPD_data$episode[i]
+  all_id_eps = BPD_data$episode[BPD_data$patientid==id]
+  pk_ind = BPD_pk$ID == id & BPD_pk$Episode==ep_i
+  if(sum(pk_ind)>0){
+    BPD_data$log10_carboxyPMQ[i] = mean(BPD_pk$log10_carboxyPQ_PK[pk_ind])
+    BPD_data$log10_PMQ[i] = mean(BPD_pk$log10_PQ_PK[pk_ind])
+  }
+  if(ep_i < max(all_id_eps)) { # observed recurrence
+    BPD_data$Failure[i] = 1-BPD_data$Reinfection_Probability[BPD_data$patientid==id & BPD_data$episode==(ep_i+1)]
+  } else {
+    # Going to put the estimates of failure from time to event model
+    # this will take into account censoring
+    #ind = which(Mod3_ThetaEstimates$patientid==id & Mod3_ThetaEstimates$episode==ep_i)
+    BPD_data$Failure[i] = 0#1 - Mod3_ThetaEstimates$ReInfection_mean_theta[ind]
+  }
+}
+```
+
+
+
+```r
+require(lme4)
+```
+
+```
+## Loading required package: lme4
+```
+
+```
+## Warning: package 'lme4' was built under R version 3.4.4
+```
+
+```r
+# add a random effect term for patient ID
+mod = lmer(Failure ~ log10_carboxyPMQ + log10_PMQ + (1 | patientid), data = BPD_data)
+summary(mod)
+```
+
+```
+## Linear mixed model fit by REML ['lmerMod']
+## Formula: Failure ~ log10_carboxyPMQ + log10_PMQ + (1 | patientid)
+##    Data: BPD_data
+## 
+## REML criterion at convergence: -1038.8
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -1.3384 -0.2130 -0.1237 -0.0450  8.8369 
+## 
+## Random effects:
+##  Groups    Name        Variance  Std.Dev. 
+##  patientid (Intercept) 8.802e-19 9.382e-10
+##  Residual              1.348e-02 1.161e-01
+## Number of obs: 721, groups:  patientid, 639
+## 
+## Fixed effects:
+##                  Estimate Std. Error t value
+## (Intercept)       0.21771    0.04490   4.849
+## log10_carboxyPMQ -0.08410    0.01904  -4.418
+## log10_PMQ         0.04494    0.01396   3.219
+## 
+## Correlation of Fixed Effects:
+##             (Intr) lg10_cPMQ
+## lg10_crbPMQ -0.986          
+## log10_PMQ    0.729 -0.820
+```
+
+So there is a predictive effect of carboxy primaquine on drug failure. This also suggests that higher concentrations of primaquine are associated with more chance of failure. This also came up in the time to event analysis in the BPD paper but wasn't significant.
+
+This could actually make sense: higher concentrations of primaquine could mean that it's hasn't been effectively metabolised. Higher concentrations of carboxy indicating it has been effectively metabolised (active pathway is unknown).
+
+```r
+BPD_data = filter(BPD_data, episode==1)
+BPD_data$Failure_YN = as.numeric(BPD_data$Failure > 0.5)
+mod1 = glm(Failure_YN ~ log10_carboxyPMQ, data = BPD_data, family='binomial')
+summary(mod1)
+```
+
+```
+## 
+## Call:
+## glm(formula = Failure_YN ~ log10_carboxyPMQ, family = "binomial", 
+##     data = BPD_data)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -0.4363  -0.1924  -0.1622  -0.1341   3.2343  
+## 
+## Coefficients:
+##                  Estimate Std. Error z value Pr(>|z|)  
+## (Intercept)       -0.2348     1.8708  -0.125   0.9001  
+## log10_carboxyPMQ  -1.4376     0.7099  -2.025   0.0429 *
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 102.926  on 636  degrees of freedom
+## Residual deviance:  99.309  on 635  degrees of freedom
+##   (18 observations deleted due to missingness)
+## AIC: 103.31
+## 
+## Number of Fisher Scoring iterations: 7
+```
+
+```r
+plot(BPD_data$log10_carboxyPMQ, BPD_data$Failure_YN,
+     xlab = 'Carboxy PMQ', ylab = 'PMQ', pch=20)
+xs=seq(0,4,by=.01)
+lines(xs, predict(mod1, newdata = data.frame(log10_carboxyPMQ=xs),
+                    type = 'response'), col='red', lwd=3)
+```
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
+
+
 
