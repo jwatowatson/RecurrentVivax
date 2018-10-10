@@ -31,17 +31,21 @@ source("../Genetic_Model/Data_Inflation_Functions.R")
 # The pooled MS data from BPD and VHX
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
 
+# Booleans that describe generation of Markdown file. 
+# The large jobs are done on the cluster
 RUN_MODELS = T
-RUN_MODELS_CLUSTER = T
-CREATE_PLOTS = T
+RUN_MODELS_CLUSTER = F
+RUN_MODELS_CLUSTER_INFLATED = T
+CREATE_PLOTS = F
 
-## ------------------------------------------------------------------------
+## ---- echo=FALSE---------------------------------------------------------
 writeLines(sprintf('Number of individuals with at least one episode typed: %s',
                    length(unique(MS_pooled$ID))))
 writeLines(sprintf('Number of episodes typed: %s',
                    length(unique(MS_pooled$Episode_Identifier))))
 writeLines(sprintf('Number of recurrences typed: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
+
 # We also remove MS data for which there are no recurrent data
 N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
 MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
@@ -259,12 +263,10 @@ if(CREATE_PLOTS){
        y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
        labels = example_ids, pos = 2, cex = 0.7)
   
-  
   plot(log10(thetas_9MS_Tagnostic$I), log10(thetas_9MS$I), 
        col=thetas_9MS$drug_col, main = 'Reinfection',pch=20,
        xlab = 'Time agnostic', ylab = 'Time included')
   lines(-20:0,-20:0)
-  
   
   
   ##### Prior versus full posterior
@@ -287,9 +289,10 @@ if(CREATE_PLOTS){
        col=thetas_9MS$drug_col,pch=20,
        xlab = 'Time based prior', ylab = 'Full posterior')
   lines(-10:10,-10:10)
+  
 }
 
-## ------------------------------------------------------------------------
+## ---- fig.width=10-------------------------------------------------------
 if(CREATE_PLOTS){
   
   par(mfrow=c(1,2),las=1, bty='n')
@@ -310,7 +313,8 @@ if(CREATE_PLOTS){
                                     col=thetas_9MS$drug_col[reLapse_ordered$ix[i]])
   }
   
-  legend('topright',col = mycols[2:3], legend = c('No radical cure','Radical cure'),pch=20)
+  legend('topright',col = mycols[2:3], bty = 'n', 
+         legend = c('No radical cure','Radical cure'),pch=20)
   
   reLapse_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$L, 
                                   decreasing = TRUE, index.return = TRUE)
@@ -318,11 +322,11 @@ if(CREATE_PLOTS){
        col = thetas_9MS_Tagnostic$drug_col[reLapse_ordered_Tagn$ix],
        xlab = 'Recurrence index', ylab = 'Probability of relapse state',
        main = 'Time agnostic posterior: reLapse')
-  legend('topright',col = mycols[2:3], 
+  legend('topright',col = mycols[2:3], bty = 'n', 
          legend = c('No radical cure','Radical cure'),pch=20)
 }
 
-## ------------------------------------------------------------------------
+## ---- fig.width=10-------------------------------------------------------
 if(CREATE_PLOTS){
   
   par(mfrow=c(1,2),las=1, bty='n')
@@ -330,34 +334,38 @@ if(CREATE_PLOTS){
   plot(reinfection_ordered$x, pch=20, col = thetas_9MS$drug_col[reinfection_ordered$ix],
        xlab = 'Recurrence index', ylab = 'Probability of reinfection state',
        main = 'Full posterior: reInfection')
-  legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),pch=18)
+  legend('topright',col = mycols[2:3],bty = 'n',  
+         legend = c('No radical cure','Radical cure'),pch=20)
   
   reinfection_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$I, decreasing = TRUE, index.return = TRUE)
   plot(reinfection_ordered_Tagn$x, pch=20, cex=.8,
        col = thetas_9MS_Tagnostic$drug_col[reinfection_ordered_Tagn$ix],
        xlab = 'Recurrence index', ylab = 'Probability of reinfection state',
        main = 'Time agnostic posterior: reInfection')
-  legend('topright',col = mycols[2:3], legend = c('No radical cure','Radical cure'),pch=20)
+  legend('topright',col = mycols[2:3],bty = 'n',  
+         legend = c('No radical cure','Radical cure'),pch=20)
 }
 
-## ------------------------------------------------------------------------
+## ---- fig.width=10-------------------------------------------------------
 if(CREATE_PLOTS){
   par(mfrow=c(1,2),las=1, bty='n')
   recrud_ordered = sort.int(thetas_9MS$C, decreasing = TRUE, index.return = TRUE)
   plot(recrud_ordered$x, pch=20, col = thetas_9MS$drug_col[recrud_ordered$ix],
        xlab = 'Recurrence index', ylab = 'Probability of recrudescence state',
        main = 'Full posterior: reCrudescence')
-  legend('topright',col = 1:2, legend = c('No radical cure','Radical cure'),pch=18)
+  legend('topright',col = mycols[2:3],bty = 'n',  
+         legend = c('No radical cure','Radical cure'),pch=20)
   
   recrud_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$C, decreasing = TRUE, index.return = TRUE)
   plot(recrud_ordered_Tagn$x, pch=20, cex=.8,
        col = thetas_9MS_Tagnostic$drug_col[recrud_ordered_Tagn$ix],
        xlab = 'Recurrence index', ylab = 'Probability of recrudescence state',
        main = 'Time agnostic posterior: reCrudescence')
-  legend('topright',col = mycols[2:3], legend = c('No radical cure','Radical cure'),pch=20)
+  legend('topright',col = mycols[2:3],bty = 'n',  
+         legend = c('No radical cure','Radical cure'),pch=20)
 }
 
-## ----BPD_efficacy--------------------------------------------------------
+## ----BPD_efficacy, fig.width=10------------------------------------------
 if(CREATE_PLOTS){
   MS_pooled = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
   par(mfrow=c(1,2),las=1, bty='n')
@@ -376,10 +384,7 @@ if(CREATE_PLOTS){
                                     code = 3,
                                     col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
   }
-  # # Annotate by examples
-  # points(reLapse_ordered$ix[example_inds],
-  #        Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
-  # text(x = example_inds_times, y = Thetas_BPD$L[example_inds], labels = example_ids, pos = 3)
+  
   
   
   writeLines(sprintf('The mean percentage of recurrences which are estimated to be relapses is %s%%',
@@ -400,9 +405,10 @@ if(CREATE_PLOTS){
                                     col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
   }
   
-  # # Annotate by examples
+  # Annotate by examples
   # points(example_inds_times,Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
-  # text(x = example_inds_times, y = Thetas_BPD$L[example_inds], labels = example_ids, pos = 3)
+  # text(x = example_inds_times, y = Thetas_BPD$L[example_inds], 
+  #      labels = example_ids, pos =3)
 }
 
 ## ------------------------------------------------------------------------
@@ -462,3 +468,188 @@ if(RUN_MODELS_CLUSTER){
 } else {
   load('FullPosterior_INF.bigRData')
 }
+
+# Summarise the results
+Res = data.frame(Episode_Identifier = rownames(Res_total),
+                 C_mean = apply(Res_total[,grep('C',colnames(Res_total))],1,
+                                quantile,probs = 0.5,na.rm=T),
+                 C_min = apply(Res_total[,grep('C',colnames(Res_total))],1,
+                               quantile,probs = 0.1,na.rm=T),
+                 C_max = apply(Res_total[,grep('C',colnames(Res_total))],1,
+                               quantile,probs = 0.9,na.rm=T),
+                 L_min = apply(Res_total[,grep('L',colnames(Res_total))],1,
+                               quantile,probs = 0.1,na.rm=T),
+                 L_max = apply(Res_total[,grep('L',colnames(Res_total))],1,
+                               quantile,probs = 0.9,na.rm=T),
+                 L_mean = apply(Res_total[,grep('L',colnames(Res_total))],1,
+                                quantile,probs = 0.5,na.rm=T),
+                 I_mean = apply(Res_total[,grep('I',colnames(Res_total))],1,
+                                quantile,probs = 0.5,na.rm=T),
+                 I_min = apply(Res_total[,grep('I',colnames(Res_total))],1,
+                               quantile,probs = 0.1,na.rm=T),
+                 I_max = apply(Res_total[,grep('I',colnames(Res_total))],1,
+                               quantile,probs = 0.9,na.rm=T))
+
+## ------------------------------------------------------------------------
+MS_pooled$L_or_C_state = MS_pooled$TotalEpisodes = NA
+MS_pooled$L_lower = MS_pooled$L_upper = MS_pooled$L_mean = NA
+MS_pooled$C_lower = MS_pooled$C_upper = MS_pooled$C_mean = NA
+MS_pooled$I_lower = MS_pooled$I_upper = MS_pooled$I_mean = NA
+# Arrange by complexity
+# Get single rows per episode (throw away the extra MOI information)
+MS_inflated = MS_inflated[!duplicated(MS_inflated$Episode_Identifier) & MS_inflated$Episode>1,]
+Res$ID_True = MS_inflated$ID_True
+Res$First_EpNumber = MS_inflated$First_EpNumber
+Res$Second_EpNumber = MS_inflated$Second_EpNumber
+
+
+## Threshold value for classification
+Epsilon = 0.5
+
+# Iterate through the ones we can calculate in one go
+episodes_full_model = unique(Thetas_full_post$Episode_Identifier)
+for(ep in episodes_full_model){
+  ind1 = (MS_pooled$Episode_Identifier==ep)
+  ind2 = (Thetas_full_post$Episode_Identifier==ep)
+  MS_pooled$L_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
+                                     probs=0.975)
+  MS_pooled$L_lower[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
+                                     probs=0.025)
+  MS_pooled$L_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
+                                    probs=0.5)
+  if(MS_pooled$L_upper[ind1] < Epsilon){
+    MS_pooled$L_or_C_state[ind1] = 'I'
+  } else if(MS_pooled$L_lower[ind1] > Epsilon){
+    MS_pooled$L_or_C_state[ind1] = 'L'
+  } else if(MS_pooled$L_upper[ind1] > Epsilon & MS_pooled$L_lower[ind1] < Epsilon){
+    MS_pooled$L_or_C_state[ind1] = 'Uncertain'
+  }
+}
+
+for(i in 1:length(IDs_remaining)){
+  id = IDs_remaining[i]
+  Doubles_Thetas = filter(Res, ID_True==id)
+  
+  for(ep in unique(Doubles_Thetas$Second_EpNumber)){
+    ind1 = which(MS_pooled$ID==id & MS_pooled$Episode==ep)
+    ind2 = which(Doubles_Thetas$Second_EpNumber == ep)
+    
+    MS_pooled$L_lower[ind1] = mean(Doubles_Thetas$L_min[ind2])
+    MS_pooled$L_upper[ind1] = mean(Doubles_Thetas$L_max[ind2])
+    MS_pooled$L_mean[ind1] = mean(Doubles_Thetas$L_mean[ind2])
+    
+    MS_pooled$C_lower[ind1] = mean(Doubles_Thetas$C_min[ind2])
+    MS_pooled$C_upper[ind1] = mean(Doubles_Thetas$C_max[ind2])
+    MS_pooled$C_mean[ind1] = mean(Doubles_Thetas$C_mean[ind2])
+    
+    MS_pooled$I_lower[ind1] = mean(Doubles_Thetas$I_min[ind2])
+    MS_pooled$I_upper[ind1] = mean(Doubles_Thetas$I_max[ind2])
+    MS_pooled$I_mean[ind1] = mean(Doubles_Thetas$I_mean[ind2])
+    
+    if(!is.na(MS_pooled$L_upper[ind1])){
+      if(MS_pooled$L_upper[ind1] < MS_pooled$L_lower[ind1]){
+        print(id)
+      }
+      if(MS_pooled$L_upper[ind1] < Epsilon){
+        MS_pooled$L_or_C_state[ind1] = 'I'
+      }
+      if(MS_pooled$L_lower[ind1] > Epsilon){
+        MS_pooled$L_or_C_state[ind1] = 'L'
+      }
+      if(MS_pooled$L_upper[ind1] > Epsilon & MS_pooled$L_lower[ind1] < Epsilon){
+        MS_pooled$L_or_C_state[ind1] = 'Uncertain'
+      }
+    }
+  }
+  
+}
+
+MS_pooled$Drug = MS_pooled$FU = NA
+for(id in MS_pooled$ID){
+  ind = MS_pooled$ID==id
+  MS_pooled$TotalEpisodes[ind] = max(MS_pooled$Episode[ind])
+  MS_pooled$Drug[ind] = as.numeric(
+    Combined_Time_Data$arm_num[Combined_Time_Data$patientid==id][1] == 'CHQ/PMQ') + 2
+  MS_pooled$FU[ind] = Combined_Time_Data$FU_time[Combined_Time_Data$patientid==id][1]
+}
+
+MS_pooled$Plotting_pch_Values = as.numeric(mapvalues(MS_pooled$L_or_C_state, 
+                                                     from = c('L','Uncertain','I'), to = 15:17))
+MS_pooled$Plotting_col_Values = as.numeric(mapvalues(MS_pooled$L_or_C_state, 
+                                                     from = c('L','Uncertain','I'), to = 1:3))
+
+## ----CoatneyStylePLot, fig.heigh=10--------------------------------------
+if(CREATE_PLOTS){
+## Time series data colored by genetic STATE: classification
+mycols_states = c('red','yellow','black') # colors for states - need uncertain ones as well
+mycols_drugs = brewer.pal(n=3, name = 'Set1')
+
+MS_final = filter(MS_pooled, !is.na(L_mean))
+MS_final = arrange(MS_final, Drug, desc(FU), desc(TotalEpisodes))
+ids = unique(MS_final$ID)
+
+par(las=1, bty='n', cex.axis=.3, mar=c(3,0,1,1))
+plot(NA, NA, xlim = c(0,370), ylim = c(1,length(ids)),
+     xaxt='n', yaxt='n')
+mtext(text = 'Days from start of study', side = 1, line=2, cex=1.3)
+axis(1, at = seq(0,370, by=60), cex.axis=1.5)
+
+for(i in 1:length(ids)){
+  
+  id = ids[i]
+  ind = which(MS_final$ID==id)
+  
+  # Add the follow up time line
+  lines(c(0,MS_final$FU[ind[1]]), 
+        c(i,i), lty=1, 
+        lwd=.5, col= mycols_drugs[MS_final$Drug[ind[1]]])
+  
+  cols = mycols_states[MS_final$Plotting_col_Values[ind]]
+  points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
+         pch=MS_final$Plotting_pch_Values[ind], 
+         col=cols,cex=.6)
+  
+  # For highlighting long-latency
+  # Add the follow up time line
+  if(id == 'VHX_235'){
+  ind = which(MS_final$ID=='VHX_235')
+  lines(c(0,MS_final$FU[ind[1]]), 
+        c(i,i), lty = 'dashed', 
+        lwd=.5, col= 'black')
+  
+  cols = mycols_states[MS_final$Plotting_col_Values[ind]]
+  points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
+         pch=1, 
+         col='black',cex=1)}
+
+}
+lines(x = c(0,0), y = c(0,length(ids)),lwd=3)
+
+# Hacky colour legend
+legend('topright', col = c('red', 'black', 'yellow'), 
+       pch = c(15,17,16), cex = 0.7, bty = 'n', 
+       legend = c('Classified relapse', 'Classified reinfection', 'Uncertain'))
+}
+
+
+
+## ------------------------------------------------------------------------
+if(RUN_MODELS_CLUSTER_INFLATED){
+# The pooled MS data from BPD and VHX
+load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
+tic()
+APC_MS_data = Make_All_Pairwise_Comparisons(MS_data = MS_pooled, ncores=42)
+save(Inflated_Results, file = 'Inflated_Results.bigRData')
+toc()
+Inflated_Results = post_prob_CLI(MS_data = APC_MS_data, 
+                        Fs = Fs_Combined, 
+                        UpperComplexity = 10^6, 
+                        verbose = F,
+                        cores = 42)
+
+save(APC_MS_data, file = 'APC_MS_data.bigRData')
+} else {
+  load('Inflated_Results.bigRData')
+  load('APC_MS_data.bigRData')
+}
+
