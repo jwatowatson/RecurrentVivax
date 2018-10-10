@@ -17,6 +17,9 @@ StanModels_mod*
 Timing_Model/TimingModelStan_cache/*
 Pooled_Final_Analysis/*_cache/
 
+# The 2D6 data which is sensitive
+RData/PK_data/TwoD6&Vivax Genotyping_ASscore*
+
 Simulation_Study/*_cache/
 Simulation_Study/*_files/
 

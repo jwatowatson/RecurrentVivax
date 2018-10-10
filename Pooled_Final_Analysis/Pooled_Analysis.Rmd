@@ -999,9 +999,8 @@ mod = lmer(Failure ~ log10_carboxyPMQ + log10_PMQ + (1 | patientid), data = BPD_
 summary(mod)
 ```
 
-So there is a predictive effect of carboxy primaquine on drug failure. This also suggests that higher concentrations of primaquine are associated with more chance of failure. This also came up in the time to event analysis in the BPD paper but wasn't significant.
+So there is a predictive effect of carboxy primaquine on drug failure. 
 
-This could actually make sense: higher concentrations of primaquine could mean that it's hasn't been effectively metabolised. Higher concentrations of carboxy indicating it has been effectively metabolised (active pathway is unknown).
 ```{r}
 BPD_data = filter(BPD_data, episode==1)
 BPD_data$Failure_YN = as.numeric(BPD_data$Failure > 0.5)
@@ -1014,5 +1013,25 @@ lines(xs, predict(mod1, newdata = data.frame(log10_carboxyPMQ=xs),
                     type = 'response'), col='red', lwd=3)
 ```
 
+This won't go into this paper but looking out of interest:
+
+Does 2D6 correlate with carboxy ?
+
+```{r}
+TwoD6_dat = read.csv('../RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
+TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],as.integer(x['Patient.ID']),sep = '_'))
+BPD_data$ASscore = NA
+for(i in 1:nrow(BPD_data)){
+  id = BPD_data$patientid[i]
+  if(sum(TwoD6_dat$ID==id)>0){
+    BPD_data$ASscore[i] = TwoD6_dat$AS.score[TwoD6_dat$ID==id]
+  }
+}
+
+mod_2D6 = lm(log10_carboxyPMQ ~ ASscore, data = BPD_data)
+summary(mod_2D6)
+plot(BPD_data$ASscore, BPD_data$log10_carboxyPMQ, pch=20)
+lines(xs, predict(mod_2D6, data.frame(ASscore=xs)),lwd=3)
+```
 
 
