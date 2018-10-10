@@ -950,53 +950,109 @@ summary(mod)
 ## log10_PMQ    0.729 -0.820
 ```
 
-So there is a predictive effect of carboxy primaquine on drug failure. This also suggests that higher concentrations of primaquine are associated with more chance of failure. This also came up in the time to event analysis in the BPD paper but wasn't significant.
+So there is a predictive effect of carboxy primaquine on drug failure. 
 
-This could actually make sense: higher concentrations of primaquine could mean that it's hasn't been effectively metabolised. Higher concentrations of carboxy indicating it has been effectively metabolised (active pathway is unknown).
 
 ```r
-BPD_data = filter(BPD_data, episode==1)
+#BPD_data = filter(BPD_data, episode==1)
 BPD_data$Failure_YN = as.numeric(BPD_data$Failure > 0.5)
-mod1 = glm(Failure_YN ~ log10_carboxyPMQ, data = BPD_data, family='binomial')
+mod1 = glmer(Failure_YN ~ log10_carboxyPMQ + (1 | patientid), 
+             data = BPD_data, family='binomial')
 summary(mod1)
 ```
 
 ```
+## Generalized linear mixed model fit by maximum likelihood (Laplace
+##   Approximation) [glmerMod]
+##  Family: binomial  ( logit )
+## Formula: Failure_YN ~ log10_carboxyPMQ + (1 | patientid)
+##    Data: BPD_data
 ## 
-## Call:
-## glm(formula = Failure_YN ~ log10_carboxyPMQ, family = "binomial", 
-##     data = BPD_data)
+##      AIC      BIC   logLik deviance df.resid 
+##    112.8    126.6    -53.4    106.8      718 
 ## 
-## Deviance Residuals: 
-##     Min       1Q   Median       3Q      Max  
-## -0.4363  -0.1924  -0.1622  -0.1341   3.2343  
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -0.6238 -0.1315 -0.1084 -0.0887 15.2799 
 ## 
-## Coefficients:
-##                  Estimate Std. Error z value Pr(>|z|)  
-## (Intercept)       -0.2348     1.8708  -0.125   0.9001  
-## log10_carboxyPMQ  -1.4376     0.7099  -2.025   0.0429 *
+## Random effects:
+##  Groups    Name        Variance  Std.Dev. 
+##  patientid (Intercept) 2.042e-14 1.429e-07
+## Number of obs: 721, groups:  patientid, 639
+## 
+## Fixed effects:
+##                  Estimate Std. Error z value Pr(>|z|)   
+## (Intercept)      -0.06011    1.31405  -0.046  0.96352   
+## log10_carboxyPMQ -1.55359    0.51873  -2.995  0.00274 **
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
-## (Dispersion parameter for binomial family taken to be 1)
-## 
-##     Null deviance: 102.926  on 636  degrees of freedom
-## Residual deviance:  99.309  on 635  degrees of freedom
-##   (18 observations deleted due to missingness)
-## AIC: 103.31
-## 
-## Number of Fisher Scoring iterations: 7
+## Correlation of Fixed Effects:
+##             (Intr)
+## lg10_crbPMQ -0.972
 ```
 
 ```r
-plot(BPD_data$log10_carboxyPMQ, BPD_data$Failure_YN,
-     xlab = 'Carboxy PMQ', ylab = 'PMQ', pch=20)
+plot(BPD_data$log10_carboxyPMQ, BPD_data$Failure_YN,pch='+',
+     xlab = 'Carboxy PMQ', ylab = 'Failure probability')
 xs=seq(0,4,by=.01)
-lines(xs, predict(mod1, newdata = data.frame(log10_carboxyPMQ=xs),
+lines(xs, predict(mod1, newdata = data.frame(log10_carboxyPMQ=xs,
+                                             patientid='new'),
+                  allow.new.levels=T,
                     type = 'response'), col='red', lwd=3)
 ```
 
 ![](Pooled_Analysis_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
 
+This won't go into this paper but looking out of interest:
+
+Does 2D6 correlate with carboxy ?
+
+
+```r
+TwoD6_dat = read.csv('../RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
+TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],as.integer(x['Patient.ID']),sep = '_'))
+TwoD6_dat$Phenotype = mapvalues(TwoD6_dat$X2D6.Phenotype, 
+                                from = c('PM','IM', 'EM'), to = 1:3)
+BPD_data$ASscore = NA
+for(i in 1:nrow(BPD_data)){
+  id = BPD_data$patientid[i]
+  if(sum(TwoD6_dat$ID==id)>0){
+    BPD_data$ASscore[i] = TwoD6_dat$AS.score[TwoD6_dat$ID==id]
+  }
+}
+
+mod_2D6 = lm(log10_carboxyPMQ ~ ASscore, data = BPD_data)
+summary(mod_2D6)
+```
+
+```
+## 
+## Call:
+## lm(formula = log10_carboxyPMQ ~ ASscore, data = BPD_data)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -2.16328 -0.19914  0.03915  0.20937  0.94095 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)  2.79889    0.07745  36.136   <2e-16 ***
+## ASscore     -0.06682    0.05536  -1.207    0.229    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 0.4211 on 232 degrees of freedom
+##   (513 observations deleted due to missingness)
+## Multiple R-squared:  0.00624,	Adjusted R-squared:  0.001956 
+## F-statistic: 1.457 on 1 and 232 DF,  p-value: 0.2287
+```
+
+```r
+plot(BPD_data$ASscore, BPD_data$log10_carboxyPMQ, pch=20)
+lines(xs, predict(mod_2D6, data.frame(ASscore=xs)),lwd=3)
+```
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
 
 
