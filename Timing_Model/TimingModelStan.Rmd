@@ -29,7 +29,7 @@ require(gdata)
 # Note that recompilation is necessary on different platforms
 RECOMPILE_MODELS = F
 # Running the full stan models can take several days
-RUN_MODELS = T
+RUN_MODELS = F
 ```
 
 
@@ -190,9 +190,9 @@ Set up parameters for the MCMC runs.
 # Choose as many chains as available cores
 Chains = 6
 options(mc.cores = Chains)
-IT = 4*10^4
+IT = 4*10^5
 WarmUp = .5*IT
-thin = 1000
+thin = 10^4
 
 # put the data into stan format
 # For models 1 & 2
@@ -270,7 +270,7 @@ load('OutputResults/StanModels_mod3.RData')
 Let's make some nice colors for the plotting
 ```{r}
 mycols = brewer.pal(n=3, name = 'Set1')
-PLOT_Censored_Obs = FALSE
+PLOT_Censored_Obs = F
 
 if(PLOT_Censored_Obs){
   ind_plotting = 1:nrow(Combined_Time_Data)
@@ -479,13 +479,13 @@ log_lik1 <- extract_log_lik(mod1_RE)
 log_lik2 <- extract_log_lik(mod2_RE)
 log_lik3 <- extract_log_lik(mod3_RE)
 
-waic1 = waic(log_lik1)
+#waic1 = waic(log_lik1)
 loo1 = loo(log_lik1)
-waic2 = waic(log_lik2)
+#waic2 = waic(log_lik2)
 loo2 = loo(log_lik2)
-waic3 = waic(log_lik3)
+#waic3 = waic(log_lik3)
 loo3 = loo(log_lik3)
-compare(waic1, waic2, waic3)
+#compare(waic1, waic2, waic3)
 compare(loo1, loo2, loo3)
 ```
 
@@ -719,23 +719,20 @@ Mod3_ThetaEstimates$Episode_Identifier =
           paste(x['patientid'], as.integer(x['episode']), sep = '_')
         } )
 save(Mod3_ThetaEstimates, file = '../RData/TimingModel/MOD3_theta_estimates.RData')
-# Order by difference in posterior interval
-Combined_Time_Data = Combined_Time_Data[order(-log10(Combined_Time_Data$Relapse_mean_theta)),]
+
 ```
 
 We also save a matrix of posterior samples to be used by the genetic model for full computation of the posterior:
 ```{r}
 labels = extract(mod3_RE, 'prob_labels')$prob_labels
-
-ind_Observed = which(!Combined_Time_Data$Censored)
 K_samples = min(100, dim(labels)[1])
-Relapse_labels = labels[,,2,drop=T] + labels[,,3,drop=T]
 random_ind = sample(1:dim(labels)[1], K_samples)
-Post_samples_matrix = data.frame(cbind(t(labels[random_ind,ind_Observed,4,drop=T]),
-                                       t(Relapse_labels[random_ind,ind_Observed]),
-                                       t(labels[random_ind,ind_Observed,1,drop=T])))
+Relapse_labels = labels[random_ind,,2,drop=T] + labels[random_ind,,3,drop=T]
+Post_samples_matrix = data.frame(cbind(t(labels[random_ind, ,4,drop=T]),
+                                       t(Relapse_labels[, ]),
+                                       t(labels[random_ind, ,1,drop=T])))
 colnames(Post_samples_matrix) = c(sapply(c('C','L','I'), rep, K_samples))
-Post_samples_matrix$Episode_Identifier = apply(Combined_Time_Data[!Combined_Time_Data$Censored,], 1, 
+Post_samples_matrix$Episode_Identifier = apply(Combined_Time_Data, 1, 
                                                function(x) {
                                                  paste(x['patientid'], as.integer(x['episode'])+1, 
                                                        sep = '_')} )
@@ -745,6 +742,9 @@ save(Post_samples_matrix, file = '../RData/TimingModel/MOD3_Posterior_samples.RD
 
 
 ```{r UncertaintyOutputsModel3}
+# Order by difference in posterior interval
+Combined_Time_Data = Combined_Time_Data[order(-log10(Combined_Time_Data$Relapse_mean_theta)),]
+
 par(las = 1, mfcol=c(2,2), bty='n')
 ## No PMQ group
 ind = Combined_Time_Data$arm_num!='CHQ/PMQ' & !Combined_Time_Data$Censored

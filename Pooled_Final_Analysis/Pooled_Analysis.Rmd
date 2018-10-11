@@ -50,9 +50,10 @@ load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
 
 # Booleans that describe generation of Markdown file. 
 # The large jobs are done on the cluster
-RUN_MODELS = F
-RUN_MODELS_CLUSTER = F
-RUN_MODELS_CLUSTER_INFLATED = F
+RUN_MODELS_SINGLE_SIMPLE = F
+RUN_MODELS_FULL_POSTERIOR_SIMPLE = F
+RUN_MODELS_FULL_POSTERIOR_INFLATED = F
+RUN_MODELS_FALSE_POSITIVE = F
 CREATE_PLOTS = T
 ```
 
@@ -200,10 +201,12 @@ The following iterates through each individual and computes the probability of r
 
 ```{r}
 inds = grepl('mean_theta', colnames(Mod3_ThetaEstimates)) # Extract mean
-Episode_Identifier = Mod3_ThetaEstimates$Episode_Identifier
-p = data.frame(Episode_Identifier = Episode_Identifier, Mod3_ThetaEstimates[,inds],
+p = data.frame(Episode_Identifier = Mod3_ThetaEstimates$Episode_Identifier, 
+               Mod3_ThetaEstimates[,inds],
                stringsAsFactors = F) # Reformat
-colnames(p) = c('Episode_Identifier', 'C', 'L', 'I')
+colnames(p) = gsub(pattern = 'Recrudescence_mean_theta',replacement = 'C',x = colnames(p))
+colnames(p) = gsub(pattern = 'Relapse_mean_theta',replacement = 'L',x = colnames(p))
+colnames(p) = gsub(pattern = 'ReInfection_mean_theta',replacement = 'I',x = colnames(p))
 
 genetic_AND_time_data_eps = intersect(p$Episode_Identifier, MS_pooled$Episode_Identifier)
 p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,]
@@ -215,7 +218,7 @@ Post_samples_matrix = Post_samples_matrix[Post_samples_matrix$Episode_Identifier
 
 We use all 9MS markers (when available).
 ```{r, include=FALSE}
-if(RUN_MODELS){
+if(RUN_MODELS_SINGLE_SIMPLE){
   #===============================================
   # Run new version (with time-to-event)
   #===============================================
@@ -244,15 +247,16 @@ if(RUN_MODELS){
 ### Full posterior computation
 
 ```{r, include=FALSE}
-if(RUN_MODELS_CLUSTER){
+if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
   #===============================================
   # Run full Bayesian with sampling at random from time prior
-  # takes about 220 seconds on 6 cores
+  # takes about 15-20 minutes on 6 cores
+  # The outer loop is not parallelised - not optimal coding
   #===============================================
-  registerDoParallel(cores = 42)
+  
   Ksamples = length(grep('C',colnames(Post_samples_matrix)))
   tic()
-  Thetas_full_post = foreach(ss = 1:Ksamples, .combine = cbind) %dopar% {
+  Thetas_full_post = foreach(ss = 1:Ksamples, .combine = cbind) %do% {
     # draw a random distribution over the allele frequencies from posterior
     Fs_random = lapply(Alpha_Posteriors, rdirichlet, n=1)
     # I'm not sure if this is needed - how are these called deep inside?
@@ -266,7 +270,7 @@ if(RUN_MODELS_CLUSTER){
                 grep('Episode_Identifier',colnames(Post_samples_matrix)))
     p = Post_samples_matrix[,indices]
     thetas_9MS = post_prob_CLI(MS_data = MS_pooled, Fs = Fs_random, 
-                               p = p, cores = 1, verbose = F) 
+                               p = p, cores = 6, verbose = F) 
     thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
     thetas_9MS
   }
@@ -454,10 +458,10 @@ if(CREATE_PLOTS){
 # BPD Final Plot
 
 ```{r BPD_efficacy, fig.width=10}
+# Get rid of duplicated episode IDs (MOI > 1)
+MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
+
 if(CREATE_PLOTS){
-  
-  # Get rid of duplicated episode IDs (MOI > 1)
-  MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
   par(mfrow=c(1,2),las=1, bty='n')
   reLapse_ordered = sort.int(Thetas_BPD$L, decreasing = TRUE, index.return = TRUE)
   plot(reLapse_ordered$x, pch=20, col = Thetas_BPD$drug_col[reLapse_ordered$ix],
@@ -474,8 +478,6 @@ if(CREATE_PLOTS){
                                     code = 3,
                                     col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
   }
-  
-  
   
   writeLines(sprintf('The mean percentage of recurrences which are estimated to be relapses is %s%%',
                      round(100*sum(Thetas_BPD$L + Thetas_BPD$C)/nrow(Thetas_BPD))))
@@ -518,7 +520,7 @@ We blow up the pooled analysis into all pairs within individuals:
 MS_inflate = filter(MS_pooled_summary, MS_pooled_summary$ID %in% IDs_remaining)
 MS_inflated = Inflate_into_pairs(MS_data = MS_inflate)
 
-if(RUN_MODELS_CLUSTER){  
+if(RUN_MODELS_FULL_POSTERIOR_INFLATED){  
   
   all_rec_eps = unique(MS_inflated$Episode_Identifier[MS_inflated$Episode==2])
   P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
@@ -648,7 +650,6 @@ for(ep in episodes_full_model){
     MS_pooled_summary$L_or_C_state[ind1] = 'Uncertain'
   }
 }
-
 for(i in 1:length(IDs_remaining)){
   id = IDs_remaining[i]
   Doubles_Thetas = filter(Res, ID_True==id)
@@ -685,7 +686,6 @@ for(i in 1:length(IDs_remaining)){
       }
     }
   }
-  
 }
 
 MS_pooled_summary$Drug = MS_pooled_summary$FU = NA
@@ -706,16 +706,15 @@ MS_pooled_summary$Plotting_col_Values =
 ```
 
 ```{r CoatneyStylePLot, fig.heigh=10}
+# Only the recurrences for which we can compute estimates of recurrence state
+MS_final = filter(MS_pooled_summary, !is.na(L_mean))
+MS_final = arrange(MS_final, desc(Drug), desc(FU), desc(TotalEpisodes))
+ids = unique(MS_final$ID)
+
 if(CREATE_PLOTS){
   ## Time series data colored by genetic STATE: classification
   mycols_states = c('red','yellow','black') # colors for states - need uncertain ones as well
   mycols_drugs = brewer.pal(n=3, name = 'Set1')
-  
-  # Only the recurrences for which we can compute estimates of recurrence state
-  MS_final = filter(MS_pooled_summary, !is.na(L_mean))
-  MS_final = arrange(MS_final, desc(Drug), desc(FU), desc(TotalEpisodes))
-  ids = unique(MS_final$ID)
-  
   par(las=1, bty='n', cex.axis=.3, mar=c(3,0,1,1))
   plot(NA, NA, xlim = c(0,370), ylim = c(1,length(ids)),
        xaxt='n', yaxt='n')
@@ -811,10 +810,10 @@ IDs_late_relapse = MS_final[which(MS_final$timeSinceLastEpisode>300 & MS_final$L
 writeLines(sprintf('The episode ids of interest are: %s',
                    MS_final[which(MS_final$timeSinceLastEpisode>300 & MS_final$L_lower>.9),
                             'Episode_Identifier']))
-library(knitr)
-#ColorPlot_MSdata(MS_data = MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 
-print( MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
+# This isn't working on my Mac
+#ColorPlot_MSdata(MS_data = MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
+print(MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 ```
 
 
@@ -864,7 +863,7 @@ writeLines(sprintf('In chloroquine+primaquine individuals, the weighted average 
 We want to know how often our model estimates evidence of relapse across pairs of episodes when the episodes are in different people (e.g.)
 
 ```{r}
-if(RUN_MODELS_CLUSTER_INFLATED){
+if(RUN_MODELS_FALSE_POSITIVE){
   # The pooled MS data from BPD and VHX
   load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
   tic()
@@ -890,130 +889,158 @@ if(RUN_MODELS_CLUSTER_INFLATED){
 Almost all episodes in BPD were typed. Therefore we can estimate the true efficacy comparing with historical controls (VHX).
 
 ```{r}
-BPD_data = Combined_Time_Data[grep('BPD', Combined_Time_Data$patientid),]
-hist(table(BPD_data$patientid),breaks = seq(0.5,3.5,by=1),main='',
-     xlab = '', xaxt='n')
-axis(1, at = 1:3, labels = c('Enrollment\nonly','1\nrecurrence','2\nrecurrences'),
-     tick = FALSE)
+#BPD_data = Combined_Time_Data[grep('BPD', Combined_Time_Data$patientid),]
+# hist(table(BPD_data$patientid),breaks = seq(0.5,3.5,by=1),main='',
+#      xlab = '', xaxt='n')
+# axis(1, at = 1:3, labels = c('Enrollment\nonly','1\nrecurrence','2\nrecurrences'),
+#      tick = FALSE)
 
-BPD_data$Episode_Identifier = apply(BPD_data,1,
+Combined_Time_Data$Episode_Identifier = apply(Combined_Time_Data,1,
                                               function(x){
-  paste(x['patientid'],x['episode'],sep='_')} )
+                                                paste(x['patientid'],as.integer(x['episode']),
+                                                      sep='_')} )
 
-# iterate over recurrences and use either the joint posterior or if missing the time probability
-BPD_data$Reinfection_Probability=
-  BPD_data$Reinfection_Probability_LL=
-  BPD_data$Reinfection_Probability_UL = NA
-ind_recurrences = which(BPD_data$episode>1)
+# iterate over every episode and use either the joint posterior 
+# or if missing the time probability (this could be time censored probability)
+Combined_Time_Data$Reinfection_Probability=
+  Combined_Time_Data$Reinfection_Probability_LL=
+  Combined_Time_Data$Reinfection_Probability_UL = NA
+
+Mod3_ThetaEstimates$Failure_Identifier = 
+  apply(Mod3_ThetaEstimates, 1, 
+        function(x) paste(x['patientid'], as.integer(x['episode'])-1,sep='_'))
+
 sss=0
-for(i in ind_recurrences){
-  ep_id = BPD_data$Episode_Identifier[i]
-  if(ep_id %in% MS_final$Episode_Identifier){
-    BPD_data$Reinfection_Probability[i] =
-      MS_final$I_mean[MS_final$Episode_Identifier==ep_id]
-    BPD_data$Reinfection_Probability_UL[i] =
-      MS_final$I_upper[MS_final$Episode_Identifier==ep_id]
-    BPD_data$Reinfection_Probability_LL[i] =
-      MS_final$I_lower[MS_final$Episode_Identifier==ep_id]
-  } else {
-    BPD_data$Reinfection_Probability[i] =
-      Mod3_ThetaEstimates$ReInfection_mean_theta[Mod3_ThetaEstimates$Episode_Identifier==ep_id]
-    BPD_data$Reinfection_Probability_UL[i] =
-      Mod3_ThetaEstimates$ReInfection_975_theta[Mod3_ThetaEstimates$Episode_Identifier==ep_id]
-    BPD_data$Reinfection_Probability_LL[i] =
-      Mod3_ThetaEstimates$ReInfection_025_theta[Mod3_ThetaEstimates$Episode_Identifier==ep_id]
-    sss=sss+1
+for(i in 1:nrow(Combined_Time_Data)){
+  ep_id = Combined_Time_Data$Episode_Identifier[i]
+  MS_id = paste(Combined_Time_Data$patientid[i],
+                as.integer(Combined_Time_Data$episode[i])+1, sep='_')
+  # If in MS_final then use full probability
+  if(MS_id %in% MS_final$Episode_Identifier){
+    Combined_Time_Data$Reinfection_Probability[i] =
+      MS_final$I_mean[MS_final$Episode_Identifier==MS_id]
+    Combined_Time_Data$Reinfection_Probability_UL[i] =
+      MS_final$I_upper[MS_final$Episode_Identifier==MS_id]
+    Combined_Time_Data$Reinfection_Probability_LL[i] =
+      MS_final$I_lower[MS_final$Episode_Identifier==MS_id]
+  } else { # use the time to event model
+    ind = which(Mod3_ThetaEstimates$Failure_Identifier==ep_id)
+    if(length(ind)>0){
+      Combined_Time_Data$Reinfection_Probability[i] =
+        Mod3_ThetaEstimates$ReInfection_mean_theta[ind]
+      Combined_Time_Data$Reinfection_Probability_UL[i] =
+        Mod3_ThetaEstimates$ReInfection_975_theta[ind]
+      Combined_Time_Data$Reinfection_Probability_LL[i] =
+        Mod3_ThetaEstimates$ReInfection_025_theta[ind]
+      sss=sss+1
+    }
   }
 }
 ```
-
-
-```{r}
-writeLines(sprintf('%s recurrences did not have MS data to inform posterior probability',sss))
-writeLines(sprintf('Number of recurrences without posterior probability assigned: %s',
-                   sum(is.na(BPD_data$Reinfection_Probability[ind_recurrences]))))
-plot(ecdf(BPD_data$Reinfection_Probability), main='', xlab='Relapse probability')
-
-# now we calculate the primaquine failure rate
-# For individuals with multiple episodes this is P(Rec 1 not L)*P(Rec 2 not L)
-N = length(unique(BPD_data$patientid))
-N_recurring = 0
-P_Not_Failure = P_Not_Failure_LL = P_Not_Failure_UL = 0
-for(id in unique(BPD_data$patientid)){
-  ind = which(BPD_data$patientid==id)
-  if(length(ind)>1){
-    N_recurring = N_recurring + 1
-    P_Not_Failure = P_Not_Failure + prod(BPD_data$Reinfection_Probability[ind[-1]])
-    P_Not_Failure_LL = P_Not_Failure_LL +
-      prod(BPD_data$Reinfection_Probability_LL[ind[-1]])
-    P_Not_Failure_UL = P_Not_Failure_UL +
-      prod(BPD_data$Reinfection_Probability_UL[ind[-1]])
-  }
-}
-P_Failure = (N_recurring-P_Not_Failure)/N
-# invert the intervals here - optimistic for not failure = pessimistic for failure
-P_Failure_UL = (N_recurring-P_Not_Failure_LL)/N
-P_Failure_LL = (N_recurring-P_Not_Failure_UL)/N
-
-writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
-                 N, round(100*P_Failure,2),
-                 round(100*P_Failure_LL,2),
-                 round(100*P_Failure_UL,2), round(sum(BPD_data$FU_time[!duplicated(BPD_data$patientid)])/365)))
-```
-
 
 
 Now we look at whether the PK (carboxy-primaquine) can predict failure:
+First we add the carboxy to the dataset:
 ```{r}
-BPD_data = arrange(BPD_data, patientid, episode)
+Combined_Time_Data = arrange(Combined_Time_Data, patientid, episode)
 load('../RData/PK_data/BPD_pk.RData')
 BPD_pk = filter(BPD_pk, !is.na(Episode))
-BPD_data$log10_carboxyPMQ = NA
-BPD_data$log10_PMQ = NA
-BPD_data$Failure = NA
-for(i in 1:nrow(BPD_data)){
-  id = BPD_data$patientid[i]
-  ep_i = BPD_data$episode[i]
-  all_id_eps = BPD_data$episode[BPD_data$patientid==id]
+Combined_Time_Data$log10_carboxyPMQ = NA
+Combined_Time_Data$log10_PMQ = NA
+for(i in 1:nrow(Combined_Time_Data)){
+  id = Combined_Time_Data$patientid[i]
+  ep_i = Combined_Time_Data$episode[i]
+  all_id_eps = Combined_Time_Data$episode[Combined_Time_Data$patientid==id]
   pk_ind = BPD_pk$ID == id & BPD_pk$Episode==ep_i
   if(sum(pk_ind)>0){
-    BPD_data$log10_carboxyPMQ[i] = mean(BPD_pk$log10_carboxyPQ_PK[pk_ind])
-    BPD_data$log10_PMQ[i] = mean(BPD_pk$log10_PQ_PK[pk_ind])
-  }
-  if(ep_i < max(all_id_eps)) { # observed recurrence
-    BPD_data$Failure[i] = 1-BPD_data$Reinfection_Probability[BPD_data$patientid==id & BPD_data$episode==(ep_i+1)]
-  } else {
-    # Going to put the estimates of failure from time to event model
-    # this will take into account censoring
-    #ind = which(Mod3_ThetaEstimates$patientid==id & Mod3_ThetaEstimates$episode==ep_i)
-    BPD_data$Failure[i] = 0#1 - Mod3_ThetaEstimates$ReInfection_mean_theta[ind]
+    Combined_Time_Data$log10_carboxyPMQ[i] = mean(BPD_pk$log10_carboxyPQ_PK[pk_ind])
+    Combined_Time_Data$log10_PMQ[i] = mean(BPD_pk$log10_PQ_PK[pk_ind])
   }
 }
 ```
 
 
+Now we calculate a compressed dataset and failure for each individual
+
 ```{r}
-require(lme4)
+# now we calculate the primaquine failure rate
+# For individuals with two episodes: P(failure) = 1 - P(Rec 1 = I)*P(Rec 2 = I)
+Summary_data = Combined_Time_Data[!duplicated(Combined_Time_Data$patientid),]
+Summary_data$Failure_UL = Summary_data$Failure_LL = 
+  Summary_data$Failure = Summary_data$CPMQ = 
+  Summary_data$CPMQ = NA
+for(i in 1:nrow(Summary_data)){
+  ind = which(Combined_Time_Data$patientid==Summary_data$patientid[i])
+  Summary_data$Failure[i] = 1-prod(Combined_Time_Data$Reinfection_Probability[ind],na.rm=T)
+  Summary_data$Failure_UL[i] = 1-prod(Combined_Time_Data$Reinfection_Probability_UL[ind],na.rm=T)
+  Summary_data$Failure_LL[i] = 1-prod(Combined_Time_Data$Reinfection_Probability_LL[ind],na.rm=T)
+  Summary_data$CPMQ[i] = median(Combined_Time_Data$log10_carboxyPMQ[ind],na.rm=T)
+}
+BPD_data = Summary_data[grep('BPD', Summary_data$patientid),]
+
+P_Failure=100*sum(BPD_data$Failure)/nrow(BPD_data)
+# invert the intervals here - optimistic for not failure = pessimistic for failure
+P_Failure_UL = 100*sum(BPD_data$Failure_LL)/nrow(BPD_data)
+P_Failure_LL = 100*sum(BPD_data$Failure_UL)/nrow(BPD_data)
+
+writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+                   N, round(P_Failure,2),
+                   round(P_Failure_LL,2),
+                   round(P_Failure_UL,2), round(sum(BPD_data$FU_time)/365)))
+```
+
+```{r}
+# require(lme4)
+# require(lmerTest)
 # add a random effect term for patient ID
-mod = lmer(Failure ~ log10_carboxyPMQ + log10_PMQ + (1 | patientid), data = BPD_data)
+mod = lm(Failure ~ CPMQ , 
+           data = BPD_data)
 summary(mod)
+xs=seq(0,4,by=.01)
+plot(BPD_data$CPMQ, BPD_data$Failure)
+lines(xs, predict(mod, newdata = data.frame(CPMQ=xs)), col='red', lwd=3)
 ```
 
 So there is a predictive effect of carboxy primaquine on drug failure. 
+This isn't very robust to the cutoff threshold for failure.
 
 ```{r}
-#BPD_data = filter(BPD_data, episode==1)
-BPD_data$Failure_YN = as.numeric(BPD_data$Failure > 0.5)
+Combined_Time_Data$Failure_YN = as.numeric(Combined_Time_Data$Failure > 0.5)
 mod1 = glmer(Failure_YN ~ log10_carboxyPMQ + (1 | patientid), 
-             data = BPD_data, family='binomial')
+             data = Combined_Time_Data, family='binomial')
 summary(mod1)
-plot(BPD_data$log10_carboxyPMQ, BPD_data$Failure_YN,pch='+',
-     xlab = 'Carboxy PMQ', ylab = 'Failure probability')
-xs=seq(0,4,by=.01)
-lines(xs, predict(mod1, newdata = data.frame(log10_carboxyPMQ=xs,
-                                             patientid='new'),
-                  allow.new.levels=T,
+if(CREATE_PLOTS){
+  par(las=1, bty='n')
+  plot(Combined_Time_Data$log10_carboxyPMQ, 
+       Combined_Time_Data$Failure_YN,pch='+',
+       xlab = 'Day 7 Carboxy PMQ (ng/mL)', 
+       ylab = 'Failure probability', xaxt ='n')
+  axis(1, at = 1:3, labels = 10^(1:3))  
+  lines(xs, predict(mod1, newdata = data.frame(log10_carboxyPMQ=xs,
+                                               patientid='new'),
+                    allow.new.levels=T,
                     type = 'response'), col='red', lwd=3)
+}
+
+thresholds = seq(0.05,0.95,by=.01)
+pvals=array(length(thresholds))
+for(i in 1:length(thresholds)){
+  Combined_Time_Data$Failure_YN = as.numeric(Combined_Time_Data$Failure > thresholds[i])
+  mod1 = glmer(Failure_YN ~ log10_carboxyPMQ + (1 | patientid), 
+               data = Combined_Time_Data, family='binomial')
+  x=summary(mod1)
+  pvals[i] = x$coefficients[,4][2]
+}
+plot(thresholds,pvals,type='l', xlab='Threshold value',ylab='P-value')
+abline(h=0.05, col='red')
+```
+
+
+Who are the two individuals contributing the most to this signal?
+
+```{r}
+ind = which(Combined_Time_Data$Failure>0.5 & Combined_Time_Data$log10_carboxyPMQ<1.1)
+Combined_Time_Data$patientid[ind]
 ```
 
 This won't go into this paper but looking out of interest:
@@ -1025,18 +1052,32 @@ TwoD6_dat = read.csv('../RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
 TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],as.integer(x['Patient.ID']),sep = '_'))
 TwoD6_dat$Phenotype = mapvalues(TwoD6_dat$X2D6.Phenotype, 
                                 from = c('PM','IM', 'EM'), to = 1:3)
-BPD_data$ASscore = NA
-for(i in 1:nrow(BPD_data)){
-  id = BPD_data$patientid[i]
+Combined_Time_Data$ASscore = NA
+for(i in 1:nrow(Combined_Time_Data)){
+  id = Combined_Time_Data$patientid[i]
   if(sum(TwoD6_dat$ID==id)>0){
-    BPD_data$ASscore[i] = TwoD6_dat$AS.score[TwoD6_dat$ID==id]
+    Combined_Time_Data$ASscore[i] = TwoD6_dat$AS.score[TwoD6_dat$ID==id]
   }
 }
 
-mod_2D6 = lm(log10_carboxyPMQ ~ ASscore, data = BPD_data)
+mod_2D6 = lmer(log10_carboxyPMQ ~ ASscore + (1 | patientid), 
+               data = Combined_Time_Data)
 summary(mod_2D6)
-plot(BPD_data$ASscore, BPD_data$log10_carboxyPMQ, pch=20)
-lines(xs, predict(mod_2D6, data.frame(ASscore=xs)),lwd=3)
+plot(Combined_Time_Data$ASscore, Combined_Time_Data$log10_carboxyPMQ, pch=20)
+lines(xs, predict(mod_2D6, data.frame(ASscore=xs,patientid='new'),allow.new.levels=T),lwd=3)
+```
+
+
+```{r}
+Combined_Time_Data = filter(Combined_Time_Data, !is.na(ASscore), !Censored)
+for(id in unique(Combined_Time_Data$patientid)){
+  ind = Combined_Time_Data$patientid==id
+  Combined_Time_Data$Failure_YN[ind] = max(Combined_Time_Data$Failure_YN[ind])
+}
+Combined_Time_Data = Combined_Time_Data[!duplicated(Combined_Time_Data$patientid),]
+mod_Failure = glm(Failure_YN ~ ASscore, 
+                  data = Combined_Time_Data, family = 'binomial')
+summary(mod_Failure)
 ```
 
 

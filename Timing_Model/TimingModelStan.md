@@ -151,9 +151,9 @@ Set up parameters for the MCMC runs.
 # Choose as many chains as available cores
 Chains = 6
 options(mc.cores = Chains)
-IT = 2*10^4
+IT = 4*10^5
 WarmUp = .5*IT
-thin = 1000
+thin = 10^4
 
 # put the data into stan format
 # For models 1 & 2
@@ -233,12 +233,12 @@ Let's make some nice colors for the plotting
 
 ```r
 mycols = brewer.pal(n=3, name = 'Set1')
-PLOT_Censored_Obs = FALSE
+PLOT_Censored_Obs = F
 
 if(PLOT_Censored_Obs){
   ind_plotting = 1:nrow(Combined_Time_Data)
 } else {
-  ind_plotting = which(!Combined_Time_Data$Censored)
+  ind_plotting = !Combined_Time_Data$Censored
 }
 
 # We jitter the time to event (days) to improve plotting
@@ -250,177 +250,120 @@ if(PLOT_Censored_Obs){
 
 
 ```r
-# Traceplots
-traceplot(mod1_RE,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
+# # Traceplots
+# traceplot(mod1_RE,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
+# traceplot(mod1_RE, c('inv_lambda','logit_c1','Recrud_shape','Recrud_scale'))
+# traceplot(mod1_RE, c('logit_mean_p','logit_sd_p'))
+# 
+# # Extract samples
+# thetas = extract(mod1_RE)
+# 
+# par(las=1, mfrow=c(1,2))
+# hist(thetas$inv_lambda, main='Mean time to reinfection',
+#      xlab='1/lambda (days)')
+# hist(inv.logit(apply(thetas$logit_p,2,mean)),
+#      main = 'proportion of reInfections', xlab='p')
+# 
+# par(las=1, mfrow=c(1,1))
+# # Plot the outcome of the predicted labels
+# #****************************** Reinfection ******************************
+# labels = extract(mod1_RE, 'prob_labels')$prob_labels
+# mean_labels_Reinfection = apply(labels[,ind_plotting,1,drop=T], 2, mean)
+# plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfection),
+#      col = mycols[numeric_drug[ind_plotting]+1],
+#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
+#      ylab='Probability of ReInfection', yaxt='n',xaxt='n',
+#      xlab='Months from last episode', xlim=c(0,400))
+# axis(1, at = seq(0, 420, by=60), labels = seq(0, 420, by=60)/30)
+# axis(2, at = -2:0, labels= 10^(-2:0))
+# axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
+# axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
+# axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
+# legend('bottomright',legend = c('AS','CQ','CQ+PMQ'),
+#        col=c(mycols),pch = c(rep(1,3)), bty='n',lwd=2,lty=NA)
+# 
+# 
+# #****************************** Recrudescence ****************************
+# mean_labels_ReCrud = apply(labels[,ind_plotting,3,drop=T], 2, mean)
+# plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud,
+#      col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
+#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
+#      ylab='ReCrudescence',
+#      xlab='Weeks from last episode', xlim=c(0,30))
+# axis(1, at = seq(0,28,by=7), labels = seq(0,28,by=7)/7)
+# 
+# 
+# #****************************** Relapse ****************************
+# mean_labels_ReLap = apply(labels[,ind_plotting,2,drop=T], 2, mean)
+# plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap),
+#      col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
+#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
+#      ylab='log10 Probability of ReLapse',yaxt='n',
+#      xlab='Months from last episode', xlim=c(0,100),
+#      ylim = c(-10,0))
+# axis(1, at = seq(0, 90, by= 30), labels = seq(0, 90, by=30)/30)
+# axis(2, at = -2:0, labels= 10^(-2:0))
 ```
-
-![](TimingModelStan_files/figure-html/plotModel1-1.png)<!-- -->
-
-```r
-traceplot(mod1_RE, c('inv_lambda','logit_c1','Recrud_shape','Recrud_scale'))
-```
-
-![](TimingModelStan_files/figure-html/plotModel1-2.png)<!-- -->
-
-```r
-traceplot(mod1_RE, c('logit_mean_p','logit_sd_p'))
-```
-
-![](TimingModelStan_files/figure-html/plotModel1-3.png)<!-- -->
-
-```r
-# Extract samples
-thetas = extract(mod1_RE)
-
-par(las=1, mfrow=c(1,2))
-hist(thetas$inv_lambda, main='Mean time to reinfection',
-     xlab='1/lambda (days)')
-hist(inv.logit(apply(thetas$logit_p,2,mean)), 
-     main = 'proportion of reInfections', xlab='p')
-```
-
-![](TimingModelStan_files/figure-html/plotModel1-4.png)<!-- -->
-
-```r
-par(las=1, mfrow=c(1,1))
-# Plot the outcome of the predicted labels
-#****************************** Reinfection ******************************
-labels = extract(mod1_RE, 'prob_labels')$prob_labels
-mean_labels_Reinfection = apply(labels[,ind_plotting,1,drop=T], 2, mean)
-plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfection), 
-     col = mycols[numeric_drug[ind_plotting]+1], 
-     pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-     ylab='Probability of ReInfection', yaxt='n',xaxt='n',
-     xlab='Months from last episode', xlim=c(0,400))
-axis(1, at = seq(0, 420, by=60), labels = seq(0, 420, by=60)/30)
-axis(2, at = -2:0, labels= 10^(-2:0))
-axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
-axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
-axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
-legend('bottomright',legend = c('AS','CQ','CQ+PMQ'), 
-       col=c(mycols),pch = c(rep(1,3)), bty='n',lwd=2,lty=NA)
-```
-
-![](TimingModelStan_files/figure-html/plotModel1-5.png)<!-- -->
-
-```r
-#****************************** Recrudescence ****************************
-mean_labels_ReCrud = apply(labels[,ind_plotting,3,drop=T], 2, mean)
-plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud, 
-     col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
-     pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-     ylab='ReCrudescence',
-     xlab='Weeks from last episode', xlim=c(0,30))
-axis(1, at = seq(0,28,by=7), labels = seq(0,28,by=7)/7)
-```
-
-![](TimingModelStan_files/figure-html/plotModel1-6.png)<!-- -->
-
-```r
-#****************************** Relapse ****************************
-mean_labels_ReLap = apply(labels[,ind_plotting,2,drop=T], 2, mean)
-plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap), 
-     col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
-     pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16, 
-     ylab='log10 Probability of ReLapse',yaxt='n',
-     xlab='Months from last episode', xlim=c(0,100),
-     ylim = c(-10,0))
-axis(1, at = seq(0, 90, by= 30), labels = seq(0, 90, by=30)/30)
-axis(2, at = -2:0, labels= 10^(-2:0))
-```
-
-![](TimingModelStan_files/figure-html/plotModel1-7.png)<!-- -->
 
 ## Model 2
 
 
 ```r
-par(las=1)
-traceplot(mod2_RE,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
+# par(las=1)
+# traceplot(mod2_RE,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
+# traceplot(mod2_RE, c('inv_lambda','logit_c1','Recrud_shape','Recrud_scale'))
+# traceplot(mod2_RE, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
+# par(mfrow=c(1,2))
+# thetas = extract(mod2_RE)
+# hist(thetas$inv_lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
+# hist(thetas$inv_gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
+# 
+# par(las=1, mfrow=c(1,3))
+# 
+# hist(inv.logit(apply(thetas$logit_p,2,mean)), xlab = 'Probability reinfection', main = '')
+# hist(inv.logit(thetas$logit_c1), xlab = 'proportion recrudescence', main='')
+# hist(inv.logit(thetas$logit_EarlyL), xlab = 'proportion early Relapse', main='')
+# 
+# par(las=1, mfrow=c(1,1))
+# # Plot the outcome of the predicted labels
+# #****************************** Reinfection ******************************
+# labels = extract(mod2_RE, 'prob_labels')$prob_labels
+# mean_labels_Reinfection = apply(labels[,ind_plotting,1,drop=T], 2, mean)
+# plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfection),
+#      col = mycols[numeric_drug[ind_plotting]+1],
+#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
+#      ylab='Probability of ReInfection', yaxt='n',xaxt='n',
+#      xlab='Months from last episode', xlim=c(0,400))
+# axis(1, at = seq(0, 420, by=60), labels = seq(0, 420, by=60)/30)
+# axis(2, at = -2:0, labels= 10^(-2:0))
+# axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
+# axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
+# axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
+# legend('bottomright',legend = c('Artesunate','Chloroquine','Chloroquine+\nPrimaquine'),
+#        col=c(mycols),pch = rep(1,3), bty='n',lwd=2,lty=NA)
+# 
+# 
+# #****************************** Recrudescence ****************************
+# mean_labels_ReCrud = apply(labels[,ind_plotting,4,drop=T], 2, mean)
+# plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud,
+#      col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
+#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
+#      ylab='ReCrudescence',
+#      xlab='Weeks from last episode', xlim=c(0,60))
+# axis(1, at = seq(0,54,by=7), labels = seq(0,54,by=7)/7)
+# 
+# 
+# #****************************** Relapse ****************************
+# mean_labels_ReLap1 = apply(labels[,ind_plotting,2,drop=T], 2, mean)
+# mean_labels_ReLap2 = apply(labels[,ind_plotting,3,drop=T], 2, mean)
+# mean_labels_ReLap = mean_labels_ReLap1 + mean_labels_ReLap2
+# plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReLap,
+#      col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
+#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
+#      ylab='log10 Probability of ReLapse',
+#      xlab='Months from last episode')
+# axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
 ```
-
-![](TimingModelStan_files/figure-html/plotModel2-1.png)<!-- -->
-
-```r
-traceplot(mod2_RE, c('inv_lambda','logit_c1','Recrud_shape','Recrud_scale'))
-```
-
-![](TimingModelStan_files/figure-html/plotModel2-2.png)<!-- -->
-
-```r
-traceplot(mod2_RE, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
-```
-
-![](TimingModelStan_files/figure-html/plotModel2-3.png)<!-- -->
-
-```r
-par(mfrow=c(1,2))
-thetas = extract(mod2_RE)
-hist(thetas$inv_lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
-hist(thetas$inv_gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
-```
-
-![](TimingModelStan_files/figure-html/plotModel2-4.png)<!-- -->
-
-```r
-par(las=1, mfrow=c(1,3))
-
-hist(inv.logit(apply(thetas$logit_p,2,mean)), xlab = 'Probability reinfection', main = '')
-hist(inv.logit(thetas$logit_c1), xlab = 'proportion recrudescence', main='')
-hist(inv.logit(thetas$logit_EarlyL), xlab = 'proportion early Relapse', main='')
-```
-
-![](TimingModelStan_files/figure-html/plotModel2-5.png)<!-- -->
-
-```r
-par(las=1, mfrow=c(1,1))
-# Plot the outcome of the predicted labels
-#****************************** Reinfection ******************************
-labels = extract(mod2_RE, 'prob_labels')$prob_labels
-mean_labels_Reinfection = apply(labels[,ind_plotting,1,drop=T], 2, mean)
-plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfection), 
-     col = mycols[numeric_drug[ind_plotting]+1], 
-     pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-     ylab='Probability of ReInfection', yaxt='n',xaxt='n',
-     xlab='Months from last episode', xlim=c(0,400))
-axis(1, at = seq(0, 420, by=60), labels = seq(0, 420, by=60)/30)
-axis(2, at = -2:0, labels= 10^(-2:0))
-axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
-axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
-axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
-legend('bottomright',legend = c('Artesunate','Chloroquine','Chloroquine+\nPrimaquine'), 
-       col=c(mycols),pch = rep(1,3), bty='n',lwd=2,lty=NA)
-```
-
-![](TimingModelStan_files/figure-html/plotModel2-6.png)<!-- -->
-
-```r
-#****************************** Recrudescence ****************************
-mean_labels_ReCrud = apply(labels[,ind_plotting,4,drop=T], 2, mean)
-plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud, 
-     col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
-     pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-     ylab='ReCrudescence',
-     xlab='Weeks from last episode', xlim=c(0,60))
-axis(1, at = seq(0,54,by=7), labels = seq(0,54,by=7)/7)
-```
-
-![](TimingModelStan_files/figure-html/plotModel2-7.png)<!-- -->
-
-```r
-#****************************** Relapse ****************************
-mean_labels_ReLap1 = apply(labels[,ind_plotting,2,drop=T], 2, mean)
-mean_labels_ReLap2 = apply(labels[,ind_plotting,3,drop=T], 2, mean)
-mean_labels_ReLap = mean_labels_ReLap1 + mean_labels_ReLap2
-plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReLap, 
-     col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
-     pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16, 
-     ylab='log10 Probability of ReLapse',
-     xlab='Months from last episode')
-axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
-```
-
-![](TimingModelStan_files/figure-html/plotModel2-8.png)<!-- -->
 
 ## Model 3
 
@@ -541,31 +484,11 @@ axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
 
 ```r
 library(loo)
-```
-
-```
-## Warning: package 'loo' was built under R version 3.4.4
-```
-
-```
-## This is loo version 2.0.0.
-## **NOTE: As of version 2.0.0 loo defaults to 1 core but we recommend using as many as possible. Use the 'cores' argument or set options(mc.cores = NUM_CORES) for an entire session. Visit mc-stan.org/loo/news for details on other changes.
-```
-
-```r
 log_lik1 <- extract_log_lik(mod1_RE)
 log_lik2 <- extract_log_lik(mod2_RE)
 log_lik3 <- extract_log_lik(mod3_RE)
 
-waic1 = waic(log_lik1)
-```
-
-```
-## Warning: 194 (7.2%) p_waic estimates greater than 0.4. We recommend trying
-## loo instead.
-```
-
-```r
+#waic1 = waic(log_lik1)
 loo1 = loo(log_lik1)
 ```
 
@@ -580,15 +503,7 @@ loo1 = loo(log_lik1)
 ```
 
 ```r
-waic2 = waic(log_lik2)
-```
-
-```
-## Warning: 125 (4.6%) p_waic estimates greater than 0.4. We recommend trying
-## loo instead.
-```
-
-```r
+#waic2 = waic(log_lik2)
 loo2 = loo(log_lik2)
 ```
 
@@ -601,15 +516,7 @@ loo2 = loo(log_lik2)
 ```
 
 ```r
-waic3 = waic(log_lik3)
-```
-
-```
-## Warning: 145 (5.4%) p_waic estimates greater than 0.4. We recommend trying
-## loo instead.
-```
-
-```r
+#waic3 = waic(log_lik3)
 loo3 = loo(log_lik3)
 ```
 
@@ -622,17 +529,7 @@ loo3 = loo(log_lik3)
 ```
 
 ```r
-compare(waic1, waic2, waic3)
-```
-
-```
-##       elpd_diff elpd_waic se_elpd_waic p_waic  se_p_waic waic    se_waic
-## waic2     0.0   -7731.0     123.8        150.5     8.2   15462.0   247.5
-## waic3   -18.7   -7749.7     123.1        166.8     8.9   15499.4   246.3
-## waic1  -126.5   -7857.5     127.8        204.1     6.9   15715.1   255.6
-```
-
-```r
+#compare(waic1, waic2, waic3)
 compare(loo1, loo2, loo3)
 ```
 
@@ -870,7 +767,7 @@ Combined_Time_Data$ReInfection_025_theta = apply(labels[,,1,drop=T],2,quantile,
                                                  probs = 0.025)
 
 # Save this for use by the genetic model
-Mod3_ThetaEstimates = Combined_Time_Data[!Combined_Time_Data$Censored,]
+Mod3_ThetaEstimates = Combined_Time_Data
 Mod3_ThetaEstimates$episode = as.integer(Mod3_ThetaEstimates$episode)
 Mod3_ThetaEstimates$episode = Mod3_ThetaEstimates$episode+1
 Mod3_ThetaEstimates$patientid = as.character(Mod3_ThetaEstimates$patientid)
@@ -889,16 +786,14 @@ We also save a matrix of posterior samples to be used by the genetic model for f
 
 ```r
 labels = extract(mod3_RE, 'prob_labels')$prob_labels
-
-ind_Observed = which(!Combined_Time_Data$Censored)
 K_samples = min(100, dim(labels)[1])
 Relapse_labels = labels[,,2,drop=T] + labels[,,3,drop=T]
 random_ind = sample(1:dim(labels)[1], K_samples)
-Post_samples_matrix = data.frame(cbind(t(labels[random_ind,ind_Observed,4,drop=T]),
-                                       t(Relapse_labels[random_ind,ind_Observed]),
-                                       t(labels[random_ind,ind_Observed,1,drop=T])))
+Post_samples_matrix = data.frame(cbind(t(labels[random_ind, ,4,drop=T]),
+                                       t(Relapse_labels[random_ind, ]),
+                                       t(labels[random_ind, ,1,drop=T])))
 colnames(Post_samples_matrix) = c(sapply(c('C','L','I'), rep, K_samples))
-Post_samples_matrix$Episode_Identifier = apply(Combined_Time_Data[!Combined_Time_Data$Censored,], 1, 
+Post_samples_matrix$Episode_Identifier = apply(Combined_Time_Data, 1, 
                                                function(x) {
                                                  paste(x['patientid'], as.integer(x['episode'])+1, 
                                                        sep = '_')} )
