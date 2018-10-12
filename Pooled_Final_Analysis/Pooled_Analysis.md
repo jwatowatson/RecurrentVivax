@@ -190,7 +190,7 @@ The summaries of the final dataset:
 ```
 
 ```
-## In chloroquine monotherapy individuals, the weighted average of relapses is 98.6 (96-99.8)
+## In chloroquine monotherapy individuals, the weighted average of relapses is 98.7 (96.1-99.8)
 ```
 
 ```
@@ -198,11 +198,11 @@ The summaries of the final dataset:
 ```
 
 ```
-## In chloroquine monotherapy individuals, the weighted average of reinfections is 0.7 (0-2.9)
+## In chloroquine monotherapy individuals, the weighted average of reinfections is 0.7 (0-2.8)
 ```
 
 ```
-## In chloroquine+primaquine individuals, the weighted average of relapses is 15 (12.8-17.4)
+## In chloroquine+primaquine individuals, the weighted average of relapses is 15.1 (13-17.6)
 ```
 
 ```
@@ -210,7 +210,7 @@ The summaries of the final dataset:
 ```
 
 ```
-## In chloroquine+primaquine individuals, the weighted average of reinfections is 84.7 (82.5-86.7)
+## In chloroquine+primaquine individuals, the weighted average of reinfections is 84.6 (82.3-86.5)
 ```
 
 
@@ -228,95 +228,107 @@ We want to know how often our model estimates evidence of relapse across pairs o
 
 Almost all episodes in BPD were typed. Therefore we can estimate the true efficacy comparing with historical controls (VHX).
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-20-1.png)<!-- -->
-
-
-
-```
-## 5 recurrences did not have MS data to inform posterior probability
-```
-
-```
-## Number of recurrences without posterior probability assigned: 0
-```
-
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-21-1.png)<!-- -->
-
-```
-## The primaquine failure rate in the 655 individuals is 1.97% (1.69-2.28) over the course of 522 years total follow-up.
-```
 
 
 
 Now we look at whether the PK (carboxy-primaquine) can predict failure:
+First we add the carboxy to the dataset:
 
+```
+## [1] "BPD_34"
+```
 
+We exclude the two recurrences seen in patient BPD_444
 
 
 ```
-## Linear mixed model fit by REML ['lmerMod']
-## Formula: Failure ~ log10_carboxyPMQ + log10_PMQ + (1 | patientid)
-##    Data: BPD_data
-## 
-## REML criterion at convergence: -1038.8
-## 
-## Scaled residuals: 
-##     Min      1Q  Median      3Q     Max 
-## -1.3384 -0.2130 -0.1237 -0.0450  8.8369 
-## 
-## Random effects:
-##  Groups    Name        Variance  Std.Dev. 
-##  patientid (Intercept) 8.802e-19 9.382e-10
-##  Residual              1.348e-02 1.161e-01
-## Number of obs: 721, groups:  patientid, 639
-## 
-## Fixed effects:
-##                  Estimate Std. Error t value
-## (Intercept)       0.21771    0.04490   4.849
-## log10_carboxyPMQ -0.08410    0.01904  -4.418
-## log10_PMQ         0.04494    0.01396   3.219
-## 
-## Correlation of Fixed Effects:
-##             (Intr) lg10_cPMQ
-## lg10_crbPMQ -0.986          
-## log10_PMQ    0.729 -0.820
+## Loading required package: lme4
 ```
 
-So there is a predictive effect of carboxy primaquine on drug failure. 
-
+```
+## Warning: package 'lme4' was built under R version 3.4.4
+```
 
 ```
 ## Generalized linear mixed model fit by maximum likelihood (Laplace
 ##   Approximation) [glmerMod]
 ##  Family: binomial  ( logit )
-## Formula: Failure_YN ~ log10_carboxyPMQ + (1 | patientid)
-##    Data: BPD_data
+## Formula: Failure_YN ~ log10_carboxyPMQ + NumberDaysPMQ + (1 | patientid)
+##    Data: Combined_Time_Data[ind_keep, ]
 ## 
 ##      AIC      BIC   logLik deviance df.resid 
-##    112.8    126.6    -53.4    106.8      718 
+##    111.7    130.0    -51.9    103.7      717 
 ## 
 ## Scaled residuals: 
 ##     Min      1Q  Median      3Q     Max 
-## -0.6238 -0.1315 -0.1084 -0.0887 15.2799 
+## -0.6235 -0.1240 -0.1033 -0.0877 13.9869 
 ## 
 ## Random effects:
-##  Groups    Name        Variance  Std.Dev. 
-##  patientid (Intercept) 2.042e-14 1.429e-07
+##  Groups    Name        Variance Std.Dev.
+##  patientid (Intercept) 4e-14    2e-07   
 ## Number of obs: 721, groups:  patientid, 639
 ## 
 ## Fixed effects:
-##                  Estimate Std. Error z value Pr(>|z|)   
-## (Intercept)      -0.06011    1.31405  -0.046  0.96352   
-## log10_carboxyPMQ -1.55359    0.51873  -2.995  0.00274 **
+##                  Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)       2.37784    1.80708   1.316  0.18822    
+## log10_carboxyPMQ -1.80752    0.50118  -3.607  0.00031 ***
+## NumberDaysPMQ    -0.16389    0.09316  -1.759  0.07855 .  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## Correlation of Fixed Effects:
-##             (Intr)
-## lg10_crbPMQ -0.972
+##             (Intr) l10_PM
+## lg10_crbPMQ -0.848       
+## NumbrDysPMQ -0.734  0.302
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/CarboxyPredictionFailure-1.png)<!-- -->
+
+Now we remove outliers and fit the same model (CPMQ outliers)
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-22-1.png)<!-- -->
+
+```
+## Generalized linear mixed model fit by maximum likelihood (Laplace
+##   Approximation) [glmerMod]
+##  Family: binomial  ( logit )
+## Formula: Failure_YN ~ log10_carboxyPMQ + NumberDaysPMQ + (1 | patientid)
+##    Data: Combined_Time_Data[ind_keep & !outliers14 & !outliers7, ]
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##    103.1    121.3    -47.5     95.1      706 
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -0.2239 -0.1221 -0.1085 -0.0949 12.1470 
+## 
+## Random effects:
+##  Groups    Name        Variance  Std.Dev. 
+##  patientid (Intercept) 1.519e-13 3.897e-07
+## Number of obs: 710, groups:  patientid, 632
+## 
+## Fixed effects:
+##                  Estimate Std. Error z value Pr(>|z|)
+## (Intercept)        0.0649     3.7394   0.017    0.986
+## log10_carboxyPMQ  -1.0923     1.0769  -1.014    0.310
+## NumberDaysPMQ     -0.1300     0.1138  -1.143    0.253
+## 
+## Correlation of Fixed Effects:
+##             (Intr) l10_PM
+## lg10_crbPMQ -0.961       
+## NumbrDysPMQ -0.731  0.530
+```
+
+Compare results with and without outliers:
+
+![](Pooled_Analysis_files/figure-html/CarboxyPredictionFailure_NoOutliers-1.png)<!-- -->
+
+Now we calculate a compressed dataset and failure for each individual
+
+
+```
+## The primaquine failure rate in the 655 individuals is 2.34% (1.84-3.06) over the course of 522 years total follow-up.
+```
+
 
 This won't go into this paper but looking out of interest:
 
@@ -324,27 +336,61 @@ Does 2D6 correlate with carboxy ?
 
 
 ```
+## Linear mixed model fit by REML ['lmerMod']
+## Formula: log10_carboxyPMQ ~ ASscore + NumberDaysPMQ + (1 | patientid)
+##    Data: Combined_Time_Data
+## 
+## REML criterion at convergence: 190.6
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -4.6041 -0.2741  0.0758  0.3798  5.0223 
+## 
+## Random effects:
+##  Groups    Name        Variance Std.Dev.
+##  patientid (Intercept) 0.07392  0.2719  
+##  Residual              0.06576  0.2564  
+## Number of obs: 234, groups:  patientid, 154
+## 
+## Fixed effects:
+##                Estimate Std. Error t value
+## (Intercept)    3.535077   0.113075  31.263
+## ASscore       -0.085651   0.056897  -1.505
+## NumberDaysPMQ -0.059412   0.006522  -9.109
+## 
+## Correlation of Fixed Effects:
+##             (Intr) ASscor
+## ASscore     -0.697       
+## NumbrDysPMQ -0.710  0.055
+```
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
+
+
+
+```
 ## 
 ## Call:
-## lm(formula = log10_carboxyPMQ ~ ASscore, data = BPD_data)
+## glm(formula = Failure_YN ~ ASscore, family = "binomial", data = Combined_2D6data)
 ## 
-## Residuals:
-##      Min       1Q   Median       3Q      Max 
-## -2.16328 -0.19914  0.03915  0.20937  0.94095 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -0.6742  -0.5070  -0.4377  -0.3772   2.3146  
 ## 
 ## Coefficients:
-##             Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)  2.79889    0.07745  36.136   <2e-16 ***
-## ASscore     -0.06682    0.05536  -1.207    0.229    
+##             Estimate Std. Error z value Pr(>|z|)  
+## (Intercept)  -1.3658     0.7702  -1.773   0.0762 .
+## ASscore      -0.6209     0.5954  -1.043   0.2971  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
-## Residual standard error: 0.4211 on 232 degrees of freedom
-##   (513 observations deleted due to missingness)
-## Multiple R-squared:  0.00624,	Adjusted R-squared:  0.001956 
-## F-statistic: 1.457 on 1 and 232 DF,  p-value: 0.2287
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 76.721  on 113  degrees of freedom
+## Residual deviance: 75.659  on 112  degrees of freedom
+## AIC: 79.659
+## 
+## Number of Fisher Scoring iterations: 5
 ```
-
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
 
 
