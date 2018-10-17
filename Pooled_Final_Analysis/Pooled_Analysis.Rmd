@@ -75,15 +75,38 @@ writeLines(sprintf('Number of individuals with at least two episodes typed: %s',
                    length(unique(MS_pooled$ID))))
 writeLines(sprintf('Number of recurrences typed: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
+```
 
+```{r}
+# Is there a significant difference beteen VHX that where geneticall typed and not? 
+# Some odd warnings? 
 MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
 par(las=1)
-hist(table(Combined_Time_Data$patientid[grep('VHX',Combined_Time_Data$patientid)]),
+
+All_VHX_epi_count = table(Combined_Time_Data$patientid[grep('VHX',Combined_Time_Data$patientid)])
+Typed_VHX_epi_count =  table(MS_pooled_summary$ID[grep('VHX',MS_pooled$Episode_Identifier)])
+Untyped_VHX_epi_count = All_VHX_epi_count[!names(All_VHX_epi_count) %in% names(Typed_VHX_epi_count)]
+
+hist(Untyped_VHX_epi_count, col = 'lightgray', 
      main='VHX subset', xlab = 'Number of episodes', 
      breaks = seq(0.5,15.5,by=1), freq = F)
-hist(table(MS_pooled_summary$ID[grep('VHX',MS_pooled$Episode_Identifier)]),
+hist(Typed_VHX_epi_count,
      breaks = seq(0.5,15.5,by=1), add=T, 
      freq = F, col='red',density = 15)
+
+# Bootstap test of difference in median
+x1 = Typed_VHX_epi_count
+x2 = Untyped_VHX_epi_count
+theta_hat = median(x1) - median(x2)
+B = 1000
+theta_hat_boot = sapply(1:B, function(x){
+  x1boot = sample(x1, size = length(x1), replace = T)
+  x2boot = sample(x2, size = length(x2), replace = T)
+  median(x1boot) - median(x2boot)})
+se = sd(theta_hat_boot)
+Normal_95CI = c(theta_hat - 1.96*se,theta_hat + 1.96*se)  # Significant
+percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Significant
+pivotal_95CI = 2*theta_hat - percentile_95CI # Significant
 ```
 
 
@@ -1026,8 +1049,8 @@ outliers7 = Combined_Time_Data$NumberDaysPMQ==7 & Combined_Time_Data$log10_carbo
 outliers14 = Combined_Time_Data$NumberDaysPMQ==14 & Combined_Time_Data$log10_carboxyPMQ<mu_hat_14 - sd_hat_14*3
 
 mod_No_Outliers = glmer(Failure_YN ~ log10_carboxyPMQ + NumberDaysPMQ + 
-              (1 | patientid), 
-            family = 'binomial', data=Combined_Time_Data[ind_keep & !outliers14 & !outliers7,])
+                          (1 | patientid), 
+                        family = 'binomial', data=Combined_Time_Data[ind_keep & !outliers14 & !outliers7,])
 summary(mod_No_Outliers)
 ```
 
@@ -1050,10 +1073,10 @@ lines(xs*14, predict(mod, newdata=data.frame(log10_carboxyPMQ=xs, NumberDaysPMQ=
                      type='response'), lwd=2, col= 4, lty = 2)
 
 lines(xs*7, predict(mod_No_Outliers, newdata=data.frame(log10_carboxyPMQ=xs, NumberDaysPMQ=7,
-                                            patientid='new'),allow.new.levels=T,
+                                                        patientid='new'),allow.new.levels=T,
                     type='response'), lwd=2, col= 2, lty=1)
 lines(xs*14, predict(mod_No_Outliers, newdata=data.frame(log10_carboxyPMQ=xs, NumberDaysPMQ=14,
-                                             patientid='new'),allow.new.levels=T,
+                                                         patientid='new'),allow.new.levels=T,
                      type='response'), lwd=2, col= 4, lty = 1)
 
 # outline the outliers
