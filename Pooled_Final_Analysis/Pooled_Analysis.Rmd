@@ -61,12 +61,18 @@ CREATE_PLOTS = T
 # Previous Set1 not colourblind friendly: display.brewer.all(colorblindFriendly = T)
 Dark2 = brewer.pal(8, 'Dark2')
 Set2 = brewer.pal(8, 'Set2')
-drug_cols3 = array(Dark2[c(4,6,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
+
+# This needs moving to time analysis: 
+drug_cols3 = array(Dark2[c(4,6,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ'))) 
 drug_cols2 = array(Dark2[c(2,2,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
 drug_cols_light2 = array(Set2[c(2,2,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
 
 # Vector of states
 states = c(relapse = 'L', reinfection = 'I', recrudescence = 'C')
+
+# James, there are some odd bugs something to do with !duplicated() and the tibble...
+# https://stackoverflow.com/questions/39041115/fixing-a-multiple-warning-unknown-column
+# Also, Thetas_full_post has redundant coolumn names
 ```
 
 
@@ -94,10 +100,6 @@ writeLines(sprintf('Number of recurrences typed: %s',
 
 
 ```{r}
-# James, there are some odd bugs something to do with !duplicated() and the tibble...
-# https://stackoverflow.com/questions/39041115/fixing-a-multiple-warning-unknown-column
-# Also, Thetas_full_post has redundant coolumn names
-
 # Were all episodes typed if person was selected for genotyping? 
 MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] # Collapse rows due to COI > 2
 All_VHX_epi_count = table(Combined_Time_Data$patientid[grep('VHX',Combined_Time_Data$patientid)])
