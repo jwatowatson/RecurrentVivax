@@ -33,6 +33,7 @@ require(Matrix)
 require(matrixStats) # for logSumExp
 library(igraph) # For igraph
 require(RColorBrewer)
+require(knitr) # for kable()
 load('../RData/TimingModel/MOD3_theta_estimates.RData')
 load('../RData/TimingModel/MOD3_Posterior_samples.RData')
 load('../RData/TimingModel/Combined_Time_Event.RData')
@@ -80,7 +81,7 @@ writeLines(sprintf('Number of recurrences typed: %s',
 
 
 ```{r}
-# James, there are some odd bugs something to do with
+# James, there are some odd bugs something to do with !duplicated() and the tibble...
 # https://stackoverflow.com/questions/39041115/fixing-a-multiple-warning-unknown-column
 
 # Were all episodes typed if person was selected for genotyping? 
@@ -111,7 +112,6 @@ writeLines(sprintf('Of %s of %s BPD individual/s selected for genotyping, %s to 
 
 ```{r}
 # Is there a significant difference between VHX that where genetically typed and not? 
-# Some odd warnings? 
 All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence 
 x1 = Typ_VHX_epi_count 
 x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # Untyped_VHX_epi_count
@@ -121,7 +121,6 @@ plot_store = array(dim = c(2, max_rec-1), dimnames = list(c('Untyped','Typed'), 
 plot_store['Untyped', names(table(x2))] = table(x2)
 plot_store['Typed', names(table(x1))] = table(x1)
 
-par(las=1)
 barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25), 
      main='VHX subset', xlab = 'Number of episodes')
 legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'), 
@@ -138,10 +137,26 @@ Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Significant
 percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
 pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
 ```
-Summary of complexity of infection based on numbers of alleles observed
+
+Summary of complexity of infection based on numbers of alleles observed 
+(could later compare between relapse / reinfection)
 
 ```{r}
+COIs = sapply(MS_pooled$Episode_Identifier, function(x){
+ ind = MS_pooled$Episode_Identifier == x
+ max(MS_pooled$MOI_id[ind])
+})
+x1 = COIs[grepl('VHX', names(COIs))]
+x2 = COIs[grepl('BPD', names(COIs))]
+theta_hat = median(x1) - median(x2) # Median diff 0
 
+COIs_store = array(0, dim = c(2, max(COIs)), dimnames = list(c('VHX','BPD'), 1:max(COIs)))
+COIs_store['VHX', names(table(x1))] = table(x1)
+COIs_store['BPD', names(table(x2))] = table(x2)
+barplot(COIs_store, col = c('lightgray','red'), beside = T, density = c(100,25), 
+     main='COIs', xlab = 'COIs')
+legend('topright', legend = c('VHX', 'BPD'), fill =c('lightgray', 'red'), 
+       density = c(100,25), bty = 'n')
 ```
 
 Define the sets of microsatellite markers for the various datasets.
