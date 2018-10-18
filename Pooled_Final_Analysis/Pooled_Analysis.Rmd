@@ -37,7 +37,7 @@ require(knitr) # for kable()
 load('../RData/TimingModel/MOD3_theta_estimates.RData')
 load('../RData/TimingModel/MOD3_Posterior_samples.RData')
 load('../RData/TimingModel/Combined_Time_Event.RData')
-  
+
 source("../Genetic_Model/Data_functions.R")
 source('../Genetic_Model/iGraph_functions.R')
 source("../Genetic_Model/post_prob_CLI.R") 
@@ -58,7 +58,10 @@ RUN_MODELS_FALSE_POSITIVE = F
 CREATE_PLOTS = T
 
 # Colour scheme
+# Previous Set1 not colourblind friendly: display.brewer.all(colorblindFriendly = T)
 Dark2 = brewer.pal(8, 'Dark2')
+drug_cols3 = array(Dark2[c(4,6,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
+drug_cols2 = array(Dark2[c(2,2,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
 ```
 
 
@@ -127,7 +130,7 @@ plot_store['Untyped', names(table(x2))] = table(x2)
 plot_store['Typed', names(table(x1))] = table(x1)
 
 barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25), 
-     main='VHX subset', xlab = 'Number of episodes')
+        main='VHX subset', xlab = 'Number of episodes')
 legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'), 
        density = c(100,25), bty = 'n')
 
@@ -147,8 +150,8 @@ Summary of complexity of infection based on numbers of alleles observed
 
 ```{r}
 COIs = sapply(unique(MS_pooled$Episode_Identifier), function(x){
- ind = MS_pooled$Episode_Identifier == x
- max(MS_pooled$MOI_id[ind])
+  ind = MS_pooled$Episode_Identifier == x
+  max(MS_pooled$MOI_id[ind])
 })
 x1 = COIs[grepl('VHX', names(COIs))]
 x2 = COIs[grepl('BPD', names(COIs))]
@@ -158,7 +161,7 @@ COIs_store = array(0, dim = c(2, max(COIs)), dimnames = list(c('VHX','BPD'), 1:m
 COIs_store['VHX', names(table(x1))] = table(x1)
 COIs_store['BPD', names(table(x2))] = table(x2)
 barplot(COIs_store, col = c('lightgray','red'), beside = T, density = c(100,25), 
-     main='COIs', xlab = 'COIs')
+        main='COIs', xlab = 'COIs')
 legend('topright', legend = c('VHX', 'BPD'), fill =c('lightgray', 'red'), 
        density = c(100,25), bty = 'n')
 
@@ -259,9 +262,9 @@ if(CREATE_PLOTS){
 
 The approach is Bayesian and consists of the following:
 
-* A prior probability vector for the recurrence state
+* A prior probability vector for the recurrence state from the time-to-event model
+* An allele frequency estimate from the posterior distribution of allele frequencies
 * A likelihood based on the genetic data of being a *relapse*, a *recrudescence*, or a *reinfection* given the observed microsatellite data.
-
 
 The following iterates through each individual and computes the probability of relatedness states.
 
@@ -277,7 +280,7 @@ colnames(p) = gsub(pattern = 'Relapse_mean_theta',replacement = 'L',x = colnames
 colnames(p) = gsub(pattern = 'ReInfection_mean_theta',replacement = 'I',x = colnames(p))
 
 genetic_AND_time_data_eps = intersect(p$Episode_Identifier, MS_pooled$Episode_Identifier)
-p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,]
+p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,] # Only need priors for those with genetic data
 Post_samples_matrix = Post_samples_matrix[Post_samples_matrix$Episode_Identifier %in% genetic_AND_time_data_eps,]
 ```
 
@@ -285,10 +288,11 @@ Post_samples_matrix = Post_samples_matrix[Post_samples_matrix$Episode_Identifier
 ## Computation using full dataset 
 
 We use all 9MS markers (when available).
+
 ```{r, include=FALSE}
 if(RUN_MODELS_SINGLE_SIMPLE){
   #===============================================
-  # Run new version (with time-to-event)
+  # Run (with time-to-event)
   #===============================================
   tic()
   thetas_9MS = post_prob_CLI(MS_data = MS_pooled, Fs = Fs_Combined, 
@@ -298,7 +302,7 @@ if(RUN_MODELS_SINGLE_SIMPLE){
   toc()
   
   #===============================================
-  # Run new version (without time-to-event)
+  # Run (without time-to-event)
   #===============================================
   tic()
   thetas_9MS_Tagnostic = post_prob_CLI(MS_data = MS_pooled, Fs = Fs_Combined, 
@@ -317,9 +321,9 @@ if(RUN_MODELS_SINGLE_SIMPLE){
 ```{r, include=FALSE}
 if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
   #===============================================
-  # Run full Bayesian with sampling at random from time prior
+  # Run full Bayesian with sampling at random from time prior (treats time posterior as discrete uniform prior)
   # takes about 15-20 minutes on 6 cores
-  # The outer loop is not parallelised - not optimal coding
+  # The outer loop is not parallelised - suboptimal coding
   #===============================================
   
   Ksamples = length(grep('C',colnames(Post_samples_matrix)))
@@ -352,80 +356,90 @@ if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
 
 # Plot results
 
-These dataframes are sorted by episode number so the columns correspond between them. We make some data.frames that store the results for ease of plotting.
 
 ```{r}
-mycols = brewer.pal(n=3, name = 'Set1')
+# Outputs of genetic model w/wo time prior 
+# sorted by episode number s.t. columns correspond and drug added
 thetas_9MS = arrange(thetas_9MS, Episode_Identifier)
 thetas_9MS_Tagnostic = arrange(thetas_9MS_Tagnostic, Episode_Identifier)
+thetas_9MS$drug = Time_Estimates_1$arm_num # Add drug
+thetas_9MS_Tagnostic$drug = Time_Estimates_1$arm_num # Add drug
 
-Time_Estimates_1 = filter(Mod3_ThetaEstimates, 
-                          Episode_Identifier %in% thetas_9MS$Episode_Identifier)
+# Output of time-to-event model (sorted by episode number s.t. columns correspond)
+Time_Estimates_1 = filter(Mod3_ThetaEstimates, Episode_Identifier %in% thetas_9MS$Episode_Identifier)
 Time_Estimates_1 = arrange(Time_Estimates_1, Episode_Identifier)
 
-thetas_9MS$drug = Time_Estimates_1$arm_num
-thetas_9MS_Tagnostic$drug = Time_Estimates_1$arm_num
-
-# for plotting
-thetas_9MS$drug_col = mapvalues(x = thetas_9MS$drug, 
-                                c('AS','CHQ','CHQ/PMQ'), mycols)
-thetas_9MS_Tagnostic$drug_col = mapvalues(x = thetas_9MS_Tagnostic$drug, 
-                                          c('AS','CHQ','CHQ/PMQ'), mycols)
-
-```
-
-```{r}
+# Extract BPD only for BPD only plots
 BPD_data = Thetas_full_post[grep('BPD',rownames(Thetas_full_post)),]
 Thetas_BPD = thetas_9MS[grep('BPD', thetas_9MS$Episode_Identifier),]
 
+# Extract prior used in absence of time-to-event
+Time_agnostic_p = as.list(formals(post_prob_CLI)$p)
+```
 
-# Added by Aimee: some examples
-# Colour some specific examples 
-example_inds = grepl('_644_', Thetas_BPD$Episode_Identifier) | 
-  grepl('BPD_598_', Thetas_BPD$Episode_Identifier) | 
-  grepl('BPD_562_', Thetas_BPD$Episode_Identifier) |
-  grepl('BPD_53_', Thetas_BPD$Episode_Identifier) 
-example_ids = Thetas_BPD$Episode_Identifier[example_inds]
-example_inds_times = MS_pooled$timeSinceLastEpisode[MS_pooled$Episode_Identifier %in% example_ids]
-Tagnostic_example_inds = thetas_9MS_Tagnostic$Episode_Identifier %in% example_ids
-thetas9MS_example_inds = thetas_9MS$Episode_Identifier %in% example_ids
-Time1_example_inds = Time_Estimates_1$Episode_Identifier %in% example_ids
-
+```{r}
+# Highlight some specific examples (useful for slides when presenting work)
+Hightlight_BPD_examples = T 
+if(Hightlight_BPD_examples){
+  example_inds = grepl('_644_', Thetas_BPD$Episode_Identifier) | 
+    grepl('BPD_598_', Thetas_BPD$Episode_Identifier) | 
+    grepl('BPD_562_', Thetas_BPD$Episode_Identifier) |
+    grepl('BPD_53_', Thetas_BPD$Episode_Identifier) 
+  example_ids = Thetas_BPD$Episode_Identifier[example_inds]
+  example_inds_times = MS_pooled$timeSinceLastEpisode[MS_pooled$Episode_Identifier %in% example_ids]
+  Tagnostic_example_inds = thetas_9MS_Tagnostic$Episode_Identifier %in% example_ids
+  thetas9MS_example_inds = thetas_9MS$Episode_Identifier %in% example_ids
+  Time1_example_inds = Time_Estimates_1$Episode_Identifier %in% example_ids
+}
 ```
 
 ## Going from time-to-event prior to posterior
 
-Have broken it down by radical cure and no radical cure, as that is the most informative distinction here.
+Plotted by radical cure versus no radical cure, as that is the most informative distinction here.
 
-```{r}
+```{r, fig.width=7, fig.height=7}
 if(CREATE_PLOTS){
-  par(mfrow=c(2,2),las=1, bty='n')
+  par(mfrow=c(2,2),las=1, bty='n',family='serif')
+  
   # Time agnostic versus full posterior 
-  plot(log10(thetas_9MS_Tagnostic$L), log10(thetas_9MS$L), 
-       col = thetas_9MS$drug_col, main = 'Relapse',pch=20,
-       xlab = 'Time agnostic', ylab = 'Time included')
+  plot(x = log10(thetas_9MS_Tagnostic$L), 
+       y = log10(thetas_9MS$L), 
+       xlab = 'Genetic given time-agnostic prior', 
+       ylab = 'Genetic given time-to-event prior',
+       panel.first = grid(),
+       col = drug_cols2[thetas_9MS$drug], 
+       main = expression(log[10]~('posterior probability of relapse')),pch=20)
   lines(-10:0,-10:0)
+  legend('bottomright', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
   
   # Annotate by examples
-  points(x = log10(thetas_9MS_Tagnostic$L[Tagnostic_example_inds]), 
+  if(Hightlight_BPD_examples){
+    points(x = log10(thetas_9MS_Tagnostic$L[Tagnostic_example_inds]), 
+           y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
+           pch=1, cex = 1.5, col='black')
+    text(x = log10(thetas_9MS_Tagnostic$L[Tagnostic_example_inds]), 
          y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
-         pch=1, cex = 1.5, col='black')
-  text(x = log10(thetas_9MS_Tagnostic$L[Tagnostic_example_inds]), 
-       y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
-       labels = example_ids, pos = 2, cex = 0.7)
+         labels = example_ids, pos = 2, cex = 0.7)}
   
-  plot(log10(thetas_9MS_Tagnostic$I), log10(thetas_9MS$I), 
-       col=thetas_9MS$drug_col, main = 'Reinfection',pch=20,
-       xlab = 'Time agnostic', ylab = 'Time included')
+  plot(x = log10(thetas_9MS_Tagnostic$I), 
+       y = log10(thetas_9MS$I), 
+       xlab = 'Genetic given time-agnostic prior', 
+       ylab = 'Genetic given time-to-event prior',
+       panel.first = grid(),
+       col = drug_cols2[thetas_9MS$drug], 
+       main = expression(log[10]~('posterior probability of reinfection')),pch=20)
   lines(-20:0,-20:0)
   
-  
-  ##### Prior versus full posterior
-  plot(log10(Time_Estimates_1$Relapse_mean_theta),
-       log10(thetas_9MS$L),main = 'Relapse',
-       col=thetas_9MS$drug_col,pch=20,
-       xlab = 'Time based prior', ylab = 'Full posterior')
+  # Prior versus full posterior
+  plot(x = log10(Time_Estimates_1$Relapse_mean_theta),
+       y = log10(thetas_9MS$L),
+       xlab = 'Time-to-event prior', 
+       ylab = 'Genetic given time-to-event prior',
+       panel.first = grid(),
+       col= drug_cols2[thetas_9MS$drug],
+       main = expression(log[10]~('posterior probability of relapse')),pch=20)
   lines(-10:10,-10:10)
+  legend('bottomright', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
   
   # Annotate by examples
   points(x = log10(Time_Estimates_1$Relapse_mean_theta[Time1_example_inds]), 
@@ -436,47 +450,62 @@ if(CREATE_PLOTS){
        labels = example_ids, pos = 2, cex = 0.7)
   
   plot(log10(Time_Estimates_1$ReInfection_mean_theta),
-       log10(thetas_9MS$I),main = 'Reinfection',
-       col=thetas_9MS$drug_col,pch=20,
-       xlab = 'Time based prior', ylab = 'Full posterior')
+       log10(thetas_9MS$I),
+       xlab = 'Time-to-event prior', 
+       ylab = 'Genetic given time-to-event prior',
+       panel.first = grid(), 
+       col= drug_cols2[thetas_9MS$drug], 
+       main = expression(log[10]~('posterior probability of reinfection')), pch=20)
   lines(-10:10,-10:10)
   
 }
 ```
 
 Probability of relapse, ordered from most to least likely:
+
 ```{r, fig.width=10}
 if(CREATE_PLOTS){
   
-  par(mfrow=c(1,2),las=1, bty='n')
-  
+  # Get ranks 
   reLapse_ordered = sort.int(thetas_9MS$L, decreasing = TRUE, index.return = TRUE)
-  plot(reLapse_ordered$x, pch=20, col = thetas_9MS$drug_col[reLapse_ordered$ix],
-       xlab = 'Recurrence index', ylab = 'Probability of relapse state',
-       main = 'Full posterior: reLapse')
+  reLapse_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$L, decreasing = TRUE, index.return = TRUE)
+  
+  # Plot genetic with time-to-event
+  par(mfrow=c(1,2),las=1, bty='n',family = 'serif')
+  plot(reLapse_ordered$x, 
+       panel.first = grid(), 
+       pch=20, 
+       col = drug_cols2[thetas_9MS$drug[reLapse_ordered$ix]],
+       xlab = 'Rank', 
+       ylab = 'Probability of relapse state',
+       main = 'Genetic model given time-to-event prior')
+  legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ'),pch=20)
+  
+  # Add CIs
   CI = cbind(apply(
     Thetas_full_post[reLapse_ordered$i,grep('L',colnames(Thetas_full_post)),],
     1, quantile, probs = 0.025), 
     apply(Thetas_full_post[reLapse_ordered$i,grep('L',colnames(Thetas_full_post)),],
           1, quantile, probs = 0.975))
+  
+  # I don't think the bars at the end of CIs are necessary
   for(i in 1:length(reLapse_ordered$x)){
-    if(diff(CI[i,]) > 0.005) arrows(i,CI[i,1],i,CI[i,2], 
-                                    length = 0.02,angle = 90, 
-                                    code = 3,
-                                    col=thetas_9MS$drug_col[reLapse_ordered$ix[i]])
+    if(diff(CI[i,]) > 0.005) segments(x0 = i, y0 = CI[i,1], x1 = i, y1 = CI[i,2], 
+                                      #length = 0.02, angle = 90, code = 3,
+                                      col = drug_cols2[thetas_9MS$drug[reLapse_ordered$ix[i]]])
   }
   
-  legend('topright',col = mycols[2:3], bty = 'n', 
-         legend = c('No radical cure','Radical cure'),pch=20)
   
-  reLapse_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$L, 
-                                  decreasing = TRUE, index.return = TRUE)
-  plot(reLapse_ordered_Tagn$x, pch=20, cex=.8,
-       col = thetas_9MS_Tagnostic$drug_col[reLapse_ordered_Tagn$ix],
-       xlab = 'Recurrence index', ylab = 'Probability of relapse state',
-       main = 'Time agnostic posterior: reLapse')
-  legend('topright',col = mycols[2:3], bty = 'n', 
-         legend = c('No radical cure','Radical cure'),pch=20)
+  # Plot Genetic with time-agnostic prior
+  plot(reLapse_ordered_Tagn$x, 
+       panel.first = grid(), 
+       pch=20, cex=.8,
+       col = drug_cols2[thetas_9MS$drug[reLapse_ordered$ix]],
+       xlab = 'Rank', 
+       ylab = 'Probability of relapse state',
+       main = 'Genetic model given time-agnostic prior')
+  legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ'),pch=20)
+  
 }
 ```
 
