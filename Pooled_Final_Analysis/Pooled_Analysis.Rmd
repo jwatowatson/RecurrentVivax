@@ -37,7 +37,7 @@ require(knitr) # for kable()
 load('../RData/TimingModel/MOD3_theta_estimates.RData')
 load('../RData/TimingModel/MOD3_Posterior_samples.RData')
 load('../RData/TimingModel/Combined_Time_Event.RData')
-
+  
 source("../Genetic_Model/Data_functions.R")
 source('../Genetic_Model/iGraph_functions.R')
 source("../Genetic_Model/post_prob_CLI.R") 
@@ -56,10 +56,13 @@ RUN_MODELS_FULL_POSTERIOR_SIMPLE = F
 RUN_MODELS_FULL_POSTERIOR_INFLATED = F
 RUN_MODELS_FALSE_POSITIVE = F
 CREATE_PLOTS = T
+
+# Colour scheme
+Dark2 = brewer.pal(8, 'Dark2')
 ```
 
 
-Summary of the data and the whole of the VHX data versus the subset typed (in terms of number of episodes):
+Summary of the data and the whole of the VHX data set versus the subset typed (in terms of number of episodes):
 
 ```{r, echo=FALSE}
 writeLines(sprintf('Number of individuals with at least one episode typed: %s',
@@ -141,7 +144,6 @@ pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
 ```
 
 Summary of complexity of infection based on numbers of alleles observed 
-(could later compare between relapse / reinfection)
 
 ```{r}
 COIs = sapply(unique(MS_pooled$Episode_Identifier), function(x){
@@ -178,11 +180,6 @@ MSs_BPD = MSs_all
 MSs_Main = c('PV.3.27', 'PV.3.502', 'PV.ms8') # These are typed for all episodes (the core group)
 ```
 
-
-The approach is fully Bayesian and consists of the following:
-
-* A prior probability vector for the recurrence state
-* A likelihood based on the genetic data of being a *relapse*, a *recrudescence*, or a *reinfection* given the observed microsatellite data.
 
 # Allele frequencies
 
@@ -227,38 +224,44 @@ Fs_Combined = sapply(Alpha_Posteriors, function(x){x/sum(x)})
 
 ## Plotting allele frequencies
 
-These are the observed allele frequencies in the pooled data. We show 80% credible intervals (lo) (Aimee: seems to be 95%)
+These are the mean posterior allele frequencies (dots) and 95\% credible intervals (bars) given pooled enrollment data and $\omega=$ `D_weight_Prior`.  
 
 ```{r AlleleFrequencies, echo=F}
+# Changed s.t. frequences rather than percentages plotted
+# No need for colour
+
 if(CREATE_PLOTS){
-  par(mfrow=c(3,3), las=1, bty='n', cex.axis=1.2)
-  
+  par(mfrow=c(3,3), las=1, bty='n', cex.axis=1.2, family = 'serif')
   for(ms in MSs_all){ # As bars
     K = length(Fs_Combined[[ms]]) # Cardinality of ms 
     xs = rdirichlet(n = 1000, alpha = Alpha_Posteriors[[ms]]) # Sample from posterior
-    # MC approximation of 0.9 percentile expressed as percentage
-    YMAX = max(apply(100*xs, 2, quantile, probs = .9)) 
+    # MC approximation of 0.975 percentile expressed as percentage
+    YMAX = ceiling(max(apply(xs, 2, quantile, probs = .975))*10)/10 # Round up to nearest decimal
     # Number of observations
     N_MS = length(unique(MS_pooled$ID[MS_pooled$Episode==1 & !is.na(MS_pooled[,ms])]))
-    plot(1:ncol(xs), rep(NA,K), 
+    plot(NULL, panel.first = grid(), 
          main = sprintf('%s (n = %s)', ms, N_MS),
-         pch = 18, ylim=c(0,YMAX),col='red',
-         ylab='%', xlab='', yaxt='n')
-    abline(h=100/K)
-    mtext(text = paste('Motif length:',MSs_Motifs[[ms]]),side = 1,line=3)
+         pch = 18, ylim=c(0,YMAX), xlim = c(1,ncol(xs)), 
+         ylab='', xlab='', yaxt='n')
+    abline(h=1/K, lty = 'dashed', lwd = 0.5)
+    title(ylab='Frequency', xlab= sprintf('Repeat length (motif length = %s)', MSs_Motifs[[ms]]), line = 3)
     for(k in 1:ncol(xs)){
-      lines(rep(k,2), 100*quantile(xs[,k],probs = c(0.025,0.975)), col='blue')
+      lines(rep(k,2), quantile(xs[,k],probs = c(0.025,0.975)))
     }
-    points(1:length(Fs_Combined[[ms]]),
-           100*Fs_Combined[[ms]],col='red',pch=18)
-    
-    axis(2, seq(0, round(YMAX), length.out = 3))
+    points(1:length(Fs_Combined[[ms]]),Fs_Combined[[ms]],pch=18)
+    axis(2, seq(0, YMAX, length.out = 3))
   }
 }
 ```
 
 
 # Computing the probability of relatedness across infections
+
+The approach is Bayesian and consists of the following:
+
+* A prior probability vector for the recurrence state
+* A likelihood based on the genetic data of being a *relapse*, a *recrudescence*, or a *reinfection* given the observed microsatellite data.
+
 
 The following iterates through each individual and computes the probability of relatedness states.
 
