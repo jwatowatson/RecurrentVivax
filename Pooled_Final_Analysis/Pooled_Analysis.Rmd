@@ -179,7 +179,6 @@ MSs_Main = c('PV.3.27', 'PV.3.502', 'PV.ms8') # These are typed for all episodes
 ```
 
 
-
 The approach is fully Bayesian and consists of the following:
 
 * A prior probability vector for the recurrence state
@@ -187,13 +186,12 @@ The approach is fully Bayesian and consists of the following:
 
 # Allele frequencies
 
-We use a multinomial-dirichlet model with subjective weight. Setting the weight to 0 recovers unweighted empirical allele frequencies. 
+We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 0$ recovers unweighted empirical allele frequencies. 
 
 ```{r, echo=F}
-#--------------------------------------------------------------------------
-# Estimate allele frequencies from reformated data ignoring NAs.
-
 # Prior weight for the Dirichlet (setting weight to 0 recovers empirical freq):
+D_weight_Prior = 1
+
 MSs_all = c("PV.3.502","PV.3.27","PV.ms8",
             "PV.1.501","PV.ms1","PV.ms5",
             "PV.ms6", "PV.ms7","PV.ms16")
@@ -205,28 +203,11 @@ MSs_Motifs = list("PV.3.502"=8,'PV.3.27' = 4,
                   "PV.ms6" = 3, "PV.ms16" =3,
                   "PV.ms7" = 3)
 
-# This is an important parameter: pseudo weight in the Dirichlet prior
-D_weight_Prior = 1
-
 writeLines(paste('Number of episodes used to compute frequencies:',
                  sum(MS_pooled$Episode==1 & MS_pooled$MOI_id==1)))
 Ind_Primary = which(MS_pooled$Episode==1)
 
-# I wrote the following to check I understood - suggest as a more-readable alternative (agrees with ms text)
-Fs_Combined =  apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
-  # Extract xmax 
-  xmax = max(x,na.rm=T)
-  # prior parameter vector (iterpolates unobserved repeat lengths < xmax)
-  param_vector = array(D_weight_Prior, dim = xmax, dimnames = list(1:xmax)) 
-  # observed data summarised as counts
-  obs_counts = table(x[Ind_Primary]) 
-  # posterior parameter vector
-  param_vector[names(obs_counts)] = param_vector[names(obs_counts)] + obs_counts
-  # posterior mean
-  posterior_mean = param_vector/sum(param_vector)
-  return(posterior_mean)
-})
-
+# Posterior Dirichlet parameter vector
 Alpha_Posteriors = apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
   # Extract xmax 
   xmax = max(x,na.rm=T)
@@ -238,6 +219,9 @@ Alpha_Posteriors = apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
   param_vector[names(obs_counts)] = param_vector[names(obs_counts)] + obs_counts
   return(param_vector)
 })
+
+# Calculate posterior mean 
+Fs_Combined = sapply(Alpha_Posteriors, function(x){x/sum(x)})
 ```
 
 
