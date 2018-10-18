@@ -385,12 +385,12 @@ Time_agnostic_p = as.list(formals(post_prob_CLI)$p)
 # Highlight some specific examples (useful for slides when presenting work)
 Hightlight_BPD_examples = T 
 if(Hightlight_BPD_examples){
-  example_inds = grepl('_644_', Thetas_BPD$Episode_Identifier) | 
+  example_inds = grepl('BPD_644_', Thetas_BPD$Episode_Identifier) | 
     grepl('BPD_598_', Thetas_BPD$Episode_Identifier) | 
     grepl('BPD_562_', Thetas_BPD$Episode_Identifier) |
     grepl('BPD_53_', Thetas_BPD$Episode_Identifier) 
   example_ids = Thetas_BPD$Episode_Identifier[example_inds]
-  example_inds_times = MS_pooled$timeSinceLastEpisode[MS_pooled$Episode_Identifier %in% example_ids]
+  example_inds_times = MS_pooled_summary$timeSinceLastEpisode[MS_pooled_summary$Episode_Identifier %in% example_ids]
   Tagnostic_example_inds = thetas_9MS_Tagnostic$Episode_Identifier %in% example_ids
   thetas9MS_example_inds = thetas_9MS$Episode_Identifier %in% example_ids
   Time1_example_inds = Time_Estimates_1$Episode_Identifier %in% example_ids
@@ -512,52 +512,56 @@ if(CREATE_PLOTS){
 ```
 
 
-# BPD Final Plot
+# BPD Final plot
 
 ```{r BPD_efficacy, fig.width=10}
-# Get rid of duplicated episode IDs (MOI > 1)
-MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
-
 if(CREATE_PLOTS){
-  par(mfrow=c(1,2),las=1, bty='n')
-  reLapse_ordered = sort.int(Thetas_BPD$L, decreasing = TRUE, index.return = TRUE)
-  plot(reLapse_ordered$x, pch=20, col = Thetas_BPD$drug_col[reLapse_ordered$ix],
-       xlab = 'Recurrence index', ylab = 'Probability of relapse',
+  par(mfrow=c(1,2),las=1, bty='n', family = 'serif')
+  ordered = sort.int(Thetas_BPD$L, decreasing = TRUE, index.return = TRUE)
+  
+  plot(ordered$x, 
+       panel.first = grid(), 
+       pch=20, col = drug_cols2[Thetas_BPD$drug[ordered$ix]],
+       xlab = 'Rank', ylab = 'Probability of relapse',
        main = '')
-  CI = cbind(apply(
-    BPD_data[reLapse_ordered$ix,grep('L',colnames(BPD_data)),],
-    1, quantile, probs = 0.025), 
-    apply(BPD_data[reLapse_ordered$ix,grep('L',colnames(BPD_data)),],
-          1, quantile, probs = 0.975))
-  for(i in 1:length(reLapse_ordered$x)){
-    if(diff(CI[i,]) > 0.005) arrows(i,CI[i,1],i,CI[i,2], 
-                                    length = 0.02,angle = 90, 
-                                    code = 3,
-                                    col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
+  
+  X = BPD_data[ordered$ix,grep('L',colnames(BPD_data)),]
+  CI = t(cbind(apply(X, 1, quantile, probs = c(0.025, 0.975))))
+  
+  for(i in 1:length(ordered$x)){
+    if(diff(CI[i,]) > 0.005) segments(i,CI[i,1],i,CI[i,2], 
+                                      col=drug_cols2[Thetas_BPD$drug[reLapse_ordered$ix[i]]])
   }
   
   writeLines(sprintf('The mean percentage of recurrences which are estimated to be relapses is %s%%',
                      round(100*sum(Thetas_BPD$L + Thetas_BPD$C)/nrow(Thetas_BPD))))
   
   
-  plot(NA,NA,xlim=c(0,max(MS_pooled_summary$timeSinceLastEpisode,na.rm=T)), ylim=c(0,1),
-       ylab = 'Probability of relapse', xlab = 'Time since last episode')
-  for(i in 1:length(reLapse_ordered$x)){
-    kk = reLapse_ordered$ix[i]
+  plot(NULL,
+       xlim=c(0,max(MS_pooled_summary$timeSinceLastEpisode,na.rm=T)), 
+       ylim=c(0,1),
+       ylab='Probability of relapse', 
+       xlab = 'Time since last episode')
+  
+  for(i in 1:length(ordered$x)){
+    kk = ordered$ix[i]
     x_time = MS_pooled_summary$timeSinceLastEpisode[Thetas_BPD$Episode_Identifier[kk]==
                                                       MS_pooled_summary$Episode_Identifier]
     points(x_time,
-           Thetas_BPD$L[kk], pch=20, col=mycols[3])
-    if(diff(CI[i,]) > 0.005) arrows(x_time,CI[i,1],x_time,CI[i,2], 
-                                    length = 0.02,angle = 90, 
-                                    code = 3,
-                                    col=Thetas_BPD$drug_col[reLapse_ordered$ix[i]])
+           Thetas_BPD$L[kk], pch=20, col = drug_cols2[Thetas_BPD$drug[reLapse_ordered$ix[i]]])
+    
+    if(diff(CI[i,]) > 0.005) segments(x_time,CI[i,1],x_time,CI[i,2], 
+                                      #length = 0.02,angle = 90, code = 3,
+                                      col=drug_cols2[Thetas_BPD$drug[reLapse_ordered$ix[i]]])
   }
   
-  # Annotate by examples
-  # points(example_inds_times,Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
-  # text(x = example_inds_times, y = Thetas_BPD$L[example_inds], 
-  #      labels = example_ids, pos =3)
+  if(Hightlight_BPD_examples){
+    points(x = example_inds_times,
+           y = Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
+    text(x = example_inds_times, 
+         y = Thetas_BPD$L[example_inds],
+         labels = example_ids, pos =3)
+  }
 }
 ```
 
@@ -566,6 +570,7 @@ if(CREATE_PLOTS){
 
 
 We remove the IDs that can be straightforwardly calculated:
+
 ```{r}
 ind_calculated = which(MS_pooled_summary$Episode_Identifier %in% thetas_9MS$Episode_Identifier)
 IDs_calculated = unique(MS_pooled_summary$ID[ind_calculated])
@@ -573,6 +578,7 @@ IDs_remaining = unique(MS_pooled_summary$ID[! MS_pooled_summary$ID %in% IDs_calc
 ```
 
 We blow up the pooled analysis into all pairs within individuals:
+
 ```{r, include=FALSE}
 MS_inflate = filter(MS_pooled_summary, MS_pooled_summary$ID %in% IDs_remaining)
 MS_inflated = Inflate_into_pairs(MS_data = MS_inflate)
@@ -650,6 +656,7 @@ Res = data.frame(Episode_Identifier = rownames(Res_total),
 
 
 Construct adjacency graphs and compute probabilities of relapse and reinfection.
+
 ```{r}
 MS_pooled_summary$L_or_C_state = MS_pooled_summary$TotalEpisodes = NA
 MS_pooled_summary$L_lower = MS_pooled_summary$L_upper = MS_pooled_summary$L_mean = NA
@@ -755,14 +762,13 @@ for(id in MS_pooled_summary$ID){
 }
 
 MS_pooled_summary$Plotting_pch_Values = 
-  as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, 
-                       from = c('L','Uncertain','I'), to = 15:17))
+  as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = c(21,15,24)))
 MS_pooled_summary$Plotting_col_Values = 
-  as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, 
-                       from = c('L','Uncertain','I'), to = 1:3))
+  as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = 1:3))
+
 ```
 
-```{r CoatneyStylePLot, fig.heigh=10}
+```{r CoatneyStylePLot}
 # Only the recurrences for which we can compute estimates of recurrence state
 MS_final = filter(MS_pooled_summary, !is.na(L_mean))
 MS_final = arrange(MS_final, desc(Drug), desc(FU), desc(TotalEpisodes))
@@ -770,13 +776,17 @@ ids = unique(MS_final$ID)
 
 if(CREATE_PLOTS){
   ## Time series data colored by genetic STATE: classification
-  mycols_states = c('red','yellow','black') # colors for states - need uncertain ones as well
+  
+  mycols_states_bg = c('#FFFFFF',Dark2[4],'#000000') # colors for states - need uncertain ones as well
+  mycols_states_fg = c(Dark2[8],Dark2[4],'#000000') # colors for states - need uncertain ones as well
   mycols_drugs = brewer.pal(n=3, name = 'Set1')
-  par(las=1, bty='n', cex.axis=.3, mar=c(3,0,1,1))
-  plot(NA, NA, xlim = c(0,370), ylim = c(1,length(ids)),
+  par(las=1, bty='n', cex.axis=.3, mar=c(4,0,1,1), family = 'serif')
+  plot(NULL, ylab = '', xlab = '',
+       xlim = c(0,370), 
+       ylim = c(1,length(ids)),
        xaxt='n', yaxt='n')
-  mtext(text = 'Days from start of study', side = 1, line=2, cex=1.3)
-  axis(1, at = seq(0,370, by=60), cex.axis=1.5)
+  mtext(text = 'Days from start of study', side = 1, line=2.5, cex=1)
+  axis(1, at = seq(0,370, by=60), cex.axis=1)
   
   for(i in 1:length(ids)){
     
@@ -786,12 +796,7 @@ if(CREATE_PLOTS){
     # Add the follow up time line
     lines(c(0,MS_final$FU[ind[1]]), 
           c(i,i), lty=1, 
-          lwd=.5, col= mycols_drugs[MS_final$Drug[ind[1]]])
-    
-    cols = mycols_states[MS_final$Plotting_col_Values[ind]]
-    points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
-           pch=MS_final$Plotting_pch_Values[ind], 
-           col=cols,cex=.6)
+          lwd=.5, col=drug_cols2[MS_final$Drug[ind[1]]])
     
     # For highlighting long-latency
     # Add the follow up time line
@@ -801,18 +806,37 @@ if(CREATE_PLOTS){
             lwd=.5, col= 'black')
       
       cols = mycols_states[MS_final$Plotting_col_Values[ind]]
-      points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
-             pch=1, 
-             col='black',cex=1)}
+      points(MS_final$timeSinceEnrolment[ind], 
+             rep(i,length(ind)), 
+             pch=1,cex = 1.5, 
+             col='black')}
+    
+    # Add points after highlight lines
+    points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
+           pch=MS_final$Plotting_pch_Values[ind], 
+           bg=mycols_states_bg[MS_final$Plotting_col_Values[ind]],
+           col=mycols_states_fg[MS_final$Plotting_col_Values[ind]], 
+           cex=.6)
+    
+    
     
   }
   lines(x = c(0,0), y = c(0,length(ids)),lwd=3)
-  # Hacky colour legend
-  legend('topright', col = c('red', 'black', 'yellow',mycols_drugs[2:3]), 
-         pch = c(15,17,16, NA,NA), cex = 0.7, bty = 'n', 
-         lty = c(NA,NA,NA,1,1), lwd = c(NA,NA,NA,2,2),
-         legend = c('Classified relapse', 'Classified reinfection', 'Uncertain',
-                    'No radical cure', 'Radical cure'))
+  
+  # legend('topright', col = c(mycols_states_fg[c(2,1,3)], drug_cols[2:3]), 
+  #        pch = c(15,1,17,NA,NA), cex = 0.7, bty = 'n', y.intersp = 0.75, 
+  #        lty = c(NA,NA,NA,1,1), lwd = c(NA,NA,NA,1,1),
+  #        legend = c('Classification uncertain','Classified relapse','Classified reinfection',
+  #                   'No PMQ', 'PMQ'))
+  
+  legend('topright', col = c(mycols_states_fg[c(3,2,1)]), 
+         pch = c(1,15,17), cex = 0.7, bty = 'n', y.intersp = 0.75, title = 'Classification',
+         legend = c('Relapse','Uncertain','Reinfection'))
+  
+  legend('top', col = drug_cols[2:3], 
+         cex = 0.7, bty = 'n', y.intersp = 0.75, 
+         lty = 1, lwd = 1,
+         legend = c('No PMQ', 'PMQ'))
 }
 ```
 
@@ -820,7 +844,9 @@ if(CREATE_PLOTS){
 if(CREATE_PLOTS){
   par(las=1, mfcol = c(2,1), mar=c(3,4,1,1), bty='n')
   MS_final = arrange(MS_final, L_mean)
-  plot(1:nrow(MS_final), MS_final$L_mean,
+  plot(1:nrow(MS_final), 
+       MS_final$L_mean,
+       panel.first = grid(), 
        col = mycols_drugs[MS_final$Drug], 
        pch=20, cex=.3, yaxt='n', ylab='')
   axis(2, at = c(0,.5,1))
