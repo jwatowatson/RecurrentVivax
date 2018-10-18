@@ -78,35 +78,37 @@ writeLines(sprintf('Number of recurrences typed: %s',
 ```
 
 ```{r}
-# Is there a significant difference beteen VHX that where geneticall typed and not? 
+# Is there a significant difference between VHX that where genetically typed and not? 
 # Some odd warnings? 
-MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]
-par(las=1)
 
+MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] # Collapse rows due to COI > 2
 All_VHX_epi_count = table(Combined_Time_Data$patientid[grep('VHX',Combined_Time_Data$patientid)])
-Typed_VHX_epi_count =  table(MS_pooled_summary$ID[grep('VHX',MS_pooled$Episode_Identifier)])
-Untyped_VHX_epi_count = All_VHX_epi_count[!names(All_VHX_epi_count) %in% names(Typed_VHX_epi_count)]
+All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence 
+x1 =  table(MS_pooled_summary$ID[grep('VHX',MS_pooled$Episode_Identifier)]) # Typed_VHX_epi_count
+sum(x1 == 1); x1 = x1[x1>1] # Remove the one "1" from Typed VHX as a mixtake
+x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # Untyped_VHX_epi_count
+max_rec = max(All_VHX_rec_count)
 
-hist(Untyped_VHX_epi_count, col = 'lightgray', 
-     main='VHX subset', xlab = 'Number of episodes', 
-     breaks = seq(0.5,15.5,by=1), freq = F)
-hist(Typed_VHX_epi_count,
-     breaks = seq(0.5,15.5,by=1), add=T, 
-     freq = F, col='red',density = 15)
+plot_store = array(dim = c(2, max_rec-1), dimnames = list(c('Untyped','Typed'), 2:max_rec))
+plot_store['Untyped', names(table(x2))] = table(x2)
+plot_store['Typed', names(table(x1))] = table(x1)
+
+par(las=1)
+barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25), 
+     main='VHX subset', xlab = 'Number of episodes')
+legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'), 
+       density = c(100,25), bty = 'n')
 
 # Bootstap test of difference in median
-x1 = Typed_VHX_epi_count
-x2 = Untyped_VHX_epi_count
-theta_hat = median(x1) - median(x2)
-B = 1000
-theta_hat_boot = sapply(1:B, function(x){
+theta_hat = median(x1) - median(x2) # Median diff 2
+theta_hat_boot = sapply(1:5000, function(x){
   x1boot = sample(x1, size = length(x1), replace = T)
   x2boot = sample(x2, size = length(x2), replace = T)
   median(x1boot) - median(x2boot)})
-se = sd(theta_hat_boot)
-Normal_95CI = c(theta_hat - 1.96*se,theta_hat + 1.96*se)  # Significant
-percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Significant
-pivotal_95CI = 2*theta_hat - percentile_95CI # Significant
+se = sd(theta_hat_boot) 
+Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Significant
+percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
+pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
 ```
 
 
