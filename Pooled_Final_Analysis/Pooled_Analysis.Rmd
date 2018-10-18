@@ -62,6 +62,9 @@ CREATE_PLOTS = T
 Dark2 = brewer.pal(8, 'Dark2')
 drug_cols3 = array(Dark2[c(4,6,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
 drug_cols2 = array(Dark2[c(2,2,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
+
+# Vector of states
+states = c(relapse = 'L', reinfection = 'I', recrudescence = 'C')
 ```
 
 
@@ -91,6 +94,7 @@ writeLines(sprintf('Number of recurrences typed: %s',
 ```{r}
 # James, there are some odd bugs something to do with !duplicated() and the tibble...
 # https://stackoverflow.com/questions/39041115/fixing-a-multiple-warning-unknown-column
+# Also, Thetas_full_post has redundant coolumn names
 
 # Were all episodes typed if person was selected for genotyping? 
 MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] # Collapse rows due to COI > 2
@@ -118,7 +122,7 @@ writeLines(sprintf('Of %s of %s BPD individual/s selected for genotyping, %s to 
                    X0,X1,X2[1],X2[2]))
 ```
 
-```{r}
+```{r VHX_typed_untyped}
 # Is there a significant difference between VHX that where genetically typed and not? 
 All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence 
 x1 = Typ_VHX_epi_count 
@@ -148,7 +152,7 @@ pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
 
 Summary of complexity of infection based on numbers of alleles observed 
 
-```{r}
+```{r COIs_VHX_BPD}
 COIs = sapply(unique(MS_pooled$Episode_Identifier), function(x){
   ind = MS_pooled$Episode_Identifier == x
   max(MS_pooled$MOI_id[ind])
@@ -461,96 +465,52 @@ if(CREATE_PLOTS){
 }
 ```
 
-Probability of relapse, ordered from most to least likely:
+Probability of states, ordered from most to least likely:
 
-```{r, fig.width=10}
+```{r, fig.height=12}
 if(CREATE_PLOTS){
-  
-  # Get ranks 
-  reLapse_ordered = sort.int(thetas_9MS$L, decreasing = TRUE, index.return = TRUE)
-  reLapse_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$L, decreasing = TRUE, index.return = TRUE)
-  
-  # Plot genetic with time-to-event
-  par(mfrow=c(1,2),las=1, bty='n',family = 'serif')
-  plot(reLapse_ordered$x, 
-       panel.first = grid(), 
-       pch=20, 
-       col = drug_cols2[thetas_9MS$drug[reLapse_ordered$ix]],
-       xlab = 'Rank', 
-       ylab = 'Probability of relapse state',
-       main = 'Genetic model given time-to-event prior')
-  legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ'),pch=20)
-  
-  # Add CIs
-  CI = cbind(apply(
-    Thetas_full_post[reLapse_ordered$i,grep('L',colnames(Thetas_full_post)),],
-    1, quantile, probs = 0.025), 
-    apply(Thetas_full_post[reLapse_ordered$i,grep('L',colnames(Thetas_full_post)),],
-          1, quantile, probs = 0.975))
-  
-  # I don't think the bars at the end of CIs are necessary
-  for(i in 1:length(reLapse_ordered$x)){
-    if(diff(CI[i,]) > 0.005) segments(x0 = i, y0 = CI[i,1], x1 = i, y1 = CI[i,2], 
-                                      #length = 0.02, angle = 90, code = 3,
-                                      col = drug_cols2[thetas_9MS$drug[reLapse_ordered$ix[i]]])
+  par(mfrow=c(3,2),las=1, bty='n',family = 'serif')
+  for(state in states){
+    
+    # Get ranks 
+    ordered = sort.int(thetas_9MS[,state], decreasing = TRUE, index.return = TRUE)
+    ordered_Tagn = sort.int(thetas_9MS_Tagnostic[,state], decreasing = TRUE, index.return = TRUE)
+    
+    # Plot genetic with time-to-event
+    plot(ordered$x, 
+         panel.first = grid(), 
+         pch=20, 
+         col = drug_cols2[thetas_9MS$drug[ordered$ix]],
+         xlab = 'Rank', 
+         ylab = sprintf('Probability of %s state', state),
+         main = 'Genetic model given time-to-event prior')
+    legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ'),pch=20)
+    
+    # Add CIs
+    ind = grepl(state,colnames(Thetas_full_post)) & !grepl('Episode_Identifier',colnames(Thetas_full_post)) 
+    X = Thetas_full_post[ordered$i,ind]
+    CI = t(apply(X, 1, quantile, probs = c(0.025, 0.975)))
+    
+    # I don't think the bars at the end of CIs are necessary
+    for(i in 1:length(ordered$x)){
+      if(diff(CI[i,]) > 0.005) segments(x0 = i, y0 = CI[i,1], x1 = i, y1 = CI[i,2], 
+                                        col = drug_cols2[thetas_9MS$drug[ordered$ix[i]]])
+    }
+    
+    
+    # Plot Genetic with time-agnostic prior
+    plot(ordered_Tagn$x, 
+         panel.first = grid(), 
+         pch=20, cex=.8,
+         col = drug_cols2[thetas_9MS$drug[ordered$ix]],
+         xlab = 'Rank', 
+         ylab = sprintf('Probability of %s state',state),
+         main = 'Genetic model given time-agnostic prior')
+    legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ'),pch=20)
   }
-  
-  
-  # Plot Genetic with time-agnostic prior
-  plot(reLapse_ordered_Tagn$x, 
-       panel.first = grid(), 
-       pch=20, cex=.8,
-       col = drug_cols2[thetas_9MS$drug[reLapse_ordered$ix]],
-       xlab = 'Rank', 
-       ylab = 'Probability of relapse state',
-       main = 'Genetic model given time-agnostic prior')
-  legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ'),pch=20)
-  
 }
 ```
 
-Probability of reinfection, ordered from most to least likely:
-```{r, fig.width=10}
-if(CREATE_PLOTS){
-  
-  par(mfrow=c(1,2),las=1, bty='n')
-  reinfection_ordered = sort.int(thetas_9MS$I, decreasing = TRUE, index.return = TRUE)
-  plot(reinfection_ordered$x, pch=20, col = thetas_9MS$drug_col[reinfection_ordered$ix],
-       xlab = 'Recurrence index', ylab = 'Probability of reinfection state',
-       main = 'Full posterior: reInfection')
-  legend('topright',col = mycols[2:3],bty = 'n',  
-         legend = c('No radical cure','Radical cure'),pch=20)
-  
-  reinfection_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$I, decreasing = TRUE, index.return = TRUE)
-  plot(reinfection_ordered_Tagn$x, pch=20, cex=.8,
-       col = thetas_9MS_Tagnostic$drug_col[reinfection_ordered_Tagn$ix],
-       xlab = 'Recurrence index', ylab = 'Probability of reinfection state',
-       main = 'Time agnostic posterior: reInfection')
-  legend('topright',col = mycols[2:3],bty = 'n',  
-         legend = c('No radical cure','Radical cure'),pch=20)
-}
-```
-
-Probability of recrudescence, ordered from most to least likely:
-```{r, fig.width=10}
-if(CREATE_PLOTS){
-  par(mfrow=c(1,2),las=1, bty='n')
-  recrud_ordered = sort.int(thetas_9MS$C, decreasing = TRUE, index.return = TRUE)
-  plot(recrud_ordered$x, pch=20, col = thetas_9MS$drug_col[recrud_ordered$ix],
-       xlab = 'Recurrence index', ylab = 'Probability of recrudescence state',
-       main = 'Full posterior: reCrudescence')
-  legend('topright',col = mycols[2:3],bty = 'n',  
-         legend = c('No radical cure','Radical cure'),pch=20)
-  
-  recrud_ordered_Tagn = sort.int(thetas_9MS_Tagnostic$C, decreasing = TRUE, index.return = TRUE)
-  plot(recrud_ordered_Tagn$x, pch=20, cex=.8,
-       col = thetas_9MS_Tagnostic$drug_col[recrud_ordered_Tagn$ix],
-       xlab = 'Recurrence index', ylab = 'Probability of recrudescence state',
-       main = 'Time agnostic posterior: reCrudescence')
-  legend('topright',col = mycols[2:3],bty = 'n',  
-         legend = c('No radical cure','Radical cure'),pch=20)
-}
-```
 
 # BPD Final Plot
 
