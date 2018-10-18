@@ -912,6 +912,7 @@ if(CREATE_PLOTS){
 }
 ```
 Individuals who appear to relapse very late (more than 300 days after last episode):
+
 ```{r}
 MS_pooled = reformat_MSdata(MS_pooled)
 IDs_late_relapse = MS_final[which(MS_final$timeSinceLastEpisode>300 & MS_final$L_lower>.9),'ID']
@@ -921,7 +922,8 @@ writeLines(sprintf('The episode ids of interest are: %s',
                             'Episode_Identifier']))
 
 # This isn't working on my Mac
-#ColorPlot_MSdata(MS_data = MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
+# That's odd... its working on mine (maybe a path problem?)
+# ColorPlot_MSdata(MS_data = MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 print(MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 ```
 
@@ -969,7 +971,7 @@ writeLines(sprintf('In chloroquine+primaquine individuals, the weighted average 
 
 # False positive rate of relapse
 
-We want to know how often our model estimates evidence of relapse across pairs of episodes when the episodes are in different people (e.g.)
+We want to know how often our model estimates evidence of relapse across pairs of episodes when the episodes are in different people (i.e. have not possibility of being a relapse)
 
 ```{r}
 if(RUN_MODELS_FALSE_POSITIVE){
