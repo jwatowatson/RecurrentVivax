@@ -75,6 +75,8 @@ MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]
 
 writeLines(sprintf('Number of individuals with at least two episodes typed: %s',
                    length(unique(MS_pooled$ID))))
+writeLines(sprintf('Number of episodes individuals with at least two episodes typed: %s',
+                   length(unique(MS_pooled$Episode_Identifier))))
 writeLines(sprintf('Number of recurrences typed: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
 ```
@@ -142,7 +144,7 @@ Summary of complexity of infection based on numbers of alleles observed
 (could later compare between relapse / reinfection)
 
 ```{r}
-COIs = sapply(MS_pooled$Episode_Identifier, function(x){
+COIs = sapply(unique(MS_pooled$Episode_Identifier), function(x){
  ind = MS_pooled$Episode_Identifier == x
  max(MS_pooled$MOI_id[ind])
 })
@@ -157,6 +159,13 @@ barplot(COIs_store, col = c('lightgray','red'), beside = T, density = c(100,25),
      main='COIs', xlab = 'COIs')
 legend('topright', legend = c('VHX', 'BPD'), fill =c('lightgray', 'red'), 
        density = c(100,25), bty = 'n')
+
+# How many could have have sibs? 
+X0 = sum(COIs >= 3)
+X1 = round(sum(COIs >= 3)/length(COIs)*100, 2)
+
+writeLines(sprintf('Median COI in VHX and BPD: %s and %s, respectively', median(x1), median(x2)))
+writeLines(sprintf('Number of episodes with COI >= 3: %s of %s (%s percent)', X0, length(COIs), X1))
 ```
 
 Define the sets of microsatellite markers for the various datasets.
