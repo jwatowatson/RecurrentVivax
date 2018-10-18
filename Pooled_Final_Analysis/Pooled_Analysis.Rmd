@@ -77,15 +77,44 @@ writeLines(sprintf('Number of recurrences typed: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
 ```
 
+
+```{r}
+# James, there are some odd bugs something to do with
+# https://stackoverflow.com/questions/39041115/fixing-a-multiple-warning-unknown-column
+
+# Were all episodes typed if person was selected for genotyping? 
+MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] # Collapse rows due to COI > 2
+All_VHX_epi_count = table(Combined_Time_Data$patientid[grep('VHX',Combined_Time_Data$patientid)])
+All_BPD_epi_count = table(Combined_Time_Data$patientid[grep('BPD',Combined_Time_Data$patientid)])
+Typ_VHX_epi_count =  table(MS_pooled_summary$ID[grep('VHX',MS_pooled_summary$Episode_Identifier)]) # Typed_VHX_epi_count
+Typ_BPD_epi_count =  table(MS_pooled_summary$ID[grepl('BPD_',MS_pooled_summary$Episode_Identifier)]) # Typed_BPD_epi_count
+
+# VHX data set
+no_person_typed = All_VHX_epi_count[names(All_VHX_epi_count) %in% names(Typ_VHX_epi_count)][names(Typ_VHX_epi_count)]
+no_typed_person_typed = Typ_VHX_epi_count 
+X0 = sum(no_person_typed == no_typed_person_typed) # 90% completely typed
+X1 = length(no_typed_person_typed)
+X2 = range((no_person_typed - no_typed_person_typed)[no_person_typed != no_typed_person_typed]) 
+writeLines(sprintf('Of %s of %s VHX individual/s selected for genotyping, %s to %s of their episodes were not typed',
+                   X0,X1,X2[1],X2[2]))
+
+# BPD data set
+no_person_typed = All_BPD_epi_count[names(All_BPD_epi_count) %in% names(Typ_BPD_epi_count)][names(Typ_BPD_epi_count)]
+no_typed_of_typed = Typ_BPD_epi_count
+X0 = sum(no_person_typed == no_typed_of_typed)
+X1 = length(no_typed_of_typed)
+X2 = range((no_person_typed - no_typed_of_typed)[no_person_typed != no_typed_of_typed]) # missing 1 if missing
+writeLines(sprintf('Of %s of %s BPD individual/s selected for genotyping, %s to %s of their episodes were not typed',
+                   X0,X1,X2[1],X2[2]))
+```
+
 ```{r}
 # Is there a significant difference between VHX that where genetically typed and not? 
 # Some odd warnings? 
-
-MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] # Collapse rows due to COI > 2
 All_VHX_epi_count = table(Combined_Time_Data$patientid[grep('VHX',Combined_Time_Data$patientid)])
 All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence 
-x1 =  table(MS_pooled_summary$ID[grep('VHX',MS_pooled$Episode_Identifier)]) # Typed_VHX_epi_count
-sum(x1 == 1); x1 = x1[x1>1] # Remove the one "1" from Typed VHX as a mixtake
+x1 = Typ_VHX_epi_count # Remove the one "1" from Typed VHX as a mixtake
+sum(x1 == 1); x1 = x1[x1>1] 
 x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # Untyped_VHX_epi_count
 max_rec = max(All_VHX_rec_count)
 
@@ -110,7 +139,6 @@ Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Significant
 percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
 pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
 ```
-
 
 Define the sets of microsatellite markers for the various datasets.
 
