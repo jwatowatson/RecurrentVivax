@@ -59,6 +59,7 @@ CREATE_PLOTS = T
 
 
 Summary of the data and the whole of the VHX data versus the subset typed (in terms of number of episodes):
+
 ```{r, echo=FALSE}
 writeLines(sprintf('Number of individuals with at least one episode typed: %s',
                    length(unique(MS_pooled$ID))))
@@ -111,10 +112,8 @@ writeLines(sprintf('Of %s of %s BPD individual/s selected for genotyping, %s to 
 ```{r}
 # Is there a significant difference between VHX that where genetically typed and not? 
 # Some odd warnings? 
-All_VHX_epi_count = table(Combined_Time_Data$patientid[grep('VHX',Combined_Time_Data$patientid)])
 All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence 
-x1 = Typ_VHX_epi_count # Remove the one "1" from Typed VHX as a mixtake
-sum(x1 == 1); x1 = x1[x1>1] 
+x1 = Typ_VHX_epi_count 
 x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # Untyped_VHX_epi_count
 max_rec = max(All_VHX_rec_count)
 
@@ -138,6 +137,11 @@ se = sd(theta_hat_boot)
 Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Significant
 percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
 pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
+```
+Summary of complexity of infection based on numbers of alleles observed
+
+```{r}
+
 ```
 
 Define the sets of microsatellite markers for the various datasets.
