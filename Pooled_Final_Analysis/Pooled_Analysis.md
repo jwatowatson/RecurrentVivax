@@ -17,7 +17,8 @@ Load R packages, functions and data.
 
 
 
-Summary of the data and the whole of the VHX data versus the subset typed (in terms of number of episodes):
+Summary of the data and the whole of the VHX data set versus the subset typed (in terms of number of episodes):
+
 
 ```
 ## Number of individuals with at least one episode typed: 164
@@ -40,26 +41,45 @@ Summary of the data and the whole of the VHX data versus the subset typed (in te
 ```
 
 ```
+## Number of episodes individuals with at least two episodes typed: 594
+```
+
+```
 ## Number of recurrences typed: 435
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
 
+
+```
+## Of 75 of 82 VHX individual/s selected for genotyping, 1 to 2 of their episodes were not typed
+```
+
+```
+## Of 76 of 77 BPD individual/s selected for genotyping, 1 to 1 of their episodes were not typed
+```
+
+![](Pooled_Analysis_files/figure-html/VHX_typed_untyped-1.png)<!-- -->
+
+Summary of complexity of infection based on numbers of alleles observed 
+
+![](Pooled_Analysis_files/figure-html/COIs_VHX_BPD-1.png)<!-- -->
+
+```
+## Median COI in VHX and BPD: 1 and 1, respectively
+```
+
+```
+## Number of episodes with COI >= 3: 15 of 594 (2.53 percent)
+```
 
 Define the sets of microsatellite markers for the various datasets.
 
 
 
 
-
-The approach is fully Bayesian and consists of the following:
-
-* A prior probability vector for the recurrence state
-* A likelihood based on the genetic data of being a *relapse*, a *recrudescence*, or a *reinfection* given the observed microsatellite data.
-
 # Allele frequencies
 
-We use a multinomial-dirichlet model with subjective weight. Setting the weight to 0 recovers unweighted empirical allele frequencies. 
+We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 0$ recovers unweighted empirical allele frequencies. 
 
 
 ```
@@ -69,12 +89,18 @@ We use a multinomial-dirichlet model with subjective weight. Setting the weight 
 
 ## Plotting allele frequencies
 
-These are the observed allele frequencies in the pooled data. We show 80% credible intervals (lo) (Aimee: seems to be 95%)
+These are the mean posterior allele frequencies (dots) and 95\% credible intervals (bars) given pooled enrollment data and $\omega=$ `D_weight_Prior`.  
 
 ![](Pooled_Analysis_files/figure-html/AlleleFrequencies-1.png)<!-- -->
 
 
 # Computing the probability of relatedness across infections
+
+The approach is Bayesian and consists of the following:
+
+* A prior probability vector for the recurrence state from the time-to-event model
+* An allele frequency estimate from the posterior distribution of allele frequencies
+* A likelihood based on the genetic data of being a *relapse*, a *recrudescence*, or a *reinfection* given the observed microsatellite data.
 
 The following iterates through each individual and computes the probability of relatedness states.
 
@@ -88,6 +114,7 @@ The following iterates through each individual and computes the probability of r
 We use all 9MS markers (when available).
 
 
+
 ### Full posterior computation
 
 
@@ -95,32 +122,23 @@ We use all 9MS markers (when available).
 
 # Plot results
 
-These dataframes are sorted by episode number so the columns correspond between them. We make some data.frames that store the results for ease of plotting.
 
 
-```
-## The following `from` values were not present in `x`: AS
-## The following `from` values were not present in `x`: AS
-```
 
 
 
 ## Going from time-to-event prior to posterior
 
-Have broken it down by radical cure and no radical cure, as that is the most informative distinction here.
+Plotted by radical cure versus no radical cure, as that is the most informative distinction here.
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
-
-Probability of relapse, ordered from most to least likely:
 ![](Pooled_Analysis_files/figure-html/unnamed-chunk-11-1.png)<!-- -->
 
-Probability of reinfection, ordered from most to least likely:
+Probability of states, ordered from most to least likely:
+
 ![](Pooled_Analysis_files/figure-html/unnamed-chunk-12-1.png)<!-- -->
 
-Probability of recrudescence, ordered from most to least likely:
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-13-1.png)<!-- -->
 
-# BPD Final Plot
+# BPD Final plot
 
 
 ```
@@ -136,17 +154,21 @@ Probability of recrudescence, ordered from most to least likely:
 We remove the IDs that can be straightforwardly calculated:
 
 
+
 We blow up the pooled analysis into all pairs within individuals:
+
 
 
 
 Construct adjacency graphs and compute probabilities of relapse and reinfection.
 
 
+
 ![](Pooled_Analysis_files/figure-html/CoatneyStylePLot-1.png)<!-- -->
 
 ![](Pooled_Analysis_files/figure-html/CompleteDataPlot-1.png)<!-- -->
 Individuals who appear to relapse very late (more than 300 days after last episode):
+
 
 ```
 ## The episode ids of interest are: VHX_235_3
@@ -216,11 +238,14 @@ The summaries of the final dataset:
 
 # False positive rate of relapse
 
-We want to know how often our model estimates evidence of relapse across pairs of episodes when the episodes are in different people (e.g.)
+We want to know how often our model estimates evidence of relapse across pairs of episodes when the episodes are in different people (i.e. have not possibility of being a relapse)
 
+
+
+The `false-positive' rate is given as
 
 ```
-## NULL
+## [1] 1.5
 ```
 
 

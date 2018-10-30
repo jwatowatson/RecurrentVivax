@@ -366,6 +366,11 @@ if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
 
 
 ```{r}
+
+# Output of time-to-event model (sorted by episode number s.t. columns correspond)
+Time_Estimates_1 = filter(Mod3_ThetaEstimates, Episode_Identifier %in% thetas_9MS$Episode_Identifier)
+Time_Estimates_1 = arrange(Time_Estimates_1, Episode_Identifier)
+
 # Outputs of genetic model w/wo time prior 
 # sorted by episode number s.t. columns correspond and drug added
 thetas_9MS = arrange(thetas_9MS, Episode_Identifier)
@@ -373,9 +378,6 @@ thetas_9MS_Tagnostic = arrange(thetas_9MS_Tagnostic, Episode_Identifier)
 thetas_9MS$drug = Time_Estimates_1$arm_num # Add drug
 thetas_9MS_Tagnostic$drug = Time_Estimates_1$arm_num # Add drug
 
-# Output of time-to-event model (sorted by episode number s.t. columns correspond)
-Time_Estimates_1 = filter(Mod3_ThetaEstimates, Episode_Identifier %in% thetas_9MS$Episode_Identifier)
-Time_Estimates_1 = arrange(Time_Estimates_1, Episode_Identifier)
 
 # Extract BPD only for BPD only plots
 BPD_data = Thetas_full_post[grep('BPD',rownames(Thetas_full_post)),]
@@ -534,7 +536,7 @@ if(CREATE_PLOTS){
   
   for(i in 1:length(ordered$x)){
     if(diff(CI[i,]) > 0.005) segments(i,CI[i,1],i,CI[i,2], 
-                                      col=drug_cols2[Thetas_BPD$drug[reLapse_ordered$ix[i]]])
+                                      col=drug_cols2[Thetas_BPD$drug[ordered$ix[i]]])
   }
   
   writeLines(sprintf('The mean percentage of recurrences which are estimated to be relapses is %s%%',
@@ -552,11 +554,13 @@ if(CREATE_PLOTS){
     x_time = MS_pooled_summary$timeSinceLastEpisode[Thetas_BPD$Episode_Identifier[kk]==
                                                       MS_pooled_summary$Episode_Identifier]
     points(x_time,
-           Thetas_BPD$L[kk], pch=20, col = drug_cols2[Thetas_BPD$drug[reLapse_ordered$ix[i]]])
+           Thetas_BPD$L[kk], pch=20, col = drug_cols2[Thetas_BPD$drug[ordered$ix[i]]])
     
-    if(diff(CI[i,]) > 0.005) segments(x_time,CI[i,1],x_time,CI[i,2], 
-                                      #length = 0.02,angle = 90, code = 3,
-                                      col=drug_cols2[Thetas_BPD$drug[reLapse_ordered$ix[i]]])
+    if(diff(CI[i,]) > 0.005) {
+      segments(x_time,CI[i,1],x_time,CI[i,2], 
+               #length = 0.02,angle = 90, code = 3,
+               col=drug_cols2[Thetas_BPD$drug[ordered$ix[i]]])
+    }
   }
   
   if(Hightlight_BPD_examples){
@@ -769,7 +773,6 @@ MS_pooled_summary$Plotting_pch_Values =
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = c(21,15,24)))
 MS_pooled_summary$Plotting_col_Values = 
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = 1:3))
-
 ```
 
 ```{r CoatneyStylePLot}
@@ -780,7 +783,6 @@ ids = unique(MS_final$ID)
 
 if(CREATE_PLOTS){
   ## Time series data colored by genetic STATE: classification
-  
   mycols_states_bg = c('#FFFFFF',Dark2[4],'#000000') # colors for states - need uncertain ones as well
   mycols_states_fg = c(Dark2[8],Dark2[4],'#000000') # colors for states - need uncertain ones as well
   mycols_drugs = brewer.pal(n=3, name = 'Set1')
@@ -809,7 +811,7 @@ if(CREATE_PLOTS){
             c(i,i), lty = 'dashed', 
             lwd=.5, col= 'black')
       
-      cols = mycols_states[MS_final$Plotting_col_Values[ind]]
+      cols = mycols_states_fg[MS_final$Plotting_col_Values[ind]]
       points(MS_final$timeSinceEnrolment[ind], 
              rep(i,length(ind)), 
              pch=1,cex = 1.5, 
@@ -827,17 +829,11 @@ if(CREATE_PLOTS){
   }
   lines(x = c(0,0), y = c(0,length(ids)),lwd=3)
   
-  # legend('topright', col = c(mycols_states_fg[c(2,1,3)], drug_cols[2:3]), 
-  #        pch = c(15,1,17,NA,NA), cex = 0.7, bty = 'n', y.intersp = 0.75, 
-  #        lty = c(NA,NA,NA,1,1), lwd = c(NA,NA,NA,1,1),
-  #        legend = c('Classification uncertain','Classified relapse','Classified reinfection',
-  #                   'No PMQ', 'PMQ'))
-  
   legend('topright', col = c(mycols_states_fg[c(3,2,1)]), 
          pch = c(1,15,17), cex = 0.7, bty = 'n', y.intersp = 0.75, title = 'Classification',
          legend = c('Relapse','Uncertain','Reinfection'))
   
-  legend('top', col = drug_cols[2:3], 
+  legend('top', col = drug_cols2[2:3], 
          cex = 0.7, bty = 'n', y.intersp = 0.75, 
          lty = 1, lwd = 1,
          legend = c('No PMQ', 'PMQ'))
@@ -932,7 +928,8 @@ print(MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 
 The summaries of the final dataset:
 ```{r}
-table(MS_final$Drug[!duplicated(MS_final$ID)]) # James, this sums to 159 - surely should sum to 164? Have we lost 5 people somewhere? 
+table(MS_final$Drug[!duplicated(MS_final$ID)]) 
+# James, this sums to 159 - surely should sum to 164? Have we lost 5 people somewhere? 
 # Yes: gotten rid of the 5 people who don't have recurrent episodes
 
 ind_CQ = MS_final$Drug==2
@@ -999,9 +996,15 @@ if(RUN_MODELS_FALSE_POSITIVE){
   toc()
   save(Inflated_Results, file = 'Inflated_Results.bigRData')
 } else {
-  # load('Inflated_Results.bigRData')
+  load('Inflated_Results.bigRData')
+  Inflated_Results = Inflated_Results[!is.na(Inflated_Results$L),]
   # load('APC_MS_data.bigRData')
 }
+```
+
+The `false-positive' rate is given as
+```{r}
+round(100*sum(Inflated_Results$L>0.5)/nrow(Inflated_Results),1)
 ```
 
 
@@ -1103,7 +1106,7 @@ plot(Combined_Time_Data$log10_carboxyPMQ[ind_keep]*Combined_Time_Data$NumberDays
      Combined_Time_Data$Failure_YN[ind_keep], 
      col = mapvalues(Combined_Time_Data$NumberDaysPMQ[ind_keep],c(7,14),c(2,4)),
      pch = mapvalues(Combined_Time_Data$NumberDaysPMQ[ind_keep],c(7,14),c(3,4)),
-     xlab = 'Primaquine trough exposure: days * log(ng/mL)',
+     xlab = 'Carboxy-primaquine exposure: days * log(ng/mL)',
      ylab = 'Probability of failure')
 legend(x = 40, y = 0.3, bty='n', col =c(2,4), pch=c(3,4), legend = c('7 days','14 days'))
 lines(xs*7, predict(mod, newdata=data.frame(log10_carboxyPMQ=xs, NumberDaysPMQ=7,
@@ -1152,7 +1155,7 @@ plot(Combined_Time_Data$log10_carboxyPMQ[ind_keep]*Combined_Time_Data$NumberDays
      Combined_Time_Data$Failure_YN[ind_keep], 
      col = mapvalues(Combined_Time_Data$NumberDaysPMQ[ind_keep],c(7,14),c(2,4)),
      pch = mapvalues(Combined_Time_Data$NumberDaysPMQ[ind_keep],c(7,14),c(3,4)),
-     xlab = 'Primaquine trough exposure: days * log(ng/mL)',
+     xlab = 'Carboxy-primaquine trough exposure: days * log(ng/mL)',
      ylab = 'Probability of failure')
 legend(x = 40, y = 0.3, bty='n', col =c(2,4), pch=c(3,4), legend = c('7 days','14 days'))
 lines(xs*7, predict(mod, newdata=data.frame(log10_carboxyPMQ=xs, NumberDaysPMQ=7,
