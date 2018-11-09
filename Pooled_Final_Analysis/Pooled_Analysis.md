@@ -224,15 +224,15 @@ The summaries of the final dataset:
 ```
 
 ```
-## In chloroquine+primaquine individuals, the weighted average of relapses is 15.1 (13-17.6)
+## In primaquine treated individuals, the weighted average of relapses is 15.1 (13-17.6)
 ```
 
 ```
-## In chloroquine+primaquine individuals, the weighted average of recrudescences is 0.3 (0-0.5)
+## In primaquine treated individuals, the weighted average of recrudescences is 0.3 (0-0.5)
 ```
 
 ```
-## In chloroquine+primaquine individuals, the weighted average of reinfections is 84.6 (82.3-86.5)
+## In primaquine treated individuals, the weighted average of reinfections is 84.6 (82.3-86.5)
 ```
 
 
@@ -265,14 +265,6 @@ First we add the carboxy to the dataset:
 
 We exclude the two recurrences seen in patient BPD_444
 
-
-```
-## Loading required package: lme4
-```
-
-```
-## Warning: package 'lme4' was built under R version 3.4.4
-```
 
 ```
 ## Generalized linear mixed model fit by maximum likelihood (Laplace
