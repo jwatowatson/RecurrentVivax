@@ -65,7 +65,7 @@ Set2 = brewer.pal(8, 'Set2')
 # This needs moving to time analysis: 
 drug_cols3 = array(Dark2[c(4,6,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ'))) 
 drug_cols2 = array(Dark2[c(2,2,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
-drug_cols_light2 = array(Set2[c(2,2,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
+drug_cols_light2 = sapply(drug_cols2, adjustcolor, alpha.f = 0.5)
 
 # Vector of states
 states = c(relapse = 'L', reinfection = 'I', recrudescence = 'C')
@@ -559,7 +559,7 @@ if(CREATE_PLOTS){
     if(diff(CI[i,]) > 0.005) {
       segments(x_time,CI[i,1],x_time,CI[i,2], 
                #length = 0.02,angle = 90, code = 3,
-               col=drug_cols2[Thetas_BPD$drug[ordered$ix[i]]])
+               col=drug_cols_light2[Thetas_BPD$drug[ordered$ix[i]]])
     }
   }
   
