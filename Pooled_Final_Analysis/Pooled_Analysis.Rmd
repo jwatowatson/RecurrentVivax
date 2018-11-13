@@ -250,16 +250,16 @@ if(CREATE_PLOTS){
     YMAX = ceiling(max(apply(xs, 2, quantile, probs = .975))*10)/10 # Round up to nearest decimal
     # Number of observations
     N_MS = length(unique(MS_pooled$ID[MS_pooled$Episode==1 & !is.na(MS_pooled[,ms])]))
-    plot(NULL, panel.first = grid(), 
-         main = sprintf('%s (n = %s)', ms, N_MS),
+    plot(NULL, panel.first = grid(),
+         main = sprintf('%s', ms), font.main = 3, 
          pch = 18, ylim=c(0,YMAX), xlim = c(1,ncol(xs)), 
          ylab='', xlab='', yaxt='n')
     abline(h=1/K, lty = 'dashed', lwd = 0.5)
-    title(ylab='Frequency', xlab= sprintf('Repeat length (motif length = %s)', MSs_Motifs[[ms]]), line = 3)
-    for(k in 1:ncol(xs)){
-      lines(rep(k,2), quantile(xs[,k],probs = c(0.025,0.975)))
-    }
-    points(1:length(Fs_Combined[[ms]]),Fs_Combined[[ms]],pch=18)
+    title(ylab='Frequency', line = 3.25)
+    title(xlab= sprintf('Repeat length (motif length = %s)', MSs_Motifs[[ms]]), line = 2.5)
+    mtext(side = 3, text = sprintf('(n = %s)',N_MS), line = 0.5, cex = 0.65, adj = 1)
+    for(k in 1:ncol(xs)){lines(rep(k,2), quantile(xs[,k],probs = c(0.025,0.975)))}
+    points(1:length(Fs_Combined[[ms]]),Fs_Combined[[ms]],pch=18) # Point estimates: mean 
     axis(2, seq(0, YMAX, length.out = 3))
   }
 }
