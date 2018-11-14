@@ -248,6 +248,9 @@ The `false-positive' rate is given as
 ## [1] 1.5
 ```
 
+Merging with the village information
+
+
 
 # Analysis of radical cure efficacy in BPD
 
@@ -302,7 +305,7 @@ We exclude the two recurrences seen in patient BPD_444
 ![](Pooled_Analysis_files/figure-html/CarboxyPredictionFailure-1.png)<!-- -->
 
 Now we remove outliers and fit the same model (CPMQ outliers)
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-22-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-23-1.png)<!-- -->
 
 ```
 ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -381,7 +384,7 @@ Does 2D6 correlate with carboxy ?
 ## NumbrDysPMQ -0.710  0.055
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
 
 
 

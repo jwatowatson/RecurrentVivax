@@ -53,7 +53,7 @@ Outline of simulation is as follows:
 # Setup simulation study parameters
 N_alleles = 10 # constant heterozygosity for all markers
 K_indivs = 1000
-Ms = seq(3,15, by =3) # number of markers
+Ms = seq(3,15, by = 3) # number of markers
 
 K_poly_markers = 3
 
@@ -62,6 +62,7 @@ MOI_2_max = 2
 
 settings = expand.grid(1:MOI_1_max, 1:MOI_2_max, Ms)
 names(settings)= c('MOI_1', 'MOI_2', 'M')
+settings = settings[settings$MOI_1+settings$MOI_2<4,]
 ```
 
 ```{r}
@@ -103,7 +104,7 @@ if(RUN_MODELS){
       # Run the model on the data
       ###################################
       
-      TH = post_prob_CLI(MS_data = MS_data, cores = 42,
+      TH = post_prob_CLI(MS_data = MS_data, cores = 7,
                          Fs = FS, verbose = F, p = P_matrix)
       # Add setting number as key for plotting
       TH$setting = s
@@ -166,7 +167,7 @@ if(PLOT_RESULTS){
     }
   }
   legend('topright',pch=19, col=mycols[unique(settings$Plot_offset)], 
-         legend = unique(settings$MOI_pattern),cex=.7,title='MOI patterns',
+         legend = unique(settings$MOI_pattern),cex=.7,title='COI patterns',
          bty='n')
 }
 
