@@ -34,8 +34,8 @@ require(matrixStats) # for logSumExp
 library(igraph) # For igraph
 require(RColorBrewer)
 require(knitr) # for kable()
-load('../RData/TimingModel/MOD3_theta_estimates.RData')
-load('../RData/TimingModel/MOD3_Posterior_samples.RData')
+load('../RData/TimingModel/MOD2_theta_estimates.RData')
+load('../RData/TimingModel/MOD2_Posterior_samples.RData')
 load('../RData/TimingModel/Combined_Time_Event.RData')
 
 source("../Genetic_Model/Data_functions.R")
@@ -279,9 +279,9 @@ The following iterates through each individual and computes the probability of r
 ## Load the time-to-event priors
 
 ```{r}
-inds = grepl('mean_theta', colnames(Mod3_ThetaEstimates)) # Extract mean
-p = data.frame(Episode_Identifier = Mod3_ThetaEstimates$Episode_Identifier, 
-               Mod3_ThetaEstimates[,inds],
+inds = grepl('mean_theta', colnames(Mod2_ThetaEstimates)) # Extract mean
+p = data.frame(Episode_Identifier = Mod2_ThetaEstimates$Episode_Identifier, 
+               Mod2_ThetaEstimates[,inds],
                stringsAsFactors = F) # Reformat
 colnames(p) = gsub(pattern = 'Recrudescence_mean_theta',replacement = 'C',x = colnames(p))
 colnames(p) = gsub(pattern = 'Relapse_mean_theta',replacement = 'L',x = colnames(p))
@@ -368,7 +368,7 @@ if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
 ```{r}
 
 # Output of time-to-event model (sorted by episode number s.t. columns correspond)
-Time_Estimates_1 = filter(Mod3_ThetaEstimates, Episode_Identifier %in% thetas_9MS$Episode_Identifier)
+Time_Estimates_1 = filter(Mod2_ThetaEstimates, Episode_Identifier %in% thetas_9MS$Episode_Identifier)
 Time_Estimates_1 = arrange(Time_Estimates_1, Episode_Identifier)
 
 # Outputs of genetic model w/wo time prior 
@@ -1037,8 +1037,8 @@ Combined_Time_Data$Reinfection_Probability=
   Combined_Time_Data$Reinfection_Probability_LL=
   Combined_Time_Data$Reinfection_Probability_UL = NA
 
-Mod3_ThetaEstimates$Failure_Identifier = 
-  apply(Mod3_ThetaEstimates, 1, 
+Mod2_ThetaEstimates$Failure_Identifier = 
+  apply(Mod2_ThetaEstimates, 1, 
         function(x) paste(x['patientid'], as.integer(x['episode'])-1,sep='_'))
 
 sss=0
@@ -1055,14 +1055,14 @@ for(i in 1:nrow(Combined_Time_Data)){
     Combined_Time_Data$Reinfection_Probability_LL[i] =
       MS_final$I_lower[MS_final$Episode_Identifier==MS_id]
   } else { # use the time to event model
-    ind = which(Mod3_ThetaEstimates$Failure_Identifier==ep_id)
+    ind = which(Mod2_ThetaEstimates$Failure_Identifier==ep_id)
     if(length(ind)>0){
       Combined_Time_Data$Reinfection_Probability[i] =
-        Mod3_ThetaEstimates$ReInfection_mean_theta[ind]
+        Mod2_ThetaEstimates$ReInfection_mean_theta[ind]
       Combined_Time_Data$Reinfection_Probability_UL[i] =
-        Mod3_ThetaEstimates$ReInfection_975_theta[ind]
+        Mod2_ThetaEstimates$ReInfection_975_theta[ind]
       Combined_Time_Data$Reinfection_Probability_LL[i] =
-        Mod3_ThetaEstimates$ReInfection_025_theta[ind]
+        Mod2_ThetaEstimates$ReInfection_025_theta[ind]
       sss=sss+1
     }
   }

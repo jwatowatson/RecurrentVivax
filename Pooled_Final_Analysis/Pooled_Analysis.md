@@ -142,7 +142,7 @@ Probability of states, ordered from most to least likely:
 
 
 ```
-## The mean percentage of recurrences which are estimated to be relapses is 15%
+## The mean percentage of recurrences which are estimated to be relapses is 16%
 ```
 
 ![](Pooled_Analysis_files/figure-html/BPD_efficacy-1.png)<!-- -->
@@ -212,27 +212,27 @@ The summaries of the final dataset:
 ```
 
 ```
-## In chloroquine monotherapy individuals, the weighted average of relapses is 98.7 (96.1-99.8)
+## In chloroquine monotherapy individuals, the weighted average of relapses is 99.4 (97.5-99.9)
 ```
 
 ```
-## In chloroquine monotherapy individuals, the weighted average of recrudescences is 0.7 (0.2-1.1)
+## In chloroquine monotherapy individuals, the weighted average of recrudescences is 0.2 (0.1-0.6)
 ```
 
 ```
-## In chloroquine monotherapy individuals, the weighted average of reinfections is 0.7 (0-2.8)
+## In chloroquine monotherapy individuals, the weighted average of reinfections is 0.4 (0-1.9)
 ```
 
 ```
-## In primaquine treated individuals, the weighted average of relapses is 15.1 (13-17.6)
+## In primaquine treated individuals, the weighted average of relapses is 16.7 (14.3-19.4)
 ```
 
 ```
-## In primaquine treated individuals, the weighted average of recrudescences is 0.3 (0-0.5)
+## In primaquine treated individuals, the weighted average of recrudescences is 0 (0-0.4)
 ```
 
 ```
-## In primaquine treated individuals, the weighted average of reinfections is 84.6 (82.3-86.5)
+## In primaquine treated individuals, the weighted average of reinfections is 83.3 (80.6-85.2)
 ```
 
 
@@ -270,6 +270,14 @@ We exclude the two recurrences seen in patient BPD_444
 
 
 ```
+## Loading required package: lme4
+```
+
+```
+## Warning: package 'lme4' was built under R version 3.4.4
+```
+
+```
 ## Generalized linear mixed model fit by maximum likelihood (Laplace
 ##   Approximation) [glmerMod]
 ##  Family: binomial  ( logit )
@@ -277,29 +285,29 @@ We exclude the two recurrences seen in patient BPD_444
 ##    Data: Combined_Time_Data[ind_keep, ]
 ## 
 ##      AIC      BIC   logLik deviance df.resid 
-##    111.7    130.0    -51.9    103.7      717 
+##    121.8    140.1    -56.9    113.8      717 
 ## 
 ## Scaled residuals: 
 ##     Min      1Q  Median      3Q     Max 
-## -0.6235 -0.1240 -0.1033 -0.0877 13.9869 
+## -0.6000 -0.1321 -0.1111 -0.0964 12.0800 
 ## 
 ## Random effects:
 ##  Groups    Name        Variance Std.Dev.
-##  patientid (Intercept) 4e-14    2e-07   
+##  patientid (Intercept) 1e-14    1e-07   
 ## Number of obs: 721, groups:  patientid, 639
 ## 
 ## Fixed effects:
 ##                  Estimate Std. Error z value Pr(>|z|)    
-## (Intercept)       2.37784    1.80708   1.316  0.18822    
-## log10_carboxyPMQ -1.80752    0.50118  -3.607  0.00031 ***
-## NumberDaysPMQ    -0.16389    0.09316  -1.759  0.07855 .  
+## (Intercept)       1.71413    1.80008   0.952 0.340970    
+## log10_carboxyPMQ -1.65313    0.49917  -3.312 0.000927 ***
+## NumberDaysPMQ    -0.12824    0.08859  -1.448 0.147750    
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## Correlation of Fixed Effects:
 ##             (Intr) l10_PM
-## lg10_crbPMQ -0.848       
-## NumbrDysPMQ -0.734  0.302
+## lg10_crbPMQ -0.854       
+## NumbrDysPMQ -0.730  0.305
 ```
 
 ![](Pooled_Analysis_files/figure-html/CarboxyPredictionFailure-1.png)<!-- -->
@@ -315,27 +323,27 @@ Now we remove outliers and fit the same model (CPMQ outliers)
 ##    Data: Combined_Time_Data[ind_keep & !outliers14 & !outliers7, ]
 ## 
 ##      AIC      BIC   logLik deviance df.resid 
-##    103.1    121.3    -47.5     95.1      706 
+##    112.6    130.8    -52.3    104.6      706 
 ## 
 ## Scaled residuals: 
 ##     Min      1Q  Median      3Q     Max 
-## -0.2239 -0.1221 -0.1085 -0.0949 12.1470 
+## -0.1830 -0.1258 -0.1176 -0.1091 10.0147 
 ## 
 ## Random effects:
 ##  Groups    Name        Variance  Std.Dev. 
-##  patientid (Intercept) 1.519e-13 3.897e-07
+##  patientid (Intercept) 8.597e-15 9.272e-08
 ## Number of obs: 710, groups:  patientid, 632
 ## 
 ## Fixed effects:
 ##                  Estimate Std. Error z value Pr(>|z|)
-## (Intercept)        0.0649     3.7394   0.017    0.986
-## log10_carboxyPMQ  -1.0923     1.0769  -1.014    0.310
-## NumberDaysPMQ     -0.1300     0.1138  -1.143    0.253
+## (Intercept)      -1.51726    3.78244  -0.401    0.688
+## log10_carboxyPMQ -0.68942    1.07364  -0.642    0.521
+## NumberDaysPMQ    -0.07475    0.11039  -0.677    0.498
 ## 
 ## Correlation of Fixed Effects:
 ##             (Intr) l10_PM
-## lg10_crbPMQ -0.961       
-## NumbrDysPMQ -0.731  0.530
+## lg10_crbPMQ -0.964       
+## NumbrDysPMQ -0.754  0.566
 ```
 
 Compare results with and without outliers:
@@ -346,7 +354,7 @@ Now we calculate a compressed dataset and failure for each individual
 
 
 ```
-## The primaquine failure rate in the 655 individuals is 2.34% (1.84-3.06) over the course of 522 years total follow-up.
+## The primaquine failure rate in the 655 individuals is 2.56% (2.02-3.41) over the course of 522 years total follow-up.
 ```
 
 
@@ -395,22 +403,22 @@ Does 2D6 correlate with carboxy ?
 ## 
 ## Deviance Residuals: 
 ##     Min       1Q   Median       3Q      Max  
-## -0.6742  -0.5070  -0.4377  -0.3772   2.3146  
+## -0.6641  -0.5239  -0.4639  -0.4101   2.2439  
 ## 
 ## Coefficients:
 ##             Estimate Std. Error z value Pr(>|z|)  
-## (Intercept)  -1.3658     0.7702  -1.773   0.0762 .
-## ASscore      -0.6209     0.5954  -1.043   0.2971  
+## (Intercept)  -1.3996     0.7596  -1.843   0.0654 .
+## ASscore      -0.5170     0.5785  -0.894   0.3715  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## (Dispersion parameter for binomial family taken to be 1)
 ## 
-##     Null deviance: 76.721  on 113  degrees of freedom
-## Residual deviance: 75.659  on 112  degrees of freedom
-## AIC: 79.659
+##     Null deviance: 80.910  on 113  degrees of freedom
+## Residual deviance: 80.129  on 112  degrees of freedom
+## AIC: 84.129
 ## 
-## Number of Fisher Scoring iterations: 5
+## Number of Fisher Scoring iterations: 4
 ```
 
 
