@@ -7,7 +7,7 @@ data {
   int<lower=0>                N_noPMQ;                  // The total number of individuals who did not receive PMQ for at least one episode
   int<lower=0>                N_PMQ;                    // The total number of individuals who received PMQ for at least one episode
   real<lower=0>               Durations[Neps];          // Vector of durations
-  int<lower=0,upper=1>        Censored[Neps];           // Logical Vector: censored observation or nor
+  int<lower=-1,upper=1>       Censored[Neps];          // -1 is left censored; 0: observed; 1: right censored
   int<lower=0,upper=2>        Drug[Neps];               // Treatment drug corresponding to each duration
   int<lower=0,upper=N>        ID_of_Episode[Neps];      // The ID number of each episode
   int<lower=0,upper=N_noPMQ>  ID_mapped_to_noPMQ_rank[N];         // Vector mapping the the individual ID (from 1 to N) to the random effects index: logit_p
@@ -146,7 +146,8 @@ model {
         target += exponential_lpdf(Durations[i] | lambda);
         
       }
-    } else { 
+    } 
+    if(Censored[i] == 1){ // this is a right censored time to new infection
       if(Drug[i] == 0){ 
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
@@ -228,7 +229,8 @@ generated quantities {
         // Recrudescence
         prob_labels_raw[4] = 0;
       }
-    } else {
+    } 
+    if(Censored[i] == 1){ // this is a right censored time to new infection
       if(Drug[i] == 0){ // Artesunate monotherapy:
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
         // Reinfection
@@ -309,7 +311,8 @@ generated quantities {
         log_lik[i] = exponential_lpdf(Durations[i] | lambda);
         
       }
-    } else {
+    } 
+    if(Censored[i] == 1){ // this is a right censored time to new infection
       // This is the unobserved case (data are right censored)
       if(Drug[i] == 0){
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];

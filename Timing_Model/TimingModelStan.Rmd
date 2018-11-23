@@ -108,13 +108,34 @@ if(RECOMPILE_MODELS){
 ```
 
 
+## Model 3: Adding seasonality
+
+Here we explore whether a seasonality term is useful to explain some reinfections 
+
+The seasonal term is given in units of weeks by $\exp(\beta_1  \sin (\frac{2\pi t}{T} + \beta_1))$ where $T=365/7$ (number of weeeks in the year).
+This increases the reinfection mixing proportion $p_{(n)}$ for each drug treatment.
+
+
+```{r, include=FALSE}
+if(RECOMPILE_MODELS){
+  writeLines('Compiling model 3....')
+  source('StanModel3.R')
+  save(Timing_Model3, file = '../RData/TimingModel/Timing_Model3.RData')
+} else {
+  load('../RData/TimingModel/Timing_Model3.RData')
+}
+```
+
+
 # VHX and BPD combined dataset
 
 
 ```{r}
 load('../RData/TimingModel/Combined_Time_Event.RData')
 # Get rid of the very short durations 
-Combined_Time_Data = filter(Combined_Time_Data, Time_to_event > 5)
+Combined_Time_Data = filter(Combined_Time_Data, !(Censored > -1 & Time_to_event < 5))
+# This is so that stan can compute the seasonality factor (can't handle missing values)
+Combined_Time_Data$WeekTime[is.na(Combined_Time_Data$WeekTime)]=0
 
 # deal with non-integer ids
 Combined_Time_Data$patientid = factor(Combined_Time_Data$patientid)
@@ -169,8 +190,8 @@ drug_received = Combined_Time_Data$numeric_drug[ind]
 
 ```{r}
 # The hierachical parameters defining the prior distributions for model 1
-Prior_params_M0 = list(mu_inv_lambda = 600,
-                       sigma_inv_lambda = 100,
+Prior_params_M0 = list(mu_inv_lambda = 1200,
+                       sigma_inv_lambda = 300,
                        mu_AS_shape = 3,
                        sigma_AS_shape = 1,
                        mu_AS_scale = 25,
@@ -188,12 +209,20 @@ Prior_params_M0 = list(mu_inv_lambda = 600,
 Prior_params_M1 = c(Prior_params_M0, 
                     Early_L_logit_mean = 0,
                     Early_L_logit_sd = 1,
-                    mu_inv_gamma = 100,
+                    mu_inv_gamma = 120,
                     sigma_inv_gamma = 20)
 # Model 2: extra parameters
 Prior_params_M2 = c(Prior_params_M1, 
                     Hyper_logit_mean_p_PMQ = 3,
                     Hyper_logit_sd_p_PMQ = .25)
+# Model 3: extra parameters
+Prior_params_M3 = c(Prior_params_M2, 
+                    Hyper_logit_mean_p_PMQ = 3,
+                    Hyper_logit_sd_p_PMQ = .25,
+                    beta_1_mean = 1,
+                    beta_1_sigma = 1,
+                    beta_0_mean = 24,
+                    beta_0_sigma = 5)
 ```
 
 # Run Model
@@ -201,11 +230,11 @@ Prior_params_M2 = c(Prior_params_M1,
 Set up parameters for the MCMC runs.
 ```{r PrepModels}
 # Choose as many chains as available cores
-Chains = 6
+Chains = 1
 options(mc.cores = Chains)
-IT = 10^5
+IT = 2*10^4
 WarmUp = .5*IT
-thin = 10^2
+thin = 10^1
 
 # put the data into stan format
 # For model 1 
@@ -250,6 +279,31 @@ Time_data_2 =list(N         = N,
                   ID_mapped_to_PMQ_rank = ID_mapped_to_PMQ_rank
                   # the index mapping PMQ individuals to their rank
 )
+# For model 3
+Time_data_3 =list(N         = N,
+                  #Number of individuals
+                  Neps      = as.integer(nrow(Combined_Time_Data)),
+                  #Number of durations
+                  N_noPMQ   = N_noPMQ,
+                  # Number of individuals who do not recieve PMQ
+                  N_PMQ     = N_PMQ,
+                  # Number of individuals who do not recieve PMQ
+                  Durations = as.double(Combined_Time_Data$Time_to_event),
+                  #Time to reinfection or time to censoring
+                  Censored  = as.integer(Combined_Time_Data$Censored),
+                  #If the duration is right censored or not
+                  WeekTime  = as.double(Combined_Time_Data$WeekTime),
+                  #Time of year in units of weeks
+                  Drug      = Combined_Time_Data$numeric_drug,
+                  # drug coded as an integer
+                  ID_of_Episode   = Combined_Time_Data$ID,
+                  # the index of the individual for each time interval
+                  ID_mapped_to_noPMQ_rank = ID_mapped_to_noPMQ_rank,
+                  # the index mapping no PMQ individuals to their rank
+                  ID_mapped_to_PMQ_rank = ID_mapped_to_PMQ_rank,
+                  # the index mapping PMQ individuals to their rank
+                  Nweeks = as.double(365/7) # thanks google
+)
 ```
 
 Run with X parallel chains. This depends on local computing power.
@@ -273,6 +327,12 @@ if(RUN_MODELS){
                       iter = IT, warmup = WarmUp,
                       chains=Chains, thin = thin)
   save(mod2_Fit, file = 'OutputResults/StanModels_mod2.RData')
+  
+  mod3_Fit = sampling(Timing_Model3,
+                      data = c(Time_data_3, Prior_params_M3),
+                      iter = IT, warmup = WarmUp,
+                      chains=Chains, thin = thin)
+  save(mod3_Fit, file = 'OutputResults/StanModels_mod3.RData')
 }
 # load('OutputResults/StanModels_mod1.RData')
 load('OutputResults/StanModels_mod1.RData')
@@ -510,6 +570,7 @@ axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
 library(loo)
 log_lik1 = extract_log_lik(mod1_Fit)
 log_lik2 = extract_log_lik(mod2_Fit)
+log_lik3 = extract_log_lik(mod3_Fit)
 
 #waic3 = waic(log_lik3)
 loo_2 = loo(log_lik2)

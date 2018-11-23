@@ -1,12 +1,15 @@
-mod2 = 
+# This is model 2 but with an added seasonality component
+
+mod3 = 
   '
 data {
   // Things that are data structure and strictly data items:
   int<lower=0>                N;                        // The number of individuals
-  int<lower=0>                Neps;                     // The total number of observed durations
+  int<lower=0>                Neps;                     // The total number of datapoints (left/right censored, and observed)
   int<lower=0>                N_noPMQ;                  // The total number of individuals who did not receive PMQ for at least one episode
   int<lower=0>                N_PMQ;                    // The total number of individuals who received PMQ for at least one episode
-  real<lower=0>               Durations[Neps];          // Vector of durations
+  real                        Durations[Neps];          // Vector of time since last infection
+  real<lower=0>               WeekTime[Neps];           // Vector of Times in units of months
   int<lower=-1,upper=1>       Censored[Neps];           // -1 is left censored; 0: observed; 1: right censored
   int<lower=0,upper=2>        Drug[Neps];               // Treatment drug corresponding to each duration
   int<lower=0,upper=N>        ID_of_Episode[Neps];            // Index of individual groupings
@@ -26,6 +29,10 @@ data {
   real<lower=0>   Hyper_logit_sd_p;       // sd of prior on mean of logit p
   real            Hyper_logit_c1_mean;
   real<lower=0>   Hyper_logit_c1_sd;
+  real            beta_1_mean;            // Prior mean on amplitude of seasonality effect
+  real<lower=0>   beta_1_sigma;           // Prior mean on SD of amplitude of seaosnality effect
+  real            beta_0_mean;            // Prior mean time of peak reinfection season
+  real<lower=0>   beta_0_sigma;           // Prior SD on time of peak reinfection season
   real<lower=0>   mu_AS_shape;      
   real<lower=0>   sigma_AS_shape;
   real<lower=0>   mu_AS_scale;
@@ -34,7 +41,7 @@ data {
   real<lower=0>   sigma_CQ_shape;
   real<lower=0>   mu_CQ_scale;
   real<lower=0>   sigma_CQ_scale;
-
+  real            Nweeks;
 }
 
 parameters {
@@ -56,7 +63,8 @@ parameters {
   real<lower=0>         AS_scale;             // Weibull scale parameter: Artesunate
   real<lower=1>         CQ_shape;             // Weibull shape parameter: Chloroquine
   real<lower=0>         CQ_scale;             // Weibull scale parameter: Chloroquine
-
+  real                  beta0;                // Seasonality centering parameter in units of weeks (rainy season about June ~ 24 weeks)
+  real                  beta1;                // Seasonality amplitude parameter (0: no seasonality)
 }
 
 transformed parameters{
@@ -68,14 +76,15 @@ transformed parameters{
   // We define log scale parameters from inverse logit transformation
   real log_p[N_noPMQ];
   real log_p_PMQ[N_PMQ];
+  real log_1m_p[N_noPMQ];
+  real log_1m_p_PMQ[N_PMQ];
+
   real log_c1_AS      = log_inv_logit(logit_c1_AS);
   real log_c1_CQ      = log_inv_logit(logit_c1_CQ);
   real log_c1_CQ_PMQ  = log_inv_logit(logit_c1_CQ_PMQ);
   real log_EarlyL     = log_inv_logit(logit_EarlyL);
-  
+
   // The 1 minus log proportions
-  real log_1m_p[N_noPMQ];
-  real log_1m_p_PMQ[N_PMQ];
   real log_1m_c1_AS     = log1m_inv_logit(logit_c1_AS);
   real log_1m_c1_CQ     = log1m_inv_logit(logit_c1_CQ);
   real log_1m_c1_CQ_PMQ = log1m_inv_logit(logit_c1_CQ_PMQ);
@@ -92,6 +101,9 @@ transformed parameters{
 model {
   
   // ********* Prior *********
+  beta0 ~ normal(beta_0_mean, beta_0_sigma);
+  beta1 ~ normal(beta_1_mean, beta_1_sigma);
+
   inv_lambda ~ normal(mu_inv_lambda,sigma_inv_lambda);
   inv_gamma ~ normal(mu_inv_gamma,sigma_inv_gamma);
 
@@ -129,54 +141,69 @@ model {
 
   // ********* Likelihood *********
   for(i in 1:Neps){
+    real log_p_seasonal;
+    real log_1m_p_seasonal;
+    real log_p_PMQ_seasonal;
+    real log_1m_p_PMQ_seasonal;
+
     int Ind;
     // We iterate through each time to infection and add to log likelihood
     real log_probs[4];
     if(Censored[i] == 0){ // this is an observed time to new infection
       if(Drug[i] == 0){ 
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        log_p_seasonal = log_p[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_seasonal = log1m( exp(log_p[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
-        log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);          
+        log_probs[1] = log_p_seasonal + exponential_lpdf(Durations[i] | lambda);          
         // Early reLapse
-        log_probs[2] = log_1m_p[Ind] + log_1m_c1_AS + log_EarlyL + weibull_lpdf(Durations[i] | AS_shape, AS_scale);
+        log_probs[2] = log_1m_p_seasonal + log_1m_c1_AS + log_EarlyL + weibull_lpdf(Durations[i] | AS_shape, AS_scale);
         // Late reLapse
-        log_probs[3] = log_1m_p[Ind] + log_1m_c1_AS + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
+        log_probs[3] = log_1m_p_seasonal + log_1m_c1_AS + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_AS + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p_seasonal + log_c1_AS + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
 
         target += log_sum_exp(log_probs);
       } 
       if(Drug[i] == 1){ 
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        log_p_seasonal = log_p[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_seasonal = log1m( exp(log_p[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+        
         // Chloroquine Monotherapy
         // reInfection
-        log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);
+        log_probs[1] = log_p_seasonal + exponential_lpdf(Durations[i] | lambda);
         // Early reLapse
-        log_probs[2] = log_1m_p[Ind] + log_1m_c1_CQ + log_EarlyL + weibull_lpdf(Durations[i] | CQ_shape, CQ_scale);
+        log_probs[2] = log_1m_p_seasonal + log_1m_c1_CQ + log_EarlyL + weibull_lpdf(Durations[i] | CQ_shape, CQ_scale);
         // Late reLapse
-        log_probs[3] = log_1m_p[Ind] + log_1m_c1_CQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
+        log_probs[3] = log_1m_p_seasonal + log_1m_c1_CQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p_seasonal + log_c1_CQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
 
         target += log_sum_exp(log_probs);
       }
       if(Drug[i] == 2){ 
         Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        log_p_PMQ_seasonal = log_p_PMQ[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_PMQ_seasonal = log1m( exp(log_p_PMQ[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+
         // Chloroquine plus Primaquine
         // reInfection
-        log_probs[1] = log_p_PMQ[Ind] + exponential_lpdf(Durations[i] | lambda);
+        log_probs[1] = log_p_PMQ_seasonal + exponential_lpdf(Durations[i] | lambda);
         // Early reLapse
-        log_probs[2] = log_1m_p_PMQ[Ind] + log_1m_c1_CQ_PMQ + log_EarlyL + weibull_lpdf(Durations[i] | CQ_shape, CQ_scale);
+        log_probs[2] = log_1m_p_PMQ_seasonal + log_1m_c1_CQ_PMQ + log_EarlyL + weibull_lpdf(Durations[i] | CQ_shape, CQ_scale);
         // Late reLapse
-        log_probs[3] = log_1m_p_PMQ[Ind] + log_1m_c1_CQ_PMQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
+        log_probs[3] = log_1m_p_PMQ_seasonal + log_1m_c1_CQ_PMQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p_PMQ[Ind] + log_c1_CQ_PMQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p_PMQ_seasonal + log_c1_CQ_PMQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
         
         target += log_sum_exp(log_probs);
       }
     } 
-    if(Censored[i] == 1){ // this is a right censored time to new infection
+    if(Censored[i] == 1){ // This is right censored time interval (unobserved recurrence time)
+      // No inclusion of seasonality as we are not observing a recurrence
       if(Drug[i] == 0){ 
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
@@ -221,6 +248,60 @@ model {
         target += log_sum_exp(log_probs);
       }
     }
+    if(Censored[i] == -1){ // This is left censored time interval (primary enrollment illness)
+      if(Drug[i] == 0){ 
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        log_p_seasonal = log_p[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_seasonal = log1m( exp(log_p[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+
+        // This is the Artesunate monotherapy: reLapses or reInfections
+        // reInfection
+        log_probs[1] = log_p_seasonal;          
+        // Early reLapse
+        log_probs[2] = log_1m_p_seasonal + log_1m_c1_AS + log_EarlyL;
+        // Late reLapse
+        log_probs[3] = log_1m_p_seasonal + log_1m_c1_AS + log_1m_EarlyL;
+        // recrudescence
+        log_probs[4] = log_1m_p_seasonal + log_c1_AS;
+        
+        target += log_sum_exp(log_probs);
+
+      } 
+      if(Drug[i] == 1){ 
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        log_p_seasonal = log_p[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_seasonal = log1m( exp(log_p[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+
+        // This is the Chloroquine monotherapy: reLapses or reInfections
+        // reInfection
+        log_probs[1] = log_p_seasonal;          
+        // Early reLapse
+        log_probs[2] = log_1m_p_seasonal + log_1m_c1_CQ + log_EarlyL;
+        // Late reLapse
+        log_probs[3] = log_1m_p_seasonal + log_1m_c1_CQ + log_1m_EarlyL;
+        // recrudescence
+        log_probs[4] = log_1m_p_seasonal + log_c1_CQ;
+        
+        target += log_sum_exp(log_probs);
+      } 
+      if(Drug[i] == 2){ 
+        Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        log_p_PMQ_seasonal = log_p_PMQ[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_PMQ_seasonal = log1m( exp(log_p_PMQ[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+
+        // This is the Chloroquine monotherapy: reLapses or reInfections
+        // reInfection
+        log_probs[1] = log_p_PMQ_seasonal;          
+        // Early reLapse
+        log_probs[2] = log_1m_p_PMQ_seasonal + log_1m_c1_CQ_PMQ + log_EarlyL;
+        // Late reLapse
+        log_probs[3] = log_1m_p_PMQ_seasonal + log_1m_c1_CQ_PMQ + log_1m_EarlyL;
+        // recrudescence
+        log_probs[4] = log_1m_p_PMQ_seasonal + log_c1_CQ_PMQ;
+        
+        target += log_sum_exp(log_probs);
+      }
+    }
   }
 } 
 
@@ -228,47 +309,50 @@ generated quantities {
 
   vector[Neps] log_lik;
   matrix[Neps,4] prob_labels;
-  
+  real alpha_seasonal;
+
   // This computes respective densities of each mixture component
   for(i in 1:Neps){
     int Ind;
     vector[4] prob_labels_raw;
     if(Censored[i]==0){
+      alpha_seasonal = exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0));
+      
       if(Drug[i] == 0){ // Artesunate monotherapy
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
         // Reinfection
-        prob_labels_raw[1] = exp(log_p[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
+        prob_labels_raw[1] = alpha_seasonal*exp(log_p[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
         // Early Relapse
-        prob_labels_raw[2] = exp(log_1m_p[Ind])*exp(log_1m_c1_AS)*exp(log_EarlyL)*exp(weibull_lpdf(Durations[i] | AS_shape, AS_scale));
+        prob_labels_raw[2] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_1m_c1_AS)*exp(log_EarlyL)*exp(weibull_lpdf(Durations[i] | AS_shape, AS_scale));
         // Late Relapse
-        prob_labels_raw[3] = exp(log_1m_p[Ind])*exp(log_1m_c1_AS)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
+        prob_labels_raw[3] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_1m_c1_AS)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_c1_AS)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
       }
       if(Drug[i] == 1){ // Chloroquine Monotherapy
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
         // Reinfection
-        prob_labels_raw[1] = exp(log_p[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
+        prob_labels_raw[1] = alpha_seasonal*exp(log_p[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
         // Early Relapse
-        prob_labels_raw[2] = exp(log_1m_p[Ind])*exp(log_1m_c1_CQ)*exp(log_EarlyL)*exp(weibull_lpdf(Durations[i] | CQ_shape, CQ_scale));
+        prob_labels_raw[2] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_1m_c1_CQ)*exp(log_EarlyL)*exp(weibull_lpdf(Durations[i] | CQ_shape, CQ_scale));
         // Late Relapse
-        prob_labels_raw[3] = exp(log_1m_p[Ind])*exp(log_1m_c1_CQ)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
+        prob_labels_raw[3] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_1m_c1_CQ)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_c1_CQ)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
       }
       if(Drug[i] == 2){ // Chloroquine + Primaquine
         Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
         // Reinfection
-        prob_labels_raw[1] = exp(log_p_PMQ[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
+        prob_labels_raw[1] = alpha_seasonal*exp(log_p_PMQ[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
         // Early Relapse
-        prob_labels_raw[2] = exp(log_1m_p_PMQ[Ind])*exp(log_1m_c1_CQ_PMQ)*exp(log_EarlyL)*exp(weibull_lpdf(Durations[i] | CQ_shape, CQ_scale));
+        prob_labels_raw[2] = (1-alpha_seasonal*exp(log_p_PMQ[Ind]))*exp(log_1m_c1_CQ_PMQ)*exp(log_EarlyL)*exp(weibull_lpdf(Durations[i] | CQ_shape, CQ_scale));
         // Late Relapse
-        prob_labels_raw[3] = exp(log_1m_p_PMQ[Ind])*exp(log_1m_c1_CQ_PMQ)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
+        prob_labels_raw[3] = (1-alpha_seasonal*exp(log_p_PMQ[Ind]))*exp(log_1m_c1_CQ_PMQ)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p_PMQ[Ind])*exp(log_c1_CQ_PMQ)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = (1-alpha_seasonal*exp(log_p_PMQ[Ind]))*exp(log_c1_CQ_PMQ)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
       }
     } 
-    if(Censored[i] == 1){ // this is a right censored time to new infection
+    if(Censored[i]==1){
       if(Drug[i] == 0){ // Artesunate monotherapy:
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
         // Reinfection
@@ -304,6 +388,43 @@ generated quantities {
 
       }
     }
+    if(Censored[i] == -1){
+      alpha_seasonal = exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0));
+
+      if(Drug[i] == 0){ // Artesunate monotherapy
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        // Reinfection
+        prob_labels_raw[1] = alpha_seasonal*exp(log_p[Ind]);
+        // Early Relapse
+        prob_labels_raw[2] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_1m_c1_AS)*exp(log_EarlyL);
+        // Late Relapse
+        prob_labels_raw[3] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_1m_c1_AS)*exp(log_1m_EarlyL);
+        // Recrudescence
+        prob_labels_raw[4] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_c1_AS);
+      }
+      if(Drug[i] == 1){ // Chloroquine Monotherapy
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        // Reinfection
+        prob_labels_raw[1] = alpha_seasonal*exp(log_p[Ind]);
+        // Early Relapse
+        prob_labels_raw[2] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_1m_c1_CQ)*exp(log_EarlyL);
+        // Late Relapse
+        prob_labels_raw[3] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_1m_c1_CQ)*exp(log_1m_EarlyL);
+        // Recrudescence
+        prob_labels_raw[4] = (1-alpha_seasonal*exp(log_p[Ind]))*exp(log_c1_CQ);
+      }
+      if(Drug[i] == 2){ // Chloroquine + Primaquine
+        Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        // Reinfection
+        prob_labels_raw[1] = alpha_seasonal*exp(log_p_PMQ[Ind]);
+        // Early Relapse
+        prob_labels_raw[2] = (1-alpha_seasonal*exp(log_p_PMQ[Ind]))*exp(log_1m_c1_CQ_PMQ)*exp(log_EarlyL);
+        // Late Relapse
+        prob_labels_raw[3] = (1-alpha_seasonal*exp(log_p_PMQ[Ind]))*exp(log_1m_c1_CQ_PMQ)*exp(log_1m_EarlyL);
+        // Recrudescence
+        prob_labels_raw[4] = (1-alpha_seasonal*exp(log_p_PMQ[Ind]))*exp(log_c1_CQ_PMQ);
+      }
+    } 
     // normalise to 1
     for(k in 1:4){
       prob_labels[i,k] = prob_labels_raw[k]/sum(prob_labels_raw);
@@ -315,52 +436,66 @@ generated quantities {
     // We iterate through each time to infection and add to log likelihood
     real log_probs[4];
     int Ind;
+    real log_p_seasonal;
+    real log_1m_p_seasonal;
+    real log_p_PMQ_seasonal;
+    real log_1m_p_PMQ_seasonal;
+
     if(Censored[i] == 0){ // this is an observed time to new infection
       if(Drug[i] == 0){
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        log_p_seasonal = log_p[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_seasonal = log1m( exp(log_p[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
-        log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);          
+        log_probs[1] = log_p_seasonal + exponential_lpdf(Durations[i] | lambda);          
         // Early reLapse
-        log_probs[2] = log_1m_p[Ind] + log_1m_c1_AS + log_EarlyL + weibull_lpdf(Durations[i] | AS_shape, AS_scale);
+        log_probs[2] = log_1m_p_seasonal + log_1m_c1_AS + log_EarlyL + weibull_lpdf(Durations[i] | AS_shape, AS_scale);
         // Late reLapse
-        log_probs[3] = log_1m_p[Ind] + log_1m_c1_AS + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
+        log_probs[3] = log_1m_p_seasonal + log_1m_c1_AS + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_AS + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p_seasonal + log_c1_AS + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
 
         log_lik[i] = log_sum_exp(log_probs);
       }
       if(Drug[i] == 1){
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        log_p_seasonal = log_p[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_seasonal = log1m( exp(log_p[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+
         // Chloroquine Monotherapy
         // reInfection
-        log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);
+        log_probs[1] = log_p_seasonal + exponential_lpdf(Durations[i] | lambda);
         // Early reLapse
-        log_probs[2] = log_1m_p[Ind] + log_1m_c1_CQ + log_EarlyL + weibull_lpdf(Durations[i] | CQ_shape, CQ_scale);
+        log_probs[2] = log_1m_p_seasonal + log_1m_c1_CQ + log_EarlyL + weibull_lpdf(Durations[i] | CQ_shape, CQ_scale);
         // Late reLapse
-        log_probs[3] = log_1m_p[Ind] + log_1m_c1_CQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
+        log_probs[3] = log_1m_p_seasonal + log_1m_c1_CQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p_seasonal + log_c1_CQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
 
         log_lik[i] = log_sum_exp(log_probs);
       }
       if(Drug[i] == 2){
         Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        log_p_PMQ_seasonal = log_p_PMQ[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_PMQ_seasonal = log1m( exp(log_p_PMQ[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+
         // Chloroquine + Primaquine
         // reInfection
-        log_probs[1] = log_p_PMQ[Ind] + exponential_lpdf(Durations[i] | lambda);
+        log_probs[1] = log_p_PMQ_seasonal + exponential_lpdf(Durations[i] | lambda);
         // Early reLapse
-        log_probs[2] = log_1m_p_PMQ[Ind] + log_1m_c1_CQ_PMQ + log_EarlyL + weibull_lpdf(Durations[i] | CQ_shape, CQ_scale);
+        log_probs[2] = log_1m_p_PMQ_seasonal + log_1m_c1_CQ_PMQ + log_EarlyL + weibull_lpdf(Durations[i] | CQ_shape, CQ_scale);
         // Late reLapse
-        log_probs[3] = log_1m_p_PMQ[Ind] + log_1m_c1_CQ_PMQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
+        log_probs[3] = log_1m_p_PMQ_seasonal + log_1m_c1_CQ_PMQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p_PMQ[Ind] + log_c1_CQ_PMQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p_PMQ_seasonal + log_c1_CQ_PMQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
         
         log_lik[i] = log_sum_exp(log_probs);
 
       }
     } 
-    if(Censored[i] == 1){ // this is a right censored time to new infection
+    if(Censored[i] == 1){ // this is an unobserved time to new infection: no sesonality component
       // This is the unobserved case (data are right censored)
       if(Drug[i] == 0){
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
@@ -392,6 +527,7 @@ generated quantities {
       }
       if(Drug[i] == 2){
         Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+
         // Chloroquine + Primaquine: 
         // reInfection
         log_probs[1] = log_p_PMQ[Ind] + exponential_lccdf(Durations[i] | lambda);          
@@ -405,9 +541,63 @@ generated quantities {
         log_lik[i] = log_sum_exp(log_probs);
       }
     }
+    if(Censored[i] == -1){ // primary episode no timing information
+      if(Drug[i] == 0){
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        log_p_seasonal = log_p[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_seasonal = log1m( exp(log_p[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+        
+        // This is the Artesunate monotherapy: reLapses or reInfections
+        // reInfection
+        log_probs[1] = log_p_seasonal;          
+        // Early reLapse
+        log_probs[2] = log_1m_p_seasonal + log_1m_c1_AS + log_EarlyL;
+        // Late reLapse
+        log_probs[3] = log_1m_p_seasonal + log_1m_c1_AS + log_1m_EarlyL;
+        // recrudescence
+        log_probs[4] = log_1m_p_seasonal + log_c1_AS;
+        
+        log_lik[i] = log_sum_exp(log_probs);
+      }
+      if(Drug[i] == 1){
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        log_p_seasonal = log_p[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_seasonal = log1m( exp(log_p[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+        
+        // Chloroquine Monotherapy
+        // reInfection
+        log_probs[1] = log_p_seasonal;
+        // Early reLapse
+        log_probs[2] = log_1m_p_seasonal + log_1m_c1_CQ + log_EarlyL;
+        // Late reLapse
+        log_probs[3] = log_1m_p_seasonal + log_1m_c1_CQ + log_1m_EarlyL;
+        // recrudescence
+        log_probs[4] = log_1m_p_seasonal + log_c1_CQ;
+        
+        log_lik[i] = log_sum_exp(log_probs);
+      }
+      if(Drug[i] == 2){
+        Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        log_p_PMQ_seasonal = log_p_PMQ[Ind] + beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0);
+        log_1m_p_PMQ_seasonal = log1m( exp(log_p_PMQ[Ind]) * exp(beta1*sin((2*pi()*WeekTime[i])/Nweeks + beta0)) );
+        
+        // Chloroquine + Primaquine
+        // reInfection
+        log_probs[1] = log_p_PMQ_seasonal;
+        // Early reLapse
+        log_probs[2] = log_1m_p_PMQ_seasonal + log_1m_c1_CQ_PMQ + log_EarlyL;
+        // Late reLapse
+        log_probs[3] = log_1m_p_PMQ_seasonal + log_1m_c1_CQ_PMQ + log_1m_EarlyL;
+        // recrudescence
+        log_probs[4] = log_1m_p_PMQ_seasonal + log_c1_CQ_PMQ;
+        
+        log_lik[i] = log_sum_exp(log_probs);
+        
+      }
+    } 
   }
 }
 
 '
 
-Timing_Model2 = stan_model(model_code = mod2)
+Timing_Model3 = stan_model(model_code = mod3)
