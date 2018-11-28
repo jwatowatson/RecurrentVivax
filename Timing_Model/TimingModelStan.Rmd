@@ -233,6 +233,8 @@ Prior_params_M3 = c(Prior_params_M2,
 
 Set up parameters for the MCMC runs.
 ```{r PrepModels}
+# remove this once models 1-2 conform with augmented data (including Censored == -1)
+Combined_Time_Data = filter(Combined_Time_Data, Censored > -1)
 # Choose as many chains as available cores
 Chains = 6
 options(mc.cores = Chains)
@@ -326,11 +328,11 @@ if(RUN_MODELS){
                       chains=Chains, thin = thin)
   save(mod1_Fit, file = 'OutputResults/StanModels_mod1.RData')
   
-  # mod2_Fit = sampling(Timing_Model2,
-  #                     data = c(Time_data_2, Prior_params_M2),
-  #                     iter = IT, warmup = WarmUp,
-  #                     chains=Chains, thin = thin)
-  # save(mod2_Fit, file = 'OutputResults/StanModels_mod2.RData')
+  mod2_Fit = sampling(Timing_Model2,
+                      data = c(Time_data_2, Prior_params_M2),
+                      iter = IT, warmup = WarmUp,
+                      chains=Chains, thin = thin)
+  save(mod2_Fit, file = 'OutputResults/StanModels_mod2.RData')
   
   # mod3_Fit = sampling(Timing_Model3,
   #                     data = c(Time_data_3, Prior_params_M3),
@@ -363,8 +365,6 @@ states = c(relapse = 'L', reinfection = 'I', recrudescence = 'C')
 #mycols = brewer.pal(n=3, name = 'Set1')
 # Do we include censored time intervals in the plots:
 PLOT_Censored_Obs = F
-# remove this once models 1-2 conform with augmented data (including Censored == -1)
-Combined_Time_Data = filter(Combined_Time_Data, Censored > -1)
 if(PLOT_Censored_Obs){
   ind_plotting = which(Combined_Time_Data$Censored > -1)
 } else {
@@ -374,6 +374,8 @@ if(PLOT_Censored_Obs){
 
 
 ## Model 0
+
+Not included in analysis - mainly here as a base model to help debugging.
 
 ```{r plotModel0}
 # # Traceplots
@@ -441,6 +443,7 @@ traceplot(mod1_Fit, c('logit_c1_CQ','logit_c1_AS'))
 traceplot(mod1_Fit, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
 par(mfrow=c(1,2))
 thetas_mod1 = extract(mod1_Fit)
+save(thetas_mod1, file = 'OutputResults/thetas_mod1.RData')
 hist(thetas_mod1$inv_lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
 hist(thetas_mod1$inv_gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
 

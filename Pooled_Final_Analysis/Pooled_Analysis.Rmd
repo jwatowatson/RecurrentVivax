@@ -72,7 +72,7 @@ states = c(relapse = 'L', reinfection = 'I', recrudescence = 'C')
 
 # James, there are some odd bugs something to do with !duplicated() and the tibble...
 # https://stackoverflow.com/questions/39041115/fixing-a-multiple-warning-unknown-column
-# Also, Thetas_full_post has redundant coolumn names
+# Also, Thetas_full_post has redundant column names
 ```
 
 
