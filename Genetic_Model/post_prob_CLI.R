@@ -7,9 +7,9 @@
 # Max_Tot_Vtx = 6,
 # UpperComplexity = 10^6 # Is this redundant
 
-post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infections)
+post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infections)
                          Fs, # MS population frequencies 
-                         p = c('C' = 0.01, 'L' = 0.2, 'I' = 0.79), # Population constant prior over C, L, I
+                         p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3), # Uniform prior over C, L, I
                          alpha = 0, # Additive inbreeding constant
                          cores = 4, 
                          Max_Eps = 3, # Limit is due to test_Rn_compatible 
@@ -17,19 +17,19 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
                          UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
                          verbose = FALSE){
   #==========================================================================
-  # Check the MS_data and p have the correct structures
+  # Check the MSdata and p have the correct structures
   #========================================================================== 
-  if(any(!c('Episode','ID','Episode_Identifier','MOI_id') %in% colnames(MS_data))){
-    stop('MS_data needs to include the following columns: ID,Episode,Episode_Identifier,MOI_id')
+  if(any(!c('Episode','ID','Episode_Identifier','MOI_id') %in% colnames(MSdata))){
+    stop('MSdata needs to include the following columns: ID,Episode,Episode_Identifier,MOI_id')
   }
   
   #--------------------------------------------------------------------------
   # Reformat the data s.t. there are no NA gaps in mixed infections
   #--------------------------------------------------------------------------
-  MS_data = reformat_MSdata(MSdata = MS_data, MSs=names(Fs))
+  MSdata = reformat_MSdata(MSdata = MSdata, MSs=names(Fs))
   
   # Make sure that the data are sorted correctly
-  MS_data = arrange(MS_data, ID, Episode, MOI_id)
+  MSdata = arrange(MSdata, ID, Episode, MOI_id)
   
   if(verbose) writeLines('Setting up parameters to do computation....')
   
@@ -37,7 +37,7 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   # Retrieve population prior and recurrent eps identifiers
   #==========================================================================
   p_pop = sapply(c('C','L','I'), function(x)as.list(formals(post_prob_CLI)$p)[[x]])
-  recurrent_eps = unique(MS_data$Episode_Identifier[MS_data$Episode>1]) # Based on genetic data
+  recurrent_eps = unique(MSdata$Episode_Identifier[MSdata$Episode>1]) # Based on genetic data
   
   #==========================================================================
   # Check to see if using pop prior or prior from time-to-event and comment
@@ -83,7 +83,7 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   #==========================================================================
   # Create Post_probs store with length = num. of all infections inc. those without recurrence
   #==========================================================================
-  all_infections = unique(MS_data$Episode_Identifier)
+  all_infections = unique(MSdata$Episode_Identifier)
 
   #==========================================================================
   # Extract microsatellites, related quantities and calculate log pop prior
@@ -112,8 +112,8 @@ post_prob_CLI = function(MS_data, # MS data (assumes no NA gaps in mixed infecti
   # Extract yn for all individuals for checks ahead of do.par and Gn_ab calculation
   # It is important that IDs_all is a character vector since id used to index
   #==========================================================================
-  IDs_all = as.character(unique(MS_data$ID)) # Character vector
-  yns = lapply(IDs_all, function(x){yn = filter(MS_data, ID == x)})
+  IDs_all = as.character(unique(MSdata$ID)) # Character vector
+  yns = lapply(IDs_all, function(x){yn = filter(MSdata, ID == x)})
   names(yns) = IDs_all
   
   #==========================================================================

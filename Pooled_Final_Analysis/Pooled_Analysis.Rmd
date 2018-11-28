@@ -44,17 +44,17 @@ source("../Genetic_Model/post_prob_CLI.R")
 source("../Genetic_Model/post_prob_CLI_sequential.R") 
 source("../Genetic_Model/test_Rn_compatible.R") 
 source("../Genetic_Model/Data_Inflation_Functions.R")
-source('../Plotting_MS_Data/PlottingFunction.R')
+source('../Plotting_MS_data/PlottingFunction.R')
 
 # The pooled MS data from BPD and VHX
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
 
 # Booleans that describe generation of Markdown file. 
 # The large jobs are done on the cluster
-RUN_MODELS_SINGLE_SIMPLE = F
-RUN_MODELS_FULL_POSTERIOR_SIMPLE = F
-RUN_MODELS_FULL_POSTERIOR_INFLATED = F
-RUN_MODELS_FALSE_POSITIVE = F
+RUN_MODELS_SINGLE_SIMPLE = T            # can do on laptop
+RUN_MODELS_FULL_POSTERIOR_SIMPLE = T    # can do on laptop
+RUN_MODELS_FULL_POSTERIOR_INFLATED = F  # cluster is better
+RUN_MODELS_FALSE_POSITIVE = F           # only cluster!!
 CREATE_PLOTS = T
 
 # Colour scheme
@@ -85,17 +85,19 @@ writeLines(sprintf('Number of episodes typed: %s',
                    length(unique(MS_pooled$Episode_Identifier))))
 writeLines(sprintf('Number of recurrences typed: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
+# ****** Bug in recent version ******
+# Commented next bit out: we need the episodes with no recurent data for allele freq estimation
 
-# We also remove MS data for which there are no recurrent data
-N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
-MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
-
-writeLines(sprintf('Number of individuals with at least two episodes typed: %s',
-                   length(unique(MS_pooled$ID))))
-writeLines(sprintf('Number of episodes individuals with at least two episodes typed: %s',
-                   length(unique(MS_pooled$Episode_Identifier))))
-writeLines(sprintf('Number of recurrences typed: %s',
-                   length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
+# # We also remove MS data for which there are no recurrent data
+# N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
+# MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
+# 
+# writeLines(sprintf('Number of individuals with at least two episodes typed: %s',
+#                    length(unique(MS_pooled$ID))))
+# writeLines(sprintf('Number of episodes individuals with at least two episodes typed: %s',
+#                    length(unique(MS_pooled$Episode_Identifier))))
+# writeLines(sprintf('Number of recurrences typed: %s',
+#                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
 ```
 
 
@@ -126,32 +128,36 @@ writeLines(sprintf('Of %s of %s BPD individual/s selected for genotyping, %s to 
                    X0,X1,X2[1],X2[2]))
 ```
 
+Bug in the next bit so commented out
 ```{r VHX_typed_untyped}
-# Is there a significant difference between VHX that where genetically typed and not? 
-All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence 
-x1 = Typ_VHX_epi_count 
-x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # Untyped_VHX_epi_count
-max_rec = max(All_VHX_rec_count)
+# ****** Bug in recent version ******
 
-plot_store = array(dim = c(2, max_rec-1), dimnames = list(c('Untyped','Typed'), 2:max_rec))
-plot_store['Untyped', names(table(x2))] = table(x2)
-plot_store['Typed', names(table(x1))] = table(x1)
 
-barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25), 
-        main='VHX subset', xlab = 'Number of episodes')
-legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'), 
-       density = c(100,25), bty = 'n')
-
-# Bootstap test of difference in median
-theta_hat = median(x1) - median(x2) # Median diff 2
-theta_hat_boot = sapply(1:5000, function(x){
-  x1boot = sample(x1, size = length(x1), replace = T)
-  x2boot = sample(x2, size = length(x2), replace = T)
-  median(x1boot) - median(x2boot)})
-se = sd(theta_hat_boot) 
-Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Significant
-percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
-pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
+# # Is there a significant difference between VHX that where genetically typed and not? 
+# All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence 
+# x1 = Typ_VHX_epi_count 
+# x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # Untyped_VHX_epi_count
+# max_rec = max(All_VHX_rec_count)
+# 
+# plot_store = array(dim = c(2, max_rec-1), dimnames = list(c('Untyped','Typed'), 2:max_rec))
+# plot_store['Untyped', names(table(x2))] = table(x2)
+# plot_store['Typed', names(table(x1))] = table(x1)
+# 
+# barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25), 
+#         main='VHX subset', xlab = 'Number of episodes')
+# legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'), 
+#        density = c(100,25), bty = 'n')
+# 
+# # Bootstap test of difference in median
+# theta_hat = median(x1) - median(x2) # Median diff 2
+# theta_hat_boot = sapply(1:5000, function(x){
+#   x1boot = sample(x1, size = length(x1), replace = T)
+#   x2boot = sample(x2, size = length(x2), replace = T)
+#   median(x1boot) - median(x2boot)})
+# se = sd(theta_hat_boot) 
+# Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Significant
+# percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
+# pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
 ```
 
 Summary of complexity of infection based on numbers of alleles observed 
@@ -184,10 +190,8 @@ writeLines(sprintf('Number of episodes with COI >= 3: %s of %s (%s percent)', X0
 Define the sets of microsatellite markers for the various datasets.
 
 ```{r}
-MSs_VHX = c("PV.3.502","PV.3.27","PV.ms8","PV.1.501","PV.ms1","PV.ms5","PV.ms6")
 MSs_all = c("PV.3.502","PV.3.27","PV.ms8","PV.1.501","PV.ms1","PV.ms5","PV.ms6",
             "PV.ms7","PV.ms16")
-MSs_BPD = MSs_all
 MSs_Main = c('PV.3.27', 'PV.3.502', 'PV.ms8') # These are typed for all episodes (the core group)
 ```
 
@@ -199,10 +203,6 @@ We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 
 ```{r, echo=F}
 # Prior weight for the Dirichlet (setting weight to 0 recovers empirical freq):
 D_weight_Prior = 1
-
-MSs_all = c("PV.3.502","PV.3.27","PV.ms8",
-            "PV.1.501","PV.ms1","PV.ms5",
-            "PV.ms6", "PV.ms7","PV.ms16")
 
 # These are motif lengths: for the plotting
 MSs_Motifs = list("PV.3.502"=8,'PV.3.27' = 4, 
@@ -303,7 +303,7 @@ if(RUN_MODELS_SINGLE_SIMPLE){
   # Run (with time-to-event)
   #===============================================
   tic()
-  thetas_9MS = post_prob_CLI(MS_data = MS_pooled, Fs = Fs_Combined, 
+  thetas_9MS = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
                              p = p, cores = 6, verbose = F) 
   thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
   save(thetas_9MS, file = '../RData/GeneticModel/thetas_9MS.RData')
@@ -313,7 +313,7 @@ if(RUN_MODELS_SINGLE_SIMPLE){
   # Run (without time-to-event)
   #===============================================
   tic()
-  thetas_9MS_Tagnostic = post_prob_CLI(MS_data = MS_pooled, Fs = Fs_Combined, 
+  thetas_9MS_Tagnostic = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
                                        cores = 6, verbose = F)
   thetas_9MS_Tagnostic$Episode_Identifier = rownames(thetas_9MS_Tagnostic)
   save(thetas_9MS_Tagnostic, file = '../RData/GeneticModel/thetas_9MS_Tagnostic.RData')
@@ -349,7 +349,7 @@ if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
                 grep('I',colnames(Post_samples_matrix))[ss],
                 grep('Episode_Identifier',colnames(Post_samples_matrix)))
     p = Post_samples_matrix[,indices]
-    thetas_9MS = post_prob_CLI(MS_data = MS_pooled, Fs = Fs_random, 
+    thetas_9MS = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_random, 
                                p = p, cores = 6, verbose = F) 
     thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
     thetas_9MS
@@ -589,7 +589,7 @@ We blow up the pooled analysis into all pairs within individuals:
 
 ```{r, include=FALSE}
 MS_inflate = filter(MS_pooled_summary, MS_pooled_summary$ID %in% IDs_remaining)
-MS_inflated = Inflate_into_pairs(MS_data = MS_inflate)
+MS_inflated = Inflate_into_pairs(MSdata = MS_inflate)
 
 if(RUN_MODELS_FULL_POSTERIOR_INFLATED){  
   
@@ -625,7 +625,7 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
       P_matrix[i,rec_states] = Post_samples_matrix[k,indices]
     }
     
-    Res = post_prob_CLI(MS_data = MS_inflated, 
+    Res = post_prob_CLI(MSdata = MS_inflated, 
                         Fs = Fs_random, 
                         p = P_matrix,
                         UpperComplexity = 10^8, 
@@ -920,7 +920,7 @@ writeLines(sprintf('The episode ids of interest are: %s',
 
 # This isn't working on my Mac
 # That's odd... its working on mine (maybe a path problem?)
-# ColorPlot_MSdata(MS_data = MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
+# ColorPlot_MSdata(MSdata = MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 print(MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 ```
 
@@ -975,19 +975,19 @@ We want to know how often our model estimates evidence of relapse across pairs o
 if(RUN_MODELS_FALSE_POSITIVE){
   # check if the massive pairwise dataset has been made, if not make it 
   # (takes a long time ~20hours)
-  if(!"APC_MS_data.bigRData"%in%list.files()){
+  if(!"APC_MSdata.bigRData"%in%list.files()){
     # The pooled MS data from BPD and VHX
-    load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
+    load('../RData/GeneticModel/MSdata_PooledAnalysis.RData')
     tic()
-    APC_MS_data = Make_All_Pairwise_Comparisons(MS_data = MS_pooled, ncores=42)
-    save(APC_MS_data, file = 'APC_MS_data.bigRData')
+    APC_MSdata = Make_All_Pairwise_Comparisons(MSdata = MS_pooled, ncores=42)
+    save(APC_MSdata, file = 'APC_MSdata.bigRData')
     toc()
   } 
-  load('APC_MS_data.bigRData')
+  load('APC_MSdata.bigRData')
   print('The inflated pairwise dataset is available, now running the analysis...')
   # Run the genetic model on the pairwise data
   tic()
-  Inflated_Results = post_prob_CLI(MS_data = APC_MS_data, 
+  Inflated_Results = post_prob_CLI(MSdata = APC_MSdata, 
                                    Fs = Fs_Combined, 
                                    UpperComplexity = 10^6, 
                                    verbose = F,
@@ -997,7 +997,7 @@ if(RUN_MODELS_FALSE_POSITIVE){
 } else {
   load('Inflated_Results.bigRData')
   Inflated_Results = Inflated_Results[!is.na(Inflated_Results$L),]
-  load('APC_MS_data.bigRData')
+  load('APC_MSdata.bigRData')
 }
 ```
 
@@ -1008,10 +1008,10 @@ round(100*sum(Inflated_Results$L>0.5)/nrow(Inflated_Results),1)
 
 Merging with the village information
 ```{r}
-APC_MS_data = APC_MS_data[which(APC_MS_data$Episode_Identifier %in% rownames(Inflated_Results)),]
+APC_MSdata = APC_MSdata[which(APC_MSdata$Episode_Identifier %in% rownames(Inflated_Results)),]
 village_VHX = readxl::read_excel('../../Genotyping/Data/VHX_villages.xls')
-APC_MS_data = APC_MS_data[intersect(grep('VHX',APC_MS_data$ID1), grep('VHX',APC_MS_data$ID2)),]
-APC_MS_data = APC_MS_data[!duplicated(APC_MS_data$ID),]
+APC_MSdata = APC_MSdata[intersect(grep('VHX',APC_MSdata$ID1), grep('VHX',APC_MSdata$ID2)),]
+APC_MSdata = APC_MSdata[!duplicated(APC_MSdata$ID),]
 ```
 
 
