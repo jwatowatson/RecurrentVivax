@@ -44,17 +44,23 @@ source("../Genetic_Model/post_prob_CLI.R")
 source("../Genetic_Model/post_prob_CLI_sequential.R") 
 source("../Genetic_Model/test_Rn_compatible.R") 
 source("../Genetic_Model/Data_Inflation_Functions.R")
-source('../Plotting_MS_data/PlottingFunction.R')
+#source('../Plotting_MS_data/PlottingFunction.R')
 
 # The pooled MS data from BPD and VHX
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
 
 # Booleans that describe generation of Markdown file. 
-# The large jobs are done on the cluster
-RUN_MODELS_SINGLE_SIMPLE = T            # can do on laptop
-RUN_MODELS_FULL_POSTERIOR_SIMPLE = T    # can do on laptop
-RUN_MODELS_FULL_POSTERIOR_INFLATED = F  # cluster is better
-RUN_MODELS_FALSE_POSITIVE = F           # only cluster!!
+# The large jobs should be done on the cluster
+
+# runs the once model on those that can be directly computed
+RUN_MODELS_SINGLE_SIMPLE = F           # can do on laptop (5 minutes)
+# runs the model for 100 random draws from the Time model posterior on those that can be directly computed
+RUN_MODELS_FULL_POSTERIOR_SIMPLE = F    # can do on laptop (3 hours)
+# runs the model for 100 random draws from the Time model posterior on those that cannot be directly computed
+RUN_MODELS_FULL_POSTERIOR_INFLATED = F  # cluster is better (2 days?)
+# Does the false positive discovery estimation
+RUN_MODELS_FALSE_POSITIVE = F           # only cluster!! (2 weeks?)
+# generates plots
 CREATE_PLOTS = T
 
 # Colour scheme
@@ -85,19 +91,6 @@ writeLines(sprintf('Number of episodes typed: %s',
                    length(unique(MS_pooled$Episode_Identifier))))
 writeLines(sprintf('Number of recurrences typed: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
-# ****** Bug in recent version ******
-# Commented next bit out: we need the episodes with no recurent data for allele freq estimation
-
-# # We also remove MS data for which there are no recurrent data
-# N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
-# MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
-# 
-# writeLines(sprintf('Number of individuals with at least two episodes typed: %s',
-#                    length(unique(MS_pooled$ID))))
-# writeLines(sprintf('Number of episodes individuals with at least two episodes typed: %s',
-#                    length(unique(MS_pooled$Episode_Identifier))))
-# writeLines(sprintf('Number of recurrences typed: %s',
-#                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
 ```
 
 
@@ -131,11 +124,11 @@ writeLines(sprintf('Of %s of %s BPD individual/s selected for genotyping, %s to 
 Bug in the next bit so commented out
 ```{r VHX_typed_untyped}
 # ****** Bug in recent version ******
-
-
-# # Is there a significant difference between VHX that where genetically typed and not? 
-# All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence 
-# x1 = Typ_VHX_epi_count 
+# 
+# 
+# # Is there a significant difference between VHX that where genetically typed and not?
+# All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence
+# x1 = Typ_VHX_epi_count
 # x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # Untyped_VHX_epi_count
 # max_rec = max(All_VHX_rec_count)
 # 
@@ -143,9 +136,9 @@ Bug in the next bit so commented out
 # plot_store['Untyped', names(table(x2))] = table(x2)
 # plot_store['Typed', names(table(x1))] = table(x1)
 # 
-# barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25), 
+# barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25),
 #         main='VHX subset', xlab = 'Number of episodes')
-# legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'), 
+# legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'),
 #        density = c(100,25), bty = 'n')
 # 
 # # Bootstap test of difference in median
@@ -154,7 +147,7 @@ Bug in the next bit so commented out
 #   x1boot = sample(x1, size = length(x1), replace = T)
 #   x2boot = sample(x2, size = length(x2), replace = T)
 #   median(x1boot) - median(x2boot)})
-# se = sd(theta_hat_boot) 
+# se = sd(theta_hat_boot)
 # Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Significant
 # percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
 # pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
@@ -276,6 +269,23 @@ The approach is Bayesian and consists of the following:
 
 The following iterates through each individual and computes the probability of relatedness states.
 
+```{r}
+
+# # We also remove MS data for which there are no recurrent data
+N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
+MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
+# recreate pooled summary dataset
+MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] 
+
+writeLines(sprintf('Number of individuals with at least two episodes typed: %s',
+                   length(unique(MS_pooled$ID))))
+writeLines(sprintf('Number of episodes in individuals with at least two episodes: %s',
+                   length(unique(MS_pooled$Episode_Identifier))))
+writeLines(sprintf('Number of recurrences typed: %s',
+                   length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
+```
+
+
 ## Load the time-to-event priors
 
 ```{r}
@@ -302,9 +312,10 @@ if(RUN_MODELS_SINGLE_SIMPLE){
   #===============================================
   # Run (with time-to-event)
   #===============================================
+  # Approx 100 secs per full model run
   tic()
   thetas_9MS = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
-                             p = p, cores = 6, verbose = F) 
+                             p = p, cores = 42, verbose = F) 
   thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
   save(thetas_9MS, file = '../RData/GeneticModel/thetas_9MS.RData')
   toc()
@@ -314,7 +325,7 @@ if(RUN_MODELS_SINGLE_SIMPLE){
   #===============================================
   tic()
   thetas_9MS_Tagnostic = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
-                                       cores = 6, verbose = F)
+                                       cores = 42, verbose = F)
   thetas_9MS_Tagnostic$Episode_Identifier = rownames(thetas_9MS_Tagnostic)
   save(thetas_9MS_Tagnostic, file = '../RData/GeneticModel/thetas_9MS_Tagnostic.RData')
   toc()
@@ -330,13 +341,14 @@ if(RUN_MODELS_SINGLE_SIMPLE){
 if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
   #===============================================
   # Run full Bayesian with sampling at random from time prior (treats time posterior as discrete uniform prior)
-  # takes about 15-20 minutes on 6 cores
+  # takes about 1.1 hour on 6 cores
   # The outer loop is not parallelised - suboptimal coding
   #===============================================
   
-  Ksamples = length(grep('C',colnames(Post_samples_matrix)))
+  Ksamples = max(length(grep('C',colnames(Post_samples_matrix))), 100)
   tic()
   Thetas_full_post = foreach(ss = 1:Ksamples, .combine = cbind) %do% {
+    
     # draw a random distribution over the allele frequencies from posterior
     Fs_random = lapply(Alpha_Posteriors, rdirichlet, n=1)
     # I'm not sure if this is needed - how are these called deep inside?
@@ -349,11 +361,13 @@ if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
                 grep('I',colnames(Post_samples_matrix))[ss],
                 grep('Episode_Identifier',colnames(Post_samples_matrix)))
     p = Post_samples_matrix[,indices]
+    # run the model
     thetas_9MS = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_random, 
-                               p = p, cores = 6, verbose = F) 
+                               p = p, cores = 42, verbose = F) 
     thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
     thetas_9MS
   }
+  
   save(Thetas_full_post, file = '../RData/GeneticModel/Full_Posterior_Model_samples.RData')
   toc()
 } else {
@@ -366,7 +380,6 @@ if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
 
 
 ```{r}
-
 # Output of time-to-event model (sorted by episode number s.t. columns correspond)
 Time_Estimates_1 = filter(Mod2_ThetaEstimates, Episode_Identifier %in% thetas_9MS$Episode_Identifier)
 Time_Estimates_1 = arrange(Time_Estimates_1, Episode_Identifier)
@@ -495,11 +508,11 @@ if(CREATE_PLOTS){
     # Add CIs
     ind = grepl(state,colnames(Thetas_full_post)) & !grepl('Episode_Identifier',colnames(Thetas_full_post)) 
     X = Thetas_full_post[ordered$i,ind]
-    CI = t(apply(X, 1, quantile, probs = c(0.025, 0.975)))
+    CI = t(apply(X, 1, quantile, probs = c(0.025, 0.975), na.rm=T))
     
     # I don't think the bars at the end of CIs are necessary
     for(i in 1:length(ordered$x)){
-      if(diff(CI[i,]) > 0.005) segments(x0 = i, y0 = CI[i,1], x1 = i, y1 = CI[i,2], 
+      if(!any(is.na(CI[i,])) & diff(CI[i,]) > 0.005) segments(x0 = i, y0 = CI[i,1], x1 = i, y1 = CI[i,2], 
                                         col = drug_cols2[thetas_9MS$drug[ordered$ix[i]]])
     }
     
@@ -519,6 +532,9 @@ if(CREATE_PLOTS){
 
 
 # BPD Final plot
+
+
+This isn't working as I need to add timeSinceLastEpisode in data processing (removed it)
 
 ```{r BPD_efficacy, fig.width=10}
 if(CREATE_PLOTS){
@@ -588,8 +604,8 @@ IDs_remaining = unique(MS_pooled_summary$ID[! MS_pooled_summary$ID %in% IDs_calc
 We blow up the pooled analysis into all pairs within individuals:
 
 ```{r, include=FALSE}
-MS_inflate = filter(MS_pooled_summary, MS_pooled_summary$ID %in% IDs_remaining)
-MS_inflated = Inflate_into_pairs(MSdata = MS_inflate)
+MS_inflate = reformat_MSdata(filter(MS_pooled, ID %in% IDs_remaining), MSs = MSs_all)
+MS_inflated = Inflate_into_pairs(MS_data = MS_inflate)
 
 if(RUN_MODELS_FULL_POSTERIOR_INFLATED){  
   
@@ -597,7 +613,7 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
   P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
   colnames(P_matrix) = c('Episode_Identifier','C','I','L')
   P_matrix$Episode_Identifier = all_rec_eps
-  Ksamples = length(grep('C',colnames(Post_samples_matrix)))
+  Ksamples = max(length(grep('C',colnames(Post_samples_matrix))), 30)
   
   K_results = sum(!duplicated(MS_inflated$Episode_Identifier[MS_inflated$Episode>1]))
   Res_total = array(NA, dim = c(K_results, 3*Ksamples))
@@ -628,7 +644,7 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
     Res = post_prob_CLI(MSdata = MS_inflated, 
                         Fs = Fs_random, 
                         p = P_matrix,
-                        UpperComplexity = 10^8, 
+                        UpperComplexity = 10^6, 
                         verbose = F,
                         cores = 42)
     Res
@@ -676,8 +692,6 @@ MS_inflated = MS_inflated[!duplicated(MS_inflated$Episode_Identifier) & MS_infla
 Res$ID_True = MS_inflated$ID_True
 Res$First_EpNumber = MS_inflated$First_EpNumber
 Res$Second_EpNumber = MS_inflated$Second_EpNumber
-
-
 ## Threshold value for classification
 Epsilon = 0.5
 
@@ -1005,15 +1019,6 @@ The `false-positive' rate is given as
 ```{r}
 round(100*sum(Inflated_Results$L>0.5)/nrow(Inflated_Results),1)
 ```
-
-Merging with the village information
-```{r}
-APC_MSdata = APC_MSdata[which(APC_MSdata$Episode_Identifier %in% rownames(Inflated_Results)),]
-village_VHX = readxl::read_excel('../../Genotyping/Data/VHX_villages.xls')
-APC_MSdata = APC_MSdata[intersect(grep('VHX',APC_MSdata$ID1), grep('VHX',APC_MSdata$ID2)),]
-APC_MSdata = APC_MSdata[!duplicated(APC_MSdata$ID),]
-```
-
 
 # Analysis of radical cure efficacy in BPD
 

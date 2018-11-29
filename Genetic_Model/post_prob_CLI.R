@@ -14,6 +14,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
                          cores = 4, 
                          Max_Eps = 3, # Limit is due to test_Rn_compatible 
                          Max_Tot_Vtx = 6,
+                         Max_Haplotypes = 50, # Need to discuss this with Aimee: hack insert
                          UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
                          verbose = FALSE){
   #==========================================================================
@@ -113,7 +114,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
   # It is important that IDs_all is a character vector since id used to index
   #==========================================================================
   IDs_all = as.character(unique(MSdata$ID)) # Character vector
-  yns = lapply(IDs_all, function(x){yn = filter(MSdata, ID == x)})
+  yns = lapply(IDs_all, function(x){yn = filter(MSdata, ID == x)}) # transform into list data
   names(yns) = IDs_all
   
   #==========================================================================
@@ -241,6 +242,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
   #***********************************************
   # dopar in Windows needs the packages and functions explicitly passed to foreach command
   # otherwise it doesn't work for more than one core. This is still compatible with Mac
+  # print(IDs[113])
   Post_probs = foreach(i=1:N, .combine = rbind, 
                        .packages = c('dplyr','igraph','gtools',
                                      'matrixStats','Matrix','tictoc'), 
@@ -278,9 +280,19 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
     for(inf in infections){
       # Extract data for the tth infection
       ynt = filter(yn, Episode_Identifier == inf)[,MSs,drop = FALSE] 
-      # All haplotypes compatible with ynt (unique collapses repeats due to row per MOI)
+      # All haplotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
       Hnt = expand.grid((lapply(ynt, unique)))
       # Indices of all combinations of nrow(Hnt) choose cn[inf] haplotypes for the tth infection, inf 
+      
+      # ****** The combinations line is causing a bug with highly complex infections *******#
+      # Added a hack line - need some warnings/thinking
+      # This will break the code when sum(scores)==0, i.e. no valid haplotypes are subsampled 
+      KK = nrow(Hnt)
+      if(KK > Max_Haplotypes) {
+        Hnt = Hnt[sample(x = 1:KK,size = Max_Haplotypes,replace = F),]
+        writeLines(sprintf('\nIntroduced hack solution, subsampled %s of a possible %s haplotypes',
+                           Max_Haplotypes,KK))
+      }
       Vt_Hnt_inds = combinations(nrow(Hnt), r = cn[inf], v = 1:nrow(Hnt))       
       # Summarise data for compatiblility check below 
       Y = apply(ynt, 2, function(x){sort(unique(x[!is.na(x)]))}) 

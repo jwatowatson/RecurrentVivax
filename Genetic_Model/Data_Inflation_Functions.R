@@ -25,7 +25,7 @@ Inflate_into_pairs = function(MS_data){
           # This is a weird hack to turn the vector of episodes into 1..3
           sub_data_ep_ij$Episode = as.numeric(as.factor(sub_data_ep_ij$Episode)) 
           
-          sub_data_ep_ij$timeSinceLastEpisode[sub_data_ep_ij$Episode==2] = diff(unique(sub_data_ep_ij$timeSinceEnrolment))
+          #sub_data_ep_ij$timeSinceLastEpisode[sub_data_ep_ij$Episode==2] = diff(unique(sub_data_ep_ij$timeSinceEnrolment))
           sub_data_ep_ij$First_EpNumber = i
           sub_data_ep_ij$Second_EpNumber = j
           inflated_data = rbind(inflated_data, sub_data_ep_ij)
