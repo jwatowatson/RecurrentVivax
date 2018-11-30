@@ -13,6 +13,7 @@ Inflate_into_pairs = function(MS_data){
     setTxtProgressBar(pb, value = which(id==ids))
     sub_data = filter(MS_data, ID==id)
     eps = unique(sub_data$Episode_Identifier)
+    real_episodes = unique(sub_data$Episode)
     N_eps = length(eps)
     if(N_eps > 1){ 
       for(i in 1:(N_eps-1)){
@@ -20,14 +21,15 @@ Inflate_into_pairs = function(MS_data){
           sub_data_ep_ij = filter(sub_data, Episode_Identifier %in% c(eps[i], eps[j]))
           sub_data_ep_ij$ID_True = sub_data_ep_ij$ID
           sub_data_ep_ij$ID = paste('TID',id, '%Primary%',i,'%Recurrence%', j,sep='')
-          sub_data_ep_ij$Episode_Identifier = apply(sub_data_ep_ij, 1, function(x) paste(x['ID'],'_',x['Episode'],sep=''))
           
           # This is a weird hack to turn the vector of episodes into 1..3
           sub_data_ep_ij$Episode = as.numeric(as.factor(sub_data_ep_ij$Episode)) 
           
+          sub_data_ep_ij$Episode_Identifier = apply(sub_data_ep_ij, 1, function(x) paste(x['ID'],'_',x['Episode'],sep=''))
+          
           #sub_data_ep_ij$timeSinceLastEpisode[sub_data_ep_ij$Episode==2] = diff(unique(sub_data_ep_ij$timeSinceEnrolment))
-          sub_data_ep_ij$First_EpNumber = i
-          sub_data_ep_ij$Second_EpNumber = j
+          sub_data_ep_ij$First_EpNumber = real_episodes[i]
+          sub_data_ep_ij$Second_EpNumber = real_episodes[j]
           inflated_data = rbind(inflated_data, sub_data_ep_ij)
         }
       }
