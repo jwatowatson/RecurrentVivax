@@ -443,7 +443,7 @@ traceplot(mod1_Fit, c('logit_c1_CQ','logit_c1_AS'))
 traceplot(mod1_Fit, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
 par(mfrow=c(1,2))
 thetas_mod1 = extract(mod1_Fit)
-save(thetas_mod1, file = 'OutputResults/thetas_mod1.RData')
+#save(thetas_mod1, file = 'OutputResults/thetas_mod1.RData')
 hist(thetas_mod1$inv_lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
 hist(thetas_mod1$inv_gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
 

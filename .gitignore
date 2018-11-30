@@ -32,3 +32,4 @@ Timing_Model/.Rhistory
 # Ignore .Rhistory 
 **/.Rhistory
 Pooled Final Analysis/Pooled_Analysis.R
+Timing_Model/OutputResults/thetas_mod1.RData
