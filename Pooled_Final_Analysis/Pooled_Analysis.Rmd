@@ -167,43 +167,66 @@ Bug in the next bit so commented out
 # pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
 ```
 
-Summary of complexity of infection based on numbers of alleles observed 
+Summary of complexity of infection based on numbers of alleles observed. This is broken down by enrollment episodes (this is independent of drug given) and subsequent recurrences which could be drug dependent.
 
 ```{r COIs_VHX_BPD}
-COIs = sapply(unique(MS_pooled$Episode_Identifier), function(x){
-  ind = MS_pooled$Episode_Identifier == x
-  max(MS_pooled$MOI_id[ind])
-})
-x1 = COIs[grepl('VHX', names(COIs))]
-x2 = COIs[grepl('BPD', names(COIs))]
-theta_hat = median(x1) - median(x2) # Median diff 0
+COIs = data.frame(t(sapply(unique(MS_pooled$Episode_Identifier), function(x){
+  ind = which(MS_pooled$Episode_Identifier == x)
+  c(MOI=max(MS_pooled$MOI_id[ind]),
+    Enrollment = MS_pooled$Episode[ind[1]] == 1,
+    Drug = MS_pooled$Treatment[ind[1]])
+})))
+COIs$MOI = as.numeric(COIs$MOI)
+COIs$Enrollment = COIs$Enrollment=='TRUE'
+COIs$PMQ = 0 
+COIs$PMQ[!COIs$Enrollment & COIs$Drug=='PMQ']=1
+par(las=1, mfrow=c(1,2))
+hist(COIs$MOI[COIs$Enrollment], freq = F, breaks = seq(0.5,4.5, by=1),
+     xlab = 'COIs', ylab = '% of enrollment episodes',
+     main='Enrollment episodes',
+     yaxt='n', ylim = c(0,.75))
+axis(2, at = c(0,.25,.5,.75), labels = 100*c(0,.25,.5,.75))
 
-COIs_store = array(0, dim = c(2, max(COIs)), dimnames = list(c('VHX','BPD'), 1:max(COIs)))
-COIs_store['VHX', names(table(x1))] = table(x1)
-COIs_store['BPD', names(table(x2))] = table(x2)
-barplot(COIs_store, col = c('lightgray','red'), beside = T, density = c(100,25), 
-        main='COIs', xlab = 'COIs')
-legend('topright', legend = c('VHX', 'BPD'), fill =c('lightgray', 'red'), 
-       density = c(100,25), bty = 'n')
+hist(COIs$MOI[!COIs$Enrollment & COIs$Drug=='PMQ'], freq = F, 
+     breaks = seq(0.5,4.5, by=1),
+     xlab = 'COIs', ylab = '% of enrollment episodes',
+     yaxt='n', ylim = c(0,.75), main='Recurrent episodes ', 
+     density = 15, angle = 30, col ='blue')
+axis(2, at = c(0,.25,.5,.75), labels = 100*c(0,.25,.5,.75))
+hist(COIs$MOI[!COIs$Enrollment & !COIs$Drug=='PMQ'], freq = F, 
+     breaks = seq(0.5,4.5, by=1),
+     xlab = 'COIs', ylab = '% of enrollment episodes',add=T,
+     yaxt='n', ylim = c(0,.75), main='', density = 15, 
+     angle = -30, col ='grey')
+axis(2, at = c(0,.25,.5,.75), labels = 100*c(0,.25,.5,.75))
+legend('topright',col=c('blue','grey'),legend = c('PMQ+','No PMQ'), lwd=2)
+mod = glm(MOI ~ enrollment + drug, family = 'poisson', 
+    data = data.frame(MOI=COIs$MOI - 1, # need to do minus 1 so it's Poisson appropriate
+                      enrollment=as.numeric(COIs$Enrollment),
+                      drug = COIs$PMQ))
+summary(mod)
+writeLines(sprintf('Mean complexity of recurrent episodes is %s, and mean complexity of enrollment episodes is %s',
+                   round(1+exp(mod$coefficients['(Intercept)']),2),
+                   round(1+exp(mod$coefficients['(Intercept)']+mod$coefficients['enrollment']),2)))
 
-# How many could have have sibs? 
-X0 = sum(COIs >= 3)
-X1 = round(sum(COIs >= 3)/length(COIs)*100, 2)
-
-writeLines(sprintf('Median COI in VHX and BPD: %s and %s, respectively', median(x1), median(x2)))
-writeLines(sprintf('Number of episodes with COI >= 3: %s of %s (%s percent)', X0, length(COIs), X1))
+# # How many could have have sibs? 
+# X0 = sum(COIs >= 3)
+# X1 = round(sum(COIs >= 3)/length(COIs)*100, 2)
+# 
+# writeLines(sprintf('Median COI in VHX and BPD: %s and %s, respectively', median(x1), median(x2)))
+# writeLines(sprintf('Number of episodes with COI >= 3: %s of %s (%s percent)', X0, length(COIs), X1))
 ```
 
-Define the sets of microsatellite markers for the various datasets.
-
-```{r}
-MSs_all = c("PV.3.502","PV.3.27","PV.ms8","PV.1.501","PV.ms1","PV.ms5","PV.ms6",
-            "PV.ms7","PV.ms16")
-MSs_Main = c('PV.3.27', 'PV.3.502', 'PV.ms8') # These are typed for all episodes (the core group)
-```
+From this Poisson regression, there appears to be evidence that enrollment episodes have higher complexities of infection than recurrences. This implies that relapses are more likely to be single hypnozoite activated infections?
 
 
 # Allele frequencies
+
+First we define the set of microsatellite markers used in this analysis:
+```{r}
+MSs_all = c("PV.3.502","PV.3.27","PV.ms8","PV.1.501","PV.ms1","PV.ms5","PV.ms6",
+            "PV.ms7","PV.ms16")
+```
 
 We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 0$ recovers unweighted empirical allele frequencies. 
 
@@ -859,14 +882,14 @@ if(CREATE_PLOTS){
             lwd=.5, col= 'black')
       
       cols = mycols_states_fg[MS_final$Plotting_col_Values[ind]]
-      points(MS_final$timeSinceEnrolment[ind], 
+      points(MS_final$timeSinceEnrollment[ind], 
              rep(i,length(ind)), 
              pch=1,cex = 1.5, 
              col='black')
     }
     
     # Add points after highlight lines
-    points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
+    points(MS_final$timeSinceEnrollment[ind], rep(i,length(ind)), 
            pch=MS_final$Plotting_pch_Values[ind], 
            bg=mycols_states_bg[MS_final$Plotting_col_Values[ind]],
            col=mycols_states_fg[MS_final$Plotting_col_Values[ind]], 
@@ -1034,9 +1057,9 @@ if(RUN_MODELS_FALSE_POSITIVE){
   # (takes a long time ~20hours)
   if(!"APC_MSdata.bigRData"%in%list.files()){
     # The pooled MS data from BPD and VHX
-    load('../RData/GeneticModel/MSdata_PooledAnalysis.RData')
+    load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
     tic()
-    APC_MSdata = Make_All_Pairwise_Comparisons(MSdata = MS_pooled, ncores=42)
+    APC_MSdata = Make_All_Pairwise_Comparisons(MS_data = MS_pooled, ncores=42)
     save(APC_MSdata, file = 'APC_MSdata.bigRData')
     toc()
   } 

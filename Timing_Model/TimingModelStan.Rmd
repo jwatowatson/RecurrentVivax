@@ -27,9 +27,9 @@ library(RColorBrewer)
 require(gdata)
 
 # Note that recompilation is necessary on different platforms
-RECOMPILE_MODELS = F
+RECOMPILE_MODELS = T
 # Running the full stan models can take several days
-RUN_MODELS = F
+RUN_MODELS = T
 ```
 
 
@@ -236,11 +236,11 @@ Set up parameters for the MCMC runs.
 # remove this once models 1-2 conform with augmented data (including Censored == -1)
 Combined_Time_Data = filter(Combined_Time_Data, Censored > -1)
 # Choose as many chains as available cores
-Chains = 6
+Chains = 8
 options(mc.cores = Chains)
-IT = 10^5
+IT = 10^6
 WarmUp = .5*IT
-thin = 100
+thin = 4000
 
 # put the data into stan format
 # For model 1 
