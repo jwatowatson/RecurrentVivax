@@ -59,7 +59,7 @@ RUN_MODELS_FULL_POSTERIOR_SIMPLE = F    # can do on laptop (2 hours)
 # runs the model for 100 random draws from the Time model posterior on those that cannot be directly computed
 RUN_MODELS_FULL_POSTERIOR_INFLATED = F  # cluster is better (10 hours)
 # Does the false positive discovery estimation
-RUN_MODELS_FALSE_POSITIVE = F           # only cluster!! (1 week)
+RUN_MODELS_FALSE_POSITIVE = F           # only cluster (1 day with 42 cores)
 # generates plots
 CREATE_PLOTS = T
 
@@ -882,14 +882,14 @@ if(CREATE_PLOTS){
             lwd=.5, col= 'black')
       
       cols = mycols_states_fg[MS_final$Plotting_col_Values[ind]]
-      points(MS_final$timeSinceEnrollment[ind], 
+      points(MS_final$timeSinceEnrolment[ind], 
              rep(i,length(ind)), 
              pch=1,cex = 1.5, 
              col='black')
     }
     
     # Add points after highlight lines
-    points(MS_final$timeSinceEnrollment[ind], rep(i,length(ind)), 
+    points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
            pch=MS_final$Plotting_pch_Values[ind], 
            bg=mycols_states_bg[MS_final$Plotting_col_Values[ind]],
            col=mycols_states_fg[MS_final$Plotting_col_Values[ind]], 
@@ -1081,9 +1081,12 @@ if(RUN_MODELS_FALSE_POSITIVE){
 }
 ```
 
-The `false-positive' rate is given as
+
 ```{r}
-round(100*sum(Inflated_Results$L>0.5)/nrow(Inflated_Results),1)
+writeLines(sprintf('The false-positive discovery rate of the genetic model is estimated as %s percent. 
+                   \nThis is based on %s pairwise comparisons',
+           round(100*sum( Inflated_Results$L > Epsilon_upper )/nrow(Inflated_Results),2),
+           nrow(Inflated_Results)))
 ```
 
 # Analysis of radical cure efficacy in BPD

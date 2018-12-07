@@ -76,24 +76,48 @@ Summary of the data and the whole of the VHX data set versus the subset typed (i
 Bug in the next bit so commented out
 
 
-Summary of complexity of infection based on numbers of alleles observed 
+Summary of complexity of infection based on numbers of alleles observed. This is broken down by enrollment episodes (this is independent of drug given) and subsequent recurrences which could be drug dependent.
 
 ![](Pooled_Analysis_files/figure-html/COIs_VHX_BPD-1.png)<!-- -->
 
 ```
-## Median COI in VHX and BPD: 1 and 1, respectively
+## 
+## Call:
+## glm(formula = MOI ~ enrollment + drug, family = "poisson", data = data.frame(MOI = COIs$MOI - 
+##     1, enrollment = as.numeric(COIs$Enrollment), drug = COIs$PMQ))
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -0.9526  -0.8065  -0.7595   0.6986   2.9375  
+## 
+## Coefficients:
+##             Estimate Std. Error z value Pr(>|z|)    
+## (Intercept) -1.24337    0.09667 -12.862  < 2e-16 ***
+## enrollment   0.45306    0.13982   3.240  0.00119 ** 
+## drug         0.12007    0.18533   0.648  0.51707    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for poisson family taken to be 1)
+## 
+##     Null deviance: 619.82  on 709  degrees of freedom
+## Residual deviance: 609.30  on 707  degrees of freedom
+## AIC: 1057.2
+## 
+## Number of Fisher Scoring iterations: 6
 ```
 
 ```
-## Number of episodes with COI >= 3: 30 of 710 (4.23 percent)
+## Mean complexity of recurrent episodes is 1.29, and mean complexity of enrollment episodes is 1.45
 ```
 
-Define the sets of microsatellite markers for the various datasets.
-
-
+From this Poisson regression, there appears to be evidence that enrollment episodes have higher complexities of infection than recurrences. This implies that relapses are more likely to be single hypnozoite activated infections?
 
 
 # Allele frequencies
+
+First we define the set of microsatellite markers used in this analysis:
+
 
 We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 0$ recovers unweighted empirical allele frequencies. 
 
@@ -208,6 +232,10 @@ Construct adjacency graphs and compute probabilities of relapse and reinfection.
 
 ![](Pooled_Analysis_files/figure-html/CoatneyStylePLot-1.png)<!-- -->
 
+```
+## The Coatney style plot is showing 486 recurrences in 208 individuals
+```
+
 ![](Pooled_Analysis_files/figure-html/CompleteDataPlot-1.png)<!-- -->
 Individuals who appear to relapse very late (more than 300 days after last episode):
 
@@ -249,20 +277,20 @@ The summaries of the final dataset:
 
 ```
 ## 
-##   2   3 
-##  99 109
+##  AS CHQ PMQ 
+##  11  88 109
 ```
 
 ```
-## In chloroquine monotherapy individuals, the weighted average of relapses is 99.3 (96.8-99.9)
+## In no-primaquine individuals, the weighted average of relapses is 99.3 (96.8-99.9)
 ```
 
 ```
-## In chloroquine monotherapy individuals, the weighted average of recrudescences is 0.3 (0.1-0.6)
+## In no-primaquine individuals, the weighted average of recrudescences is 0.3 (0.1-0.6)
 ```
 
 ```
-## In chloroquine monotherapy individuals, the weighted average of reinfections is 0.4 (0-2.6)
+## In no-primaquine individuals, the weighted average of reinfections is 0.4 (0-2.6)
 ```
 
 ```
@@ -277,3 +305,186 @@ The summaries of the final dataset:
 ## In primaquine treated individuals, the weighted average of reinfections is 85.7 (83.3-87.5)
 ```
 
+# False positive rate of relapse
+
+We want to know how often our model estimates evidence of relapse across pairs of episodes when the episodes are in different people (i.e. have not possibility of being a relapse)
+
+
+
+
+
+```
+## The false-positive discovery rate of the genetic model is estimated as 2.15 percent. 
+##                    
+## This is based on 90194 pairwise comparisons
+```
+
+# Analysis of radical cure efficacy in BPD
+
+Almost all episodes in BPD were typed. Therefore we can estimate the true efficacy comparing with historical controls (VHX).
+
+
+
+
+Now we look at whether the PK (carboxy-primaquine) can predict failure:
+First we add the carboxy to the dataset:
+
+```
+## [1] "BPD_34"
+```
+
+We exclude the two recurrences seen in patient BPD_444
+
+
+```
+## Loading required package: lme4
+```
+
+```
+## Warning: package 'lme4' was built under R version 3.4.4
+```
+
+```
+## Generalized linear mixed model fit by maximum likelihood (Laplace
+##   Approximation) [glmerMod]
+##  Family: binomial  ( logit )
+## Formula: Failure_YN ~ log10_carboxyPMQ + NumberDaysPMQ + (1 | patientid)
+##    Data: Combined_Time_Data[ind_keep, ]
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##    119.8    138.1    -55.9    111.8      717 
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -0.5862 -0.1303 -0.1095 -0.0912 13.6453 
+## 
+## Random effects:
+##  Groups    Name        Variance  Std.Dev. 
+##  patientid (Intercept) 1.624e-14 1.274e-07
+## Number of obs: 721, groups:  patientid, 639
+## 
+## Fixed effects:
+##                  Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)       2.48402    1.77436   1.400 0.161529    
+## log10_carboxyPMQ -1.73527    0.49252  -3.523 0.000426 ***
+## NumberDaysPMQ    -0.18324    0.09035  -2.028 0.042554 *  
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Correlation of Fixed Effects:
+##             (Intr) l10_PM
+## lg10_crbPMQ -0.860       
+## NumbrDysPMQ -0.728  0.315
+```
+
+![](Pooled_Analysis_files/figure-html/CarboxyPredictionFailure-1.png)<!-- -->
+
+Now we remove outliers and fit the same model (CPMQ outliers)
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-23-1.png)<!-- -->
+
+```
+## Generalized linear mixed model fit by maximum likelihood (Laplace
+##   Approximation) [glmerMod]
+##  Family: binomial  ( logit )
+## Formula: Failure_YN ~ log10_carboxyPMQ + NumberDaysPMQ + (1 | patientid)
+##    Data: Combined_Time_Data[ind_keep & !outliers14 & !outliers7, ]
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##    111.1    129.3    -51.5    103.1      706 
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -0.2424 -0.1310 -0.1126 -0.0957 12.0783 
+## 
+## Random effects:
+##  Groups    Name        Variance Std.Dev. 
+##  patientid (Intercept) 8.03e-14 2.834e-07
+## Number of obs: 710, groups:  patientid, 632
+## 
+## Fixed effects:
+##                  Estimate Std. Error z value Pr(>|z|)
+## (Intercept)        0.3447     3.5327   0.098    0.922
+## log10_carboxyPMQ  -1.0646     1.0163  -1.048    0.295
+## NumberDaysPMQ     -0.1550     0.1091  -1.421    0.155
+## 
+## Correlation of Fixed Effects:
+##             (Intr) l10_PM
+## lg10_crbPMQ -0.962       
+## NumbrDysPMQ -0.724  0.524
+```
+
+Compare results with and without outliers:
+
+![](Pooled_Analysis_files/figure-html/CarboxyPredictionFailure_NoOutliers-1.png)<!-- -->
+
+Now we calculate a compressed dataset and failure for each individual
+
+
+```
+## The primaquine failure rate in the 655 individuals is 2.58% (2.03-3.46) over the course of 522 years total follow-up.
+```
+
+
+This won't go into this paper but looking out of interest:
+
+Does 2D6 correlate with carboxy ?
+
+
+```
+## Linear mixed model fit by REML ['lmerMod']
+## Formula: log10_carboxyPMQ ~ ASscore + NumberDaysPMQ + (1 | patientid)
+##    Data: Combined_Time_Data
+## 
+## REML criterion at convergence: 190.6
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -4.6041 -0.2741  0.0758  0.3798  5.0223 
+## 
+## Random effects:
+##  Groups    Name        Variance Std.Dev.
+##  patientid (Intercept) 0.07392  0.2719  
+##  Residual              0.06576  0.2564  
+## Number of obs: 234, groups:  patientid, 154
+## 
+## Fixed effects:
+##                Estimate Std. Error t value
+## (Intercept)    3.535077   0.113075  31.263
+## ASscore       -0.085651   0.056897  -1.505
+## NumberDaysPMQ -0.059412   0.006522  -9.109
+## 
+## Correlation of Fixed Effects:
+##             (Intr) ASscor
+## ASscore     -0.697       
+## NumbrDysPMQ -0.710  0.055
+```
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
+
+
+
+```
+## 
+## Call:
+## glm(formula = Failure_YN ~ ASscore, family = "binomial", data = Combined_2D6data)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -0.3616  -0.2074  -0.1566  -0.1566   2.7748  
+## 
+## Coefficients:
+##             Estimate Std. Error z value Pr(>|z|)  
+## (Intercept)   -2.695      1.518  -1.776   0.0758 .
+## ASscore       -1.134      1.327  -0.854   0.3930  
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 20.065  on 111  degrees of freedom
+## Residual deviance: 19.366  on 110  degrees of freedom
+##   (2 observations deleted due to missingness)
+## AIC: 23.366
+## 
+## Number of Fisher Scoring iterations: 7
+```
