@@ -298,11 +298,11 @@ Set up parameters for the MCMC runs.
 # remove this once models 1-2 conform with augmented data (including Censored == -1)
 Combined_Time_Data = filter(Combined_Time_Data, Censored > -1)
 # Choose as many chains as available cores
-Chains = 6
+Chains = 8
 options(mc.cores = Chains)
-IT = 10^5
+IT = 10^6
 WarmUp = .5*IT
-thin = 100
+thin = 4000
 
 # put the data into stan format
 # For model 1 
@@ -529,7 +529,7 @@ traceplot(mod1_Fit, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
 ```r
 par(mfrow=c(1,2))
 thetas_mod1 = extract(mod1_Fit)
-save(thetas_mod1, file = 'OutputResults/thetas_mod1.RData')
+#save(thetas_mod1, file = 'OutputResults/thetas_mod1.RData')
 hist(thetas_mod1$inv_lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
 hist(thetas_mod1$inv_gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
 ```

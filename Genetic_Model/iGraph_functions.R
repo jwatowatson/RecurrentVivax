@@ -2,32 +2,34 @@
 # Tue Sept 18th: updated notation throughout: 
 # COI -> COI
 
+# This implements the Viable graph brute-force search algorithm described in the appendix
 test_correct_graph = function(G){
   
-  Score = 0 # Initialise score
+  INCORRECT = FALSE # Presume correct until proven incorrect
   
   # First check that all connected components are cliques
   S = components(graph = G)
   for(k in 1:S$no){
     G_sub = induced_subgraph(graph = G, vids = vertex_attr(G)$label[S$membership==k])
     MC = max_cliques(graph = G_sub, min = vcount(G_sub)) 
-    if(length(MC) == 0) Score = Score + 1
+    if(length(MC) == 0) INCORRECT = TRUE
   }
   
-  if(Score == 0){# iterate through all cliques of size 3 
+  # If all connected components are cliques, then iterate through all cliques of size 3
+  if(!INCORRECT){ 
     all_cliques = cliques(graph = G, min = 3, max=3)
     K = length(all_cliques)
     if(K > 0){
       i = 1
-      while(Score == 0 & i < (K+1) ){ # stop searching as soon as we find it's incorrect
+      while(!INCORRECT & i < (K+1) ){ # stop searching as soon as we find it's incorrect
         G_sub = induced_subgraph(graph = G, vids = all_cliques[[i]])
         Score_sub = sum(edge_attr(G_sub)$w) # the sum of the edges tells us if it's correct
-        if(Score_sub == 2.5){ Score = Score+1 } 
+        if(Score_sub == 2.5){ INCORRECT = TRUE } # 2.5 is the only possible incorrect score so we reject
         i = i+1
       }
     }
   }
-  if(Score > 0) return(FALSE) else return(TRUE)
+  if(INCORRECT) return(FALSE) else return(TRUE)
 }
 
 generate_random_Vivax_model = function(COI_T1, COI_T2){

@@ -27,9 +27,9 @@ library(RColorBrewer)
 require(gdata)
 
 # Note that recompilation is necessary on different platforms
-RECOMPILE_MODELS = T
+RECOMPILE_MODELS = F
 # Running the full stan models can take several days
-RUN_MODELS = T
+RUN_MODELS = F
 ```
 
 

@@ -929,7 +929,7 @@ if(CREATE_PLOTS){
   axis(2, at = c(0,.5,1))
   title(ylab = 'Relapse posterior probability', line = 3)
   transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
-  polygon(x = c(0,nrow(MS_final),nrow(MS_final),0),
+  polygon(x = c(-100,nrow(MS_final)+100,nrow(MS_final)+100,-100),
           y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
           col = transparent_pink_band, border = NA)
   
@@ -944,10 +944,10 @@ if(CREATE_PLOTS){
   points(1:nrow(MS_final),
          MS_final$L_mean, 
          col = drug_cols2[MS_final$Drug], 
-         pch=20, cex=.5)
+         pch=20, cex=.8)
   
   legend(x=0.8*nrow(MS_final), y = 0.8, col = drug_cols2[2:3], 
-         pch = 20, cex = 1.2, bty = 'n', 
+         pch = 20, cex = 1.2, bty = 'o', border = 'white',
          legend = c('No PMQ','PMQ'))
   
   # Against time
@@ -960,8 +960,8 @@ if(CREATE_PLOTS){
   axis(1, at = seq(0, 360, by =60), labels = seq(0, 360, by=60)/30)
   title(xlab = '', ylab = 'Relapse posterior probability', line = 3)
   mtext(text = 'Months since last episode', side = 1, line = 2)
-  polygon(x = c(0,max(MS_final$timeSinceLastEpisode),
-                max(MS_final$timeSinceLastEpisode),0),
+  polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
+                max(MS_final$timeSinceLastEpisode)+100,-10),
           y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
           col = transparent_pink_band, border = NA)
   for(i in 1:nrow(MS_final)){
@@ -979,11 +979,11 @@ if(CREATE_PLOTS){
   # Add points
   points(MS_final$timeSinceLastEpisode, MS_final$L_mean,
          col = drug_cols2[MS_final$Drug], 
-         pch=20, cex=.51)
+         pch=20, cex=.8)
   
   
   legend(x=0.8*max(MS_final$timeSinceLastEpisode), y = 0.8, col = drug_cols2[2:3], 
-         pch = 20, cex = 1.2, bty = 'n', 
+         pch = 20, cex = 1.2, bty = 'o', border = 'white', 
          legend = c('No PMQ','PMQ'))
   
   
