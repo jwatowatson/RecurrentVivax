@@ -488,3 +488,26 @@ Does 2D6 correlate with carboxy ?
 ## 
 ## Number of Fisher Scoring iterations: 7
 ```
+
+
+# Extra Analyses
+
+## Looking at the effect of inbreeding coefficient
+
+Our model has a parameter $\alpha$ which defines the level of inbreeding within the population.
+Taylor is developing methods for the estimation of $\alpha$ from genetic data (in preparation).
+
+We look at the sensitivity of the results (all the above is with $\alpha=0$) for a reasonable upper bound of $\alpha=0.175$.
+
+We rerun the analysis on the single run isolates (low computational complexity):
+
+
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-28-1.png)<!-- -->
+
+Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
+This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
+
+For the non-primaquine group, it is just tempering the very low probabilities of reinfection seen for some episodes.
+
+In conclusion, this isn't changing the results significantly and would imply a greater primaquine efficacy that reported in the paper.

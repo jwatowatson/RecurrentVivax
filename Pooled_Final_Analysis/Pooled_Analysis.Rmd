@@ -1332,3 +1332,72 @@ mod_Failure = glm(Failure_YN ~ ASscore,
                   data = Combined_2D6data, family = 'binomial')
 summary(mod_Failure)
 ```
+
+
+# Extra Analyses
+
+## Looking at the effect of inbreeding coefficient
+
+Our model has a parameter $\alpha$ which defines the level of inbreeding within the population.
+Taylor is developing methods for the estimation of $\alpha$ from genetic data (in preparation).
+
+We look at the sensitivity of the results (all the above is with $\alpha=0$) for a reasonable upper bound of $\alpha=0.175$.
+
+We rerun the analysis on the single run isolates (low computational complexity):
+
+```{r}
+alphaUpper = 0.175
+if(RUN_MODELS_SINGLE_SIMPLE){
+  #===============================================
+  # Run (with time-to-event)
+  #===============================================
+  # Approx 100 secs per full model run
+  tic()
+  thetas_9MS_alphaUpper = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
+                             p = p, cores = 6, verbose = F, alpha = alphaUpper) 
+  thetas_9MS_alphaUpper$Episode_Identifier = rownames(thetas_9MS_alphaUpper)
+  save(thetas_9MS_alphaUpper, file = '../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
+  toc()
+} else {
+  load('../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
+}
+```
+
+```{r}
+par(las=1, bty='n', mfrow=c(2,2))
+plot(log10(thetas_9MS$L), log10(thetas_9MS_alphaUpper$L),
+     ylab = 'Relapse: inbred',
+     xlab = 'Relapse: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
+lines(c(-10,10),c(-10,10),lty=2)
+
+plot(log10(thetas_9MS$L), log10(thetas_9MS$L)-log10(thetas_9MS_alphaUpper$L),
+     ylab = 'Difference in Log Relapse Probabilities',
+     xlab = 'Relapse Probability: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
+abline(h=0,lty=2)
+legend('topleft', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+
+###****** Reinfection : comparison *****#####
+par(las=1, bty='n')
+plot(log10(thetas_9MS$I), log10(thetas_9MS_alphaUpper$I),
+     ylab = 'Reinfection: inbred',
+     xlab = 'Reinfection: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
+lines(c(-10,10),c(-10,10),lty=2)
+
+plot(log10(thetas_9MS$I), log10(thetas_9MS$I)-log10(thetas_9MS_alphaUpper$I),
+     ylab = 'Difference in Log Reinfection Probabilities',
+     xlab = 'Reinfection: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
+legend('topleft', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+
+abline(h=0,lty=2)
+```
+
+Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
+This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
+
+For the non-primaquine group, it is just tempering the very low probabilities of reinfection seen for some episodes.
+
+In conclusion, this isn't changing the results significantly and would imply a greater primaquine efficacy that reported in the paper.
