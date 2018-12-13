@@ -92,18 +92,22 @@ writeLines(sprintf('Number of recurrences typed: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
 
 # Which drug arms have been typed:
-writeLines('\nOverall in the dataset: breakdown by treatment group:')
+writeLines('\nOverall in the dataset: breakdown by treatment group (individuals typed):')
 table(MS_pooled$Treatment[!duplicated(MS_pooled$ID)])
-writeLines('\nWithin VHX: breakdown by treatment group:')
+writeLines('\nWithin VHX: breakdown by treatment group (VHX individuals typed):')
 table(MS_pooled$Treatment[!duplicated(MS_pooled$ID) & 
                             1:nrow(MS_pooled)%in% grep('VHX',MS_pooled$ID)])
 
-writeLines(sprintf('\nFrom BPD trial there are %s individuals with total of %s episodes typed',
+writeLines(sprintf('\nFrom BPD trial there are %s individuals with total of %s episodes typed (enrollment: %s; recurrent %s)',
                    length(unique(MS_pooled$ID[grep('BPD',MS_pooled$ID)])),
-                   length(unique(MS_pooled$Episode_Identifier[grep('BPD',MS_pooled$ID)]))))
-writeLines(sprintf('From VHX trial there are %s individuals with total of %s episodes typed',
+                   length(unique(MS_pooled$Episode_Identifier[grep('BPD',MS_pooled$ID)])), 
+                   length(unique(MS_pooled[grepl('BPD',MS_pooled$ID) & MS_pooled$Episode == 1, 'Episode_Identifier'])), 
+                   length(unique(MS_pooled[grepl('BPD',MS_pooled$ID) & MS_pooled$Episode > 1, 'Episode_Identifier']))))
+writeLines(sprintf('From VHX trial there are %s individuals with total of %s episodes typed (enrollment: %s; recurrent %s)',
                    length(unique(MS_pooled$ID[grep('VHX',MS_pooled$ID)])),
-                   length(unique(MS_pooled$Episode_Identifier[grep('VHX',MS_pooled$ID)]))))
+                   length(unique(MS_pooled$Episode_Identifier[grep('VHX',MS_pooled$ID)])),
+                   length(unique(MS_pooled[grepl('VHX',MS_pooled$ID) & MS_pooled$Episode == 1, 'Episode_Identifier'])), 
+                   length(unique(MS_pooled[grepl('VHX',MS_pooled$ID) & MS_pooled$Episode > 1, 'Episode_Identifier']))))
 ```
 
 
