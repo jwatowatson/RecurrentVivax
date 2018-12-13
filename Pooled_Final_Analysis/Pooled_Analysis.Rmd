@@ -66,7 +66,6 @@ CREATE_PLOTS = T
 # Colour scheme
 # Previous Set1 not colourblind friendly: display.brewer.all(colorblindFriendly = T)
 Dark2 = brewer.pal(8, 'Dark2')
-Set2 = brewer.pal(8, 'Set2')
 
 # This needs moving to time analysis: 
 drug_cols3 = array(Dark2[c(4,6,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ'))) 
