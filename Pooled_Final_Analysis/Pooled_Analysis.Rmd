@@ -199,36 +199,36 @@ plot(x = as.numeric(no_of_epi_per_person_typed_BPD), y = as.numeric(no_of_typed_
 abline(a = 0, b = 1, lty = 'dotted')
 ```
 
-Bug in the next bit so commented out
+Bug in the next bit so commented out: I don't get a bug
+
 ```{r VHX_typed_untyped}
-# ****** Bug in recent version ******
-# 
-# 
-# # Is there a significant difference between VHX that where genetically typed and not?
-# All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence
-# x1 = Typ_VHX_epi_count
-# x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # Untyped_VHX_epi_count
-# max_rec = max(All_VHX_rec_count)
-# 
-# plot_store = array(dim = c(2, max_rec-1), dimnames = list(c('Untyped','Typed'), 2:max_rec))
-# plot_store['Untyped', names(table(x2))] = table(x2)
-# plot_store['Typed', names(table(x1))] = table(x1)
-# 
-# barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25),
-#         main='VHX subset', xlab = 'Number of episodes')
-# legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'),
-#        density = c(100,25), bty = 'n')
-# 
-# # Bootstap test of difference in median
-# theta_hat = median(x1) - median(x2) # Median diff 2
-# theta_hat_boot = sapply(1:5000, function(x){
-#   x1boot = sample(x1, size = length(x1), replace = T)
-#   x2boot = sample(x2, size = length(x2), replace = T)
-#   median(x1boot) - median(x2boot)})
-# se = sd(theta_hat_boot)
-# Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Significant
-# percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
-# pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
+#=================================================================
+# Is there a significant difference in episode counts between VHX that where genetically typed and not?
+#=================================================================
+All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence
+x1 = no_of_epi_per_person_typed_VHX
+x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # No of epi per person untyped
+# setequal(names(x1), names(x2)) # Check mutually exclusive
+# setequal(names(x2), unique(names(MS_pooled_summary$ID))) # Further check 
+
+plot_store = array(dim = c(2, max_rec-1), dimnames = list(c('Untyped','Typed'), 2:max_rec))
+plot_store['Untyped', names(table(x2))] = table(x2)
+plot_store['Typed', names(table(x1))] = table(x1)
+barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25),
+        main='VHX subset', xlab = 'Number of episodes')
+legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'),
+       density = c(100,25), bty = 'n')
+
+# Bootstap test of difference in median
+theta_hat = median(x1) - median(x2) # More episodes per person in untyped
+theta_hat_boot = sapply(1:5000, function(x){
+  x1boot = sample(x1, size = length(x1), replace = T)
+  x2boot = sample(x2, size = length(x2), replace = T)
+  median(x1boot) - median(x2boot)})
+se = sd(theta_hat_boot)
+Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Significant
+percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
+pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
 ```
 
 Summary of complexity of infection based on numbers of alleles observed. This is broken down by enrollment episodes (this is independent of drug given) and subsequent recurrences which could be drug dependent.
