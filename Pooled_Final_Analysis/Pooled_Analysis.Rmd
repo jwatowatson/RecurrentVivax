@@ -78,6 +78,7 @@ states = c(relapse = 'L', reinfection = 'I', recrudescence = 'C')
 # James, there are some odd bugs something to do with !duplicated() and the tibble...
 # https://stackoverflow.com/questions/39041115/fixing-a-multiple-warning-unknown-column
 # Also, Thetas_full_post has redundant column names
+Combined_Time_Data <- as.data.frame(Combined_Time_Data)
 ```
 
 
@@ -116,44 +117,86 @@ writeLines(sprintf('From VHX trial there are %s individuals with total of %s epi
 # Were all episodes typed if a person was selected for genotyping? 
 #=================================================================
 MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] # Collapse rows due to COI > 2
-censored_ind = Combined_Time_Data$Censored == 1 # indexed censored rows in Combined_Time_Data to prevent over counting rows
-uncensored_patientids = Combined_Time_Data[!censored_ind, 'patientid']
-All_VHX_epi_count = table(uncensored_patientids[grepl('VHX',uncensored_patientids)])
-All_BPD_epi_count = table(uncensored_patientids[grepl('BPD',uncensored_patientids)])
-Typ_VHX_epi_count =  table(MS_pooled_summary$ID[grep('VHX',MS_pooled_summary$Episode_Identifier)]) # Typed_VHX_epi_count
-Typ_BPD_epi_count =  table(MS_pooled_summary$ID[grepl('BPD_',MS_pooled_summary$Episode_Identifier)]) # Typed_BPD_epi_count
-par(mfrow = c(1,2), family = 'serif', pty = 's') # For plots
+censored_ind = Combined_Time_Data$Censored == 1 # index censored rows in Combined_Time_Data to prevent over counting rows
+uncensored_patientids = Combined_Time_Data[!censored_ind, 'patientid'] # vector of patientids excluding censored rows (inc. duplicates)
+All_VHX_epi_count = table(uncensored_patientids[grepl('VHX_',uncensored_patientids)]) # Number of episodes per person VHX
+All_BPD_epi_count = table(uncensored_patientids[grepl('BPD_',uncensored_patientids)]) # Number of episodes per person VHX
+
+# No. of typed episodes per person with one or more typed episodes in VHX and BPD
+no_of_typed_epi_per_person_typed_VHX = table(MS_pooled_summary$ID[grepl('VHX',MS_pooled_summary$ID)])  
+no_of_typed_epi_per_person_typed_BPD = table(MS_pooled_summary$ID[grepl('BPD',MS_pooled_summary$ID)])  
+
+# No. of total episodes per person with one or more typed episodes in VHX and BPD
+no_of_epi_per_person_typed_VHX = All_VHX_epi_count[names(All_VHX_epi_count) %in% names(no_of_typed_epi_per_person_typed_VHX)]
+no_of_epi_per_person_typed_BPD = All_BPD_epi_count[names(All_BPD_epi_count) %in% names(no_of_typed_epi_per_person_typed_BPD)]
 
 
+#-------------------------
+# VHX data set summary: breif because genotyping VHX was not exhaustive
+#-------------------------
+X0 = length(no_of_typed_epi_per_person_typed_VHX) # Number of people typed
+ind_untyped = no_of_epi_per_person_typed_VHX != no_of_typed_epi_per_person_typed_VHX
+X1 = sum(ind_untyped) # Number of people selected for genotyping but some episodes untyped
+# How many untyped per person with incomplete set of episodes typed:
+X2 = range(no_of_epi_per_person_typed_VHX[ind_untyped] - no_of_typed_epi_per_person_typed_VHX[ind_untyped]) 
+X3 = sum(no_of_epi_per_person_typed_VHX - no_of_typed_epi_per_person_typed_VHX) # Total number untyped
+writeLines(sprintf('VHX: for %s of %s VHX individual/s selected for genotyping: %s to %s of their episodes were not typed (total of %s episodes untyped summing over the %s individuals)',X1,X0,X2[1],X2[2],X3,X1))
 
-# VHX data set
-no_of_epi_per_person_typed = All_VHX_epi_count[names(All_VHX_epi_count) %in% names(Typ_VHX_epi_count)][names(Typ_VHX_epi_count)]
-no_of_typed_epi_per_person_typed = Typ_VHX_epi_count 
-X0 = length(no_typed_person_typed)
-X1 = X0 - sum(no_of_epi_per_person_typed == no_of_typed_epi_per_person_typed) # 90% completely typed
-X2 = range((no_of_epi_per_person_typed - no_of_typed_epi_per_person_typed)[no_of_epi_per_person_typed != no_of_typed_epi_per_person_typed]) 
-X3 = sum(no_of_epi_per_person_typed - no_of_typed_epi_per_person_typed)
-plot(x = as.numeric(no_of_epi_per_person_typed), y = as.numeric(no_of_typed_epi_per_person_typed), 
+
+#-------------------------
+# BPD data set: comprehensive because genotyping BPD was exhaustive
+#-------------------------
+# How many people who experience one or more recurrences had one or more episodes genotyped? 
+recurrences = All_BPD_epi_count[All_BPD_epi_count > 1]-1
+indivs_who_recurred = names(recurrences)
+indivs_who_were_typed = names(no_of_typed_epi_per_person_typed_BPD)
+indivs_who_were_not_typed = indivs_who_recurred[!indivs_who_recurred %in% indivs_who_were_typed]
+
+# Summary over individuals typed 
+X0 = length(indivs_who_were_typed) # Number of people typed
+ind_untyped = no_of_epi_per_person_typed_BPD != no_of_typed_epi_per_person_typed_BPD
+X1 = sum(ind_untyped) # Number of episodes untyped
+# How many untyped per person with incomplete set of episodes typed:
+X2 = range(no_of_epi_per_person_typed_BPD[ind_untyped] - no_of_typed_epi_per_person_typed_BPD[ind_untyped])  
+X3 = sum(no_of_epi_per_person_typed_BPD - no_of_typed_epi_per_person_typed_BPD)  # Total number untyped
+
+# Individuals with not all episodes typed
+ind_missing_typed_epi <- names(which(no_of_epi_per_person_typed_BPD != no_of_typed_epi_per_person_typed_BPD)) 
+
+# All episodes of the BPD individuals missing one or episodes
+X4 = lapply(ind_missing_typed_epi, function(x){
+  ind = grepl(x, uncensored_patientids)
+  Combined_Time_Data$episode[!censored_ind][ind]
+  })
+
+# Typed episodes of the BPD individuals missing one or episodes
+X5 = lapply(ind_missing_typed_epi, function(x){
+  ind = grepl(x, MS_pooled_summary$ID)
+  MS_pooled_summary$Episode[ind]
+  })
+
+X6 = lapply(1:length(X5), function(i){setdiff(X4[[i]], X5[[i]])}) # Not typed episodes
+X7 = sum(sapply(X6, function(x)sum(x>1))) # Not typed recurrence
+
+
+writeLines(paste(sprintf('BPD: of %s of the people who recurred: %s person/people with %s recurrence/s was not selected for genotyping.',
+                   length(unique(indivs_who_recurred)), 
+                   length(unique(indivs_who_were_not_typed)), 
+                   recurrences[indivs_who_were_not_typed]), 
+             sprintf('Of %s of %s BPD individual/s selected for genotyping: %s to %s of their episodes were not typed (%s episodes summing over the %s individuals).', X1,X0,X2[1],X2[2],X3,X1), 
+             sprintf('Of the %s episodes not typed %s were recurrences.',X3, X7),
+             sprintf('In total there were %s recurrences: %s untyped.', sum(recurrences), recurrences[indivs_who_were_not_typed] + X7)))
+
+# For plots
+par(mfrow = c(1,2), family = 'serif', pty = 's') 
+plot(x = as.numeric(no_of_epi_per_person_typed_VHX), y = as.numeric(no_of_typed_epi_per_person_typed_VHX), 
      xlab = 'Number of episodes per person', ylab = 'Number of typed episodes per person', main = 'VHX',
-     ylim = range(no_of_epi_per_person_typed), xlim = range(no_of_epi_per_person_typed ))
+     ylim = range(no_of_epi_per_person_typed_VHX), xlim = range(no_of_epi_per_person_typed_VHX))
 abline(a = 0, b = 1, lty = 'dotted')
-writeLines(sprintf('Of %s of %s VHX individual/s selected for genotyping: %s to %s of their episodes were not typed (%s episodes summing over the %s individuals)',
-                   X1,X0,X2[1],X2[2],X3,X1))
-
-# BPD data set
-no_of_epi_per_person_typed = All_BPD_epi_count[names(All_BPD_epi_count) %in% names(Typ_BPD_epi_count)][names(Typ_BPD_epi_count)]
-no_of_typed_epi_per_person_typed = Typ_BPD_epi_count
-X0 = length(no_of_typed_epi_per_person_typed)
-X1 = X0 - sum(no_of_epi_per_person_typed == no_of_typed_epi_per_person_typed)
-X2 = range((no_of_epi_per_person_typed - no_of_typed_epi_per_person_typed)[no_of_epi_per_person_typed != no_of_typed_epi_per_person_typed]) # missing 1 if missing
-X3 = sum(no_of_epi_per_person_typed - no_of_typed_epi_per_person_typed)
-plot(x = as.numeric(no_of_epi_per_person_typed), y = as.numeric(no_of_typed_epi_per_person_typed), 
+plot(x = as.numeric(no_of_epi_per_person_typed_BPD), y = as.numeric(no_of_typed_epi_per_person_typed_BPD), 
      xlab = 'Number of episodes per person', ylab = 'Number of typed episodes per person', main = 'BPD',
-     ylim = range(no_of_epi_per_person_typed), xlim = range(no_of_epi_per_person_typed))
+     ylim = range(no_of_epi_per_person_typed_BPD), xlim = range(no_of_epi_per_person_typed_BPD))
 abline(a = 0, b = 1, lty = 'dotted')
-writeLines(sprintf('Of %s of %s BPD individual/s selected for genotyping: %s to %s of their episodes were not typed (%s episodes summing over the %s individuals)',
-                   X1,X0,X2[1],X2[2],X3,X1))
-
 ```
 
 Bug in the next bit so commented out
