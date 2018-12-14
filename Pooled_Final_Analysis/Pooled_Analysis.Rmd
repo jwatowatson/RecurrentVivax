@@ -4,9 +4,7 @@ author: "Aimee Taylor and James Watson"
 output:
   html_document:
     df_print: paged
-    keep_md: TRUE
   pdf_document: default
-    keep_md: TRUE
   html_notebook: default
 ---
 
@@ -167,25 +165,25 @@ ind_missing_typed_epi <- names(which(no_of_epi_per_person_typed_BPD != no_of_typ
 X4 = lapply(ind_missing_typed_epi, function(x){
   ind = grepl(x, uncensored_patientids)
   Combined_Time_Data$episode[!censored_ind][ind]
-  })
+})
 
 # Typed episodes of the BPD individuals missing one or episodes
 X5 = lapply(ind_missing_typed_epi, function(x){
   ind = grepl(x, MS_pooled_summary$ID)
   MS_pooled_summary$Episode[ind]
-  })
+})
 
 X6 = lapply(1:length(X5), function(i){setdiff(X4[[i]], X5[[i]])}) # Not typed episodes
 X7 = sum(sapply(X6, function(x)sum(x>1))) # Not typed recurrence
 
 
 writeLines(paste(sprintf('BPD: of %s of the people who recurred: %s person/people with %s recurrence/s was not selected for genotyping.',
-                   length(unique(indivs_who_recurred)), 
-                   length(unique(indivs_who_were_not_typed)), 
-                   recurrences[indivs_who_were_not_typed]), 
-             sprintf('Of %s of %s BPD individual/s selected for genotyping: %s to %s of their episodes were not typed (%s episodes summing over the %s individuals).', X1,X0,X2[1],X2[2],X3,X1), 
-             sprintf('Of the %s episodes not typed %s were recurrences.',X3, X7),
-             sprintf('In total there were %s recurrences: %s untyped.', sum(recurrences), recurrences[indivs_who_were_not_typed] + X7)))
+                         length(unique(indivs_who_recurred)), 
+                         length(unique(indivs_who_were_not_typed)), 
+                         recurrences[indivs_who_were_not_typed]), 
+                 sprintf('Of %s of %s BPD individual/s selected for genotyping: %s to %s of their episodes were not typed (%s episodes summing over the %s individuals).', X1,X0,X2[1],X2[2],X3,X1), 
+                 sprintf('Of the %s episodes not typed %s were recurrences.',X3, X7),
+                 sprintf('In total there were %s recurrences: %s untyped.', sum(recurrences), recurrences[indivs_who_were_not_typed] + X7)))
 
 # For plots
 par(mfrow = c(1,2), family = 'serif', pty = 's') 
@@ -210,8 +208,9 @@ x1 = no_of_epi_per_person_typed_VHX
 x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # No of epi per person untyped
 # setequal(names(x1), names(x2)) # Check mutually exclusive
 # setequal(names(x2), unique(names(MS_pooled_summary$ID))) # Further check 
+max_rec = max(All_VHX_rec_count)
 
-plot_store = array(dim = c(2, max_rec-1), dimnames = list(c('Untyped','Typed'), 2:max_rec))
+plot_store = array(dim = c(2, max_rec), dimnames = list(c('Untyped','Typed'), 1:max_rec))
 plot_store['Untyped', names(table(x2))] = table(x2)
 plot_store['Typed', names(table(x1))] = table(x1)
 barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25),
@@ -245,12 +244,15 @@ COIs$Enrollment = COIs$Enrollment=='TRUE'
 COIs$PMQ = 0 
 COIs$PMQ[!COIs$Enrollment & COIs$Drug=='PMQ']=1
 par(las=1, mfrow=c(1,2))
+
+# Distribution of enrollment COIs
 hist(COIs$MOI[COIs$Enrollment], freq = F, breaks = seq(0.5,4.5, by=1),
      xlab = 'COIs', ylab = '% of enrollment episodes',
-     main='Enrollment episodes',
+     main='Enrollment episodes', col = 'gray', 
      yaxt='n', ylim = c(0,.75))
 axis(2, at = c(0,.25,.5,.75), labels = 100*c(0,.25,.5,.75))
 
+# Distribution of recurrent COIs by drug
 hist(COIs$MOI[!COIs$Enrollment & COIs$Drug=='PMQ'], freq = F, 
      breaks = seq(0.5,4.5, by=1),
      xlab = 'COIs', ylab = '% of enrollment episodes',
@@ -265,20 +267,17 @@ hist(COIs$MOI[!COIs$Enrollment & !COIs$Drug=='PMQ'], freq = F,
 axis(2, at = c(0,.25,.5,.75), labels = 100*c(0,.25,.5,.75))
 legend('topright',col=c('blue','grey'),legend = c('PMQ+','No PMQ'), lwd=2)
 mod = glm(MOI ~ enrollment + drug, family = 'poisson', 
-    data = data.frame(MOI=COIs$MOI - 1, # need to do minus 1 so it's Poisson appropriate
-                      enrollment=as.numeric(COIs$Enrollment),
-                      drug = COIs$PMQ))
+          data = data.frame(MOI=COIs$MOI - 1, # need to do minus 1 so it's Poisson appropriate
+                            enrollment=as.numeric(COIs$Enrollment),
+                            drug = COIs$PMQ))
 summary(mod)
 writeLines(sprintf('Mean complexity of recurrent episodes is %s, and mean complexity of enrollment episodes is %s',
                    round(1+exp(mod$coefficients['(Intercept)']),2),
                    round(1+exp(mod$coefficients['(Intercept)']+mod$coefficients['enrollment']),2)))
 
-# # How many could have have sibs? 
-# X0 = sum(COIs >= 3)
-# X1 = round(sum(COIs >= 3)/length(COIs)*100, 2)
-# 
-# writeLines(sprintf('Median COI in VHX and BPD: %s and %s, respectively', median(x1), median(x2)))
-# writeLines(sprintf('Number of episodes with COI >= 3: %s of %s (%s percent)', X0, length(COIs), X1))
+# Summary of COIs >= 3 (important due to computational complexity)
+writeLines(sprintf('%s of %s episodes (%s percent) with COI greater than or equal to 3', 
+                   sum(COIs$MOI >= 3), nrow(COIs), round(100*mean(COIs$MOI >= 3))))
 ```
 
 From this Poisson regression, there appears to be evidence that enrollment episodes have higher complexities of infection than recurrences. This implies that relapses are more likely to be single hypnozoite activated infections?
@@ -1149,8 +1148,8 @@ if(RUN_MODELS_FALSE_POSITIVE){
 ```{r}
 writeLines(sprintf('The false-positive discovery rate of the genetic model is estimated as %s percent. 
                    \nThis is based on %s pairwise comparisons',
-           round(100*sum( Inflated_Results$L > Epsilon_upper )/nrow(Inflated_Results),2),
-           nrow(Inflated_Results)))
+                   round(100*sum( Inflated_Results$L > Epsilon_upper )/nrow(Inflated_Results),2),
+                   nrow(Inflated_Results)))
 ```
 
 # Analysis of radical cure efficacy in BPD
@@ -1418,7 +1417,7 @@ if(RUN_MODELS_SINGLE_SIMPLE){
   # Approx 100 secs per full model run
   tic()
   thetas_9MS_alphaUpper = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
-                             p = p, cores = 6, verbose = F, alpha = alphaUpper) 
+                                        p = p, cores = 6, verbose = F, alpha = alphaUpper) 
   thetas_9MS_alphaUpper$Episode_Identifier = rownames(thetas_9MS_alphaUpper)
   save(thetas_9MS_alphaUpper, file = '../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
   toc()
