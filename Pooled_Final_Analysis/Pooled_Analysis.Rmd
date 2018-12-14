@@ -275,6 +275,12 @@ writeLines(sprintf('Mean complexity of recurrent episodes is %s, and mean comple
                    round(1+exp(mod$coefficients['(Intercept)']),2),
                    round(1+exp(mod$coefficients['(Intercept)']+mod$coefficients['enrollment']),2)))
 
+# Summary of median COI per study
+BPD_ind = grepl('BPD_', rownames(COIs))
+VHX_ind = grepl('VHX_', rownames(COIs))
+writeLines(sprintf('Median COI in VHX and BPD: %s and %s, respectively',
+                   median(COIs$MOI[VHX_ind]),median(COIs$MOI[BPD_ind])))
+
 # Summary of COIs >= 3 (important due to computational complexity)
 writeLines(sprintf('%s of %s episodes (%s percent) with COI greater than or equal to 3', 
                    sum(COIs$MOI >= 3), nrow(COIs), round(100*mean(COIs$MOI >= 3))))
