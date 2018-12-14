@@ -286,6 +286,7 @@ writeLines(sprintf('%s of %s episodes (%s percent) with COI greater than or equa
                    sum(COIs$MOI >= 3), nrow(COIs), round(100*mean(COIs$MOI >= 3))))
 ```
 
+
 From this Poisson regression, there appears to be evidence that enrollment episodes have higher complexities of infection than recurrences. This implies that relapses are more likely to be single hypnozoite activated infections?
 
 
@@ -332,6 +333,15 @@ Alpha_Posteriors = apply(MS_pooled[,MSs_all], 2, function(x, Ind_Primary){
 Fs_Combined = sapply(Alpha_Posteriors, function(x){x/sum(x)})
 ```
 
+```{r}
+#==================================================================
+# Save a data set of monoclonal data and allel frequencies for
+# relatedness estimation 
+#==================================================================
+monoclonal_names = rownames(COIs)[COIs$MOI == 1]
+monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
+save(monoclonal_data, Fs_Combined, file = '../RData/Data_for_relatedness.RData')
+```
 
 ## Plotting allele frequencies
 
