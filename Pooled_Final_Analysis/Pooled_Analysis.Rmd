@@ -293,8 +293,9 @@ From this Poisson regression, there appears to be evidence that enrollment episo
 
 First we define the set of microsatellite markers used in this analysis:
 ```{r}
-MSs_all = c("PV.3.502","PV.3.27","PV.ms8","PV.1.501","PV.ms1","PV.ms5","PV.ms6",
-            "PV.ms7","PV.ms16")
+MSs_all = c("PV.3.502","PV.3.27","PV.ms8",
+            "PV.1.501","PV.ms1","PV.ms5",
+            "PV.ms6","PV.ms7","PV.ms16")
 ```
 
 We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 0$ recovers unweighted empirical allele frequencies. 
@@ -378,7 +379,6 @@ The approach is Bayesian and consists of the following:
 The following iterates through each individual and computes the probability of relatedness states.
 
 ```{r}
-
 # # We also remove MS data for which there are no recurrent data
 N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
 MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
@@ -406,9 +406,11 @@ colnames(p) = gsub(pattern = 'Relapse_mean_theta',replacement = 'L',x = colnames
 colnames(p) = gsub(pattern = 'ReInfection_mean_theta',replacement = 'I',x = colnames(p))
 
 genetic_AND_time_data_eps = intersect(p$Episode_Identifier, MS_pooled$Episode_Identifier)
-p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,] 
-# Only need priors for those with genetic data
-#Post_samples_matrix = Post_samples_matrix[Post_samples_matrix$Episode_Identifier %in% genetic_AND_time_data_eps,]
+p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,] # Only need priors for those with genetic data
+
+# Extract posterior estimates only if running full posterior simple or inflated
+if(RUN_MODELS_FULL_POSTERIOR_SIMPLE | RUN_MODELS_FULL_POSTERIOR_INFLATED){
+  Post_samples_matrix = Post_samples_matrix[Post_samples_matrix$Episode_Identifier %in% genetic_AND_time_data_eps,]}
 ```
 
 
