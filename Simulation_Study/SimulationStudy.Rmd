@@ -1,9 +1,9 @@
 ---
 title: "Simulation study to test vivax relatedness model"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 ```{r, echo=FALSE}
@@ -51,7 +51,7 @@ Outline of simulation is as follows:
 
 ```{r}
 # Setup simulation study parameters
-N_alleles = 10 # constant heterozygosity for all markers
+N_alleles = 5 # constant heterozygosity for all markers
 K_indivs = 1000
 Ms = seq(3,15, by = 3) # number of markers
 
@@ -104,7 +104,7 @@ if(RUN_MODELS){
       # Run the model on the data
       ###################################
       
-      TH = post_prob_CLI(MS_data = MS_data, cores = 7,
+      TH = post_prob_CLI(MSdata = MS_data, cores = 7,
                          Fs = FS, verbose = F, p = P_matrix)
       # Add setting number as key for plotting
       TH$setting = s
