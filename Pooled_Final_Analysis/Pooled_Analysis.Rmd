@@ -364,6 +364,19 @@ for(ms in MSs_all){
 }
 ```
 
+The interpretation of effective allele size can be visualised by the probability of identity by chance as a function of effective allele size. There is little gain for each incremental allele size above 4.
+
+```{r Nstar_versus_IBC, echo=FALSE}
+xs = seq(2,10,by=.01)
+ys = (1/xs)*(1/(xs-1))
+par(las=1, bty='n')
+plot(xs,ys, type='l',lwd=3, yaxt ='n',ylim = c(0,0.5),xaxt='n',
+     xlab = 'Effective allele size', panel.first =grid(),
+     ylab='probability of identity by chance')
+axis(1, at = 2:10)
+axis(2, at= c(0.5, .3,.1,0))
+abline(h=0, lty=2)
+```
 
 ## Plotting allele frequencies
 
