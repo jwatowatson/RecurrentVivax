@@ -473,7 +473,7 @@ if(CREATE_PLOTS){
        col = drug_cols2[thetas_9MS$drug], 
        main = expression(log[10]~('posterior probability of relapse')),pch=20)
   lines(-10:0,-10:0)
-  legend('bottomright', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+  legend('bottomright', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
   
   # Annotate by examples
   if(Hightlight_BPD_examples){
@@ -502,7 +502,7 @@ if(CREATE_PLOTS){
        col= drug_cols2[thetas_9MS$drug],
        main = expression(log[10]~('posterior probability of relapse')),pch=20)
   lines(-10:10,-10:10)
-  legend('bottomright', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+  legend('bottomright', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
   
   # Annotate by examples
   points(x = log10(Time_Estimates_1$Relapse_mean_theta[Time1_example_inds]), 
@@ -543,7 +543,7 @@ if(CREATE_PLOTS){
          xlab = 'Rank', 
          ylab = sprintf('Probability of %s state', state),
          main = 'Genetic model given time-to-event prior')
-    legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ'),pch=20)
+    legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ+'),pch=20)
     
     # Add CIs
     ind = grepl(state,colnames(Thetas_full_post)) & !grepl('Episode_Identifier',colnames(Thetas_full_post)) 
@@ -565,7 +565,7 @@ if(CREATE_PLOTS){
          xlab = 'Rank', 
          ylab = sprintf('Probability of %s state',state),
          main = 'Genetic model given time-agnostic prior')
-    legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ'),pch=20)
+    legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ+'),pch=20)
   }
 }
 ```
@@ -907,7 +907,7 @@ if(CREATE_PLOTS){
   legend('top', col = drug_cols2[2:3], 
          cex = 1, bty = 'n', y.intersp = 0.75, 
          lty = 1, lwd = 1,
-         legend = c('No PMQ', 'PMQ'))
+         legend = c('No PMQ', 'PMQ+'))
 }
 
 writeLines(sprintf('The Coatney style plot is showing %s recurrences in %s individuals',
@@ -948,7 +948,7 @@ if(CREATE_PLOTS){
   
   legend(x=0.8*nrow(MS_final), y = 0.8, col = drug_cols2[2:3], 
          pch = 20, cex = 1.2, bty = 'o', border = 'white',
-         legend = c('No PMQ','PMQ'))
+         legend = c('No PMQ','PMQ+'))
   
   # Against time
   plot(NULL, 
@@ -984,7 +984,7 @@ if(CREATE_PLOTS){
   
   legend(x=0.8*max(MS_final$timeSinceLastEpisode), y = 0.8, col = drug_cols2[2:3], 
          pch = 20, cex = 1.2, bty = 'o', border = 'white', 
-         legend = c('No PMQ','PMQ'))
+         legend = c('No PMQ','PMQ+'))
   
   
 }
@@ -1376,7 +1376,7 @@ plot(log10(thetas_9MS$L), log10(thetas_9MS$L)-log10(thetas_9MS_alphaUpper$L),
      xlab = 'Relapse Probability: no inbreeding',
      col= drug_cols2[thetas_9MS$drug],pch=20)
 abline(h=0,lty=2)
-legend('topleft', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
 
 ###****** Reinfection : comparison *****#####
 par(las=1, bty='n')
@@ -1390,7 +1390,7 @@ plot(log10(thetas_9MS$I), log10(thetas_9MS$I)-log10(thetas_9MS_alphaUpper$I),
      ylab = 'Difference in Log Reinfection Probabilities',
      xlab = 'Reinfection: no inbreeding',
      col= drug_cols2[thetas_9MS$drug],pch=20)
-legend('topleft', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
 
 abline(h=0,lty=2)
 ```
