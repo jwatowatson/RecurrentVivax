@@ -573,7 +573,7 @@ legend('bottomright',legend = c('Artesunate','Chloroquine','Chloroquine+\nPrimaq
 ```r
 #****************************** Recrudescence ****************************
 mean_labels_ReCrud = apply(labels[,ind_plotting,4,drop=T], 2, mean)
-plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud,
+plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReCrud),
      col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1], xaxt='n',
      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
      ylab='ReCrudescence',
@@ -1342,20 +1342,23 @@ lines(Ts, log10(prob_labels_raw_CQPMQ[1,]), col=drug_cols3[3], lwd=2, lty=2)
 
 #****************************** Recrudescence ****************************
 mean_labels_ReCrud = apply(labels[,ind_plotting,4,drop=T], 2, mean)
-plot(Combined_Time_Data$Time_to_event[ind_plotting], (mean_labels_ReCrud),
+plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReCrud),
      col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1], xaxt='n',
      pch = 20,
      cex=1,panel.first = grid(),
      ylab='Probability of Recrudescence',yaxt='n',
-     xlab='', xlim=c(0,30))
+     xlab='', xlim=c(0,6*30), 
+     ylim = log10(c(0.0003, 0.2)))
 mtext(text='B', side = 3, adj = 0, line=0.5)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=1)
-axis(1, at = c(0,15,30), labels = c(0,0.5,1))
-axis(2, at = c(0,.1,.2))
+axis(1, at = (0:6)*30, labels = 0:6)
+axis(2, at = log10(c(0.001,0.01,.1, .2)), labels = c(0.001,0.01,.1, .2))
+axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
+axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
 
-lines(Ts, (prob_labels_raw_AS[4,]), col=drug_cols3[1], lwd=2, lty=2)
-lines(Ts, (prob_labels_raw_CQ[4,]), col=drug_cols3[2], lwd=2, lty=2)
-lines(Ts, (prob_labels_raw_CQPMQ[4,]), col=drug_cols3[3], lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_AS[4,]), col=drug_cols3[1], lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_CQ[4,]), col=drug_cols3[2], lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_CQPMQ[4,]), col=drug_cols3[3], lwd=2, lty=2)
 
 #****************************** Relapse **********************************
 mean_labels_ReLap1= apply(labels[,ind_plotting,2,drop=T], 2, mean)
