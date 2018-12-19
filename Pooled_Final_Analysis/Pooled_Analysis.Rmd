@@ -129,6 +129,8 @@ no_of_epi_per_person_typed_VHX = All_VHX_epi_count[names(All_VHX_epi_count) %in%
 no_of_epi_per_person_typed_BPD = All_BPD_epi_count[names(All_BPD_epi_count) %in% names(no_of_typed_epi_per_person_typed_BPD)]
 
 
+length(All_VHX_epi_count)
+length(All_BPD_epi_count)
 #-------------------------
 # VHX data set summary: breif because genotyping VHX was not exhaustive
 #-------------------------
@@ -357,23 +359,23 @@ save(monoclonal_data, Fs_Combined, file = '../RData/Data_for_relatedness.RData')
 ```
 
 Calculate the effective allele size for each microsatellite marker using a simulation approach.
-Under a uniform distribution over $n$ alleles, the probability of seeing the same alleles twice by chance is simply $1 - \frac{1}{n(n-1)}$ (1 minus the probability of seeing two different ones).
-Therefore, to calculate the effective allele size, we solve the quadratic $x = 1 - \frac{1}{n(n-1)}$, which has a real solution at $\frac{1+\sqrt{1+4(\frac{1}{1-x})}}{2}$.
+Under a discrete uniform distribution over $n$ alleles, the probability of seeing the same alleles twice by chance is simply $x = 1 - \frac{1}{n(n-1)}$ (1 minus the probability of seeing two different ones).
+Therefore, to calculate the effective allele size, we solve the quadratic $x = 1 - \frac{1}{n(n-1)}$ for n, which has a real solution at $n = \frac{1+\sqrt{1+4(\frac{1}{1-x})}}{2}$.
 
 ```{r}
 N = 10^6
 Effective_Allele_size = list()
 for(ms in MSs_all){
-  draw1 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, 
-                 prob = Fs_Combined[[ms]])
-  draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, 
-                 prob = Fs_Combined[[ms]])
-  # calculate the probabilty of seeing different alleles by simulation
-  x = 1-sum(draw1 == draw2)/N
-  writeLines(sprintf('The effective allele size for %s is %s',
-                      ms, 
-                     round( (1 + sqrt(1+4*(1/(1-x))))/2,2)))
-  Effective_Allele_size[[ms]] = round( (1 + sqrt(1+4*(1/(1-x))))/2,1)
+  draw1 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
+  draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
+  # calculate the probabilty of seeing different alleles by simulation 
+  # James, above x is the probability of seeing two the same (i.e. sum(draw1 == draw2)/N)
+  # When I replace sum(draw1 != draw2)/N with sum(draw1 == draw2)/N 
+  # I get effective sample sizes below 2
+  x = sum(draw1 == draw2)/N
+  n = (1 + sqrt(1+4*(1/(1-x))))/2 
+  writeLines(sprintf('The effective allele size for %s is %s', ms, round(n,2)))
+  Effective_Allele_size[[ms]] = round(n,1)
 }
 ```
 
