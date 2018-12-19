@@ -372,7 +372,7 @@ for(ms in MSs_all){
   # James, above x is the probability of seeing two the same (i.e. sum(draw1 == draw2)/N)
   # When I replace sum(draw1 != draw2)/N with sum(draw1 == draw2)/N 
   # I get effective sample sizes below 2
-  x = sum(draw1 == draw2)/N
+  x = 1-sum(draw1 == draw2)/N
   n = (1 + sqrt(1+4*(1/(1-x))))/2 
   writeLines(sprintf('The effective marker cardinality for %s is %s', ms, round(n,2)))
   Effective_Allele_size[[ms]] = round(n,1)
@@ -385,7 +385,7 @@ The interpretation of effective marker cardinality can be visualised by the prob
 xs = seq(2,10,by=.01)
 ys = (1/xs)*(1/(xs-1))
 par(las=1, bty='n')
-plot(xs,ys, type='l',lwd=3, yaxt ='n',ylim = c(0,0.5),xaxt='n',
+plot(x = xs, y = ys, type='l',lwd=3, yaxt ='n',ylim = c(0,0.5), xaxt='n',
      xlab = 'effective marker cardinality', panel.first =grid(),
      ylab='probability of identity by chance')
 axis(1, at = 2:10)
@@ -414,12 +414,12 @@ if(CREATE_PLOTS){
          main = sprintf('%s', ms), font.main = 3, 
          pch = 18, ylim=c(0,YMAX), xlim = c(1,ncol(xs)), 
          ylab='', xlab='', yaxt='n')
-    abline(h=1/K, lty = 'dashed', lwd = 0.5)
+    abline(h=1/K, lty = 'dashed', lwd = 1)
     title(ylab='Frequency', line = 3.25)
     title(xlab= sprintf('Repeat length (motif length = %s)', MSs_Motifs[[ms]]), line = 2.5)
-    mtext(side = 3, text = sprintf('(n = %s)',N_MS), line = 0.5, cex = 0.65, adj = 1)
+    mtext(side = 3, text = sprintf('(n = %s)',N_MS), line = 0.5, cex = 0.65, adj = 0)
     mtext(side = 3, text = sprintf('(N* = %s)',Effective_Allele_size[[ms]]), 
-          line = 0.5, cex = 0.65, adj = 0)
+          line = 0.5, cex = 0.65, adj = 1)
     for(k in 1:ncol(xs)){
       lines(rep(k,2), quantile(xs[,k],probs = c(0.025,0.975)))
     }
