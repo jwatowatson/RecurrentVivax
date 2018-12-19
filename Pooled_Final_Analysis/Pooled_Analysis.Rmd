@@ -299,7 +299,7 @@ MSs_all = c("PV.3.502","PV.3.27","PV.ms8",
             "PV.ms6","PV.ms7","PV.ms16")
 ```
 
-We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 0$ recovers unweighted empirical allele frequencies. 
+We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 0$ recovers the empirical allele frequencies. 
 
 ```{r, echo=F}
 # Prior weight for the Dirichlet (setting weight to 0 recovers empirical freq):
@@ -335,12 +335,47 @@ Fs_Combined = sapply(Alpha_Posteriors, function(x){x/sum(x)})
 
 ```{r}
 #==================================================================
-# Save a data set of monoclonal data and allel frequencies for
+# Save a data set of monoclonal data and allele frequencies for
 # relatedness estimation 
 #==================================================================
 monoclonal_names = rownames(COIs)[COIs$MOI == 1]
 monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
 save(monoclonal_data, Fs_Combined, file = '../RData/Data_for_relatedness.RData')
+```
+
+Calculate the effective allele size for each microsatellite marker using a simulation approach.
+Under a uniform distribution over $n$ alleles, the probability of seeing the same alleles twice by chance is simply $1 - \frac{1}{n(n-1)}$ (1 minus the probability of seeing two different ones).
+Therefore, to calculate the effective allele size, we solve the quadratic $x = 1 - \frac{1}{n(n-1)}$, which has a real solution at $\frac{1+\sqrt{1+4(\frac{1}{1-x})}}{2}$.
+
+```{r}
+N = 10^6
+Effective_Allele_size = list()
+for(ms in MSs_all){
+  draw1 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, 
+                 prob = Fs_Combined[[ms]])
+  draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, 
+                 prob = Fs_Combined[[ms]])
+  # calculate the probabilty of seeing different alleles by simulation
+  x = 1-sum(draw1 == draw2)/N
+  writeLines(sprintf('The effective allele size for %s is %s',
+                      ms, 
+                     round( (1 + sqrt(1+4*(1/(1-x))))/2,2)))
+  Effective_Allele_size[[ms]] = round( (1 + sqrt(1+4*(1/(1-x))))/2,1)
+}
+```
+
+The interpretation of effective allele size can be visualised by the probability of identity by chance as a function of effective allele size. There is little gain for each incremental allele size above 4.
+
+```{r Nstar_versus_IBC, echo=FALSE}
+xs = seq(2,10,by=.01)
+ys = (1/xs)*(1/(xs-1))
+par(las=1, bty='n')
+plot(xs,ys, type='l',lwd=3, yaxt ='n',ylim = c(0,0.5),xaxt='n',
+     xlab = 'Effective allele size', panel.first =grid(),
+     ylab='probability of identity by chance')
+axis(1, at = 2:10)
+axis(2, at= c(0.5, .3,.1,0))
+abline(h=0, lty=2)
 ```
 
 ## Plotting allele frequencies
@@ -368,6 +403,8 @@ if(CREATE_PLOTS){
     title(ylab='Frequency', line = 3.25)
     title(xlab= sprintf('Repeat length (motif length = %s)', MSs_Motifs[[ms]]), line = 2.5)
     mtext(side = 3, text = sprintf('(n = %s)',N_MS), line = 0.5, cex = 0.65, adj = 1)
+    mtext(side = 3, text = sprintf('(N* = %s)',Effective_Allele_size[[ms]]), 
+          line = 0.5, cex = 0.65, adj = 0)
     for(k in 1:ncol(xs)){
       lines(rep(k,2), quantile(xs[,k],probs = c(0.025,0.975)))
     }
@@ -420,7 +457,8 @@ p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,] # Only need priors f
 
 # Extract posterior estimates only if running full posterior simple or inflated
 if(RUN_MODELS_FULL_POSTERIOR_SIMPLE | RUN_MODELS_FULL_POSTERIOR_INFLATED){
-  Post_samples_matrix = Post_samples_matrix[Post_samples_matrix$Episode_Identifier %in% genetic_AND_time_data_eps,]}
+  Post_samples_matrix = Post_samples_matrix[Post_samples_matrix$Episode_Identifier %in% genetic_AND_time_data_eps,]
+}
 ```
 
 
@@ -554,7 +592,7 @@ if(CREATE_PLOTS){
        col = drug_cols2[thetas_9MS$drug], 
        main = expression(log[10]~('posterior probability of relapse')),pch=20)
   lines(-10:0,-10:0)
-  legend('bottomright', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+  legend('bottomright', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
   
   # Annotate by examples
   if(Hightlight_BPD_examples){
@@ -583,7 +621,7 @@ if(CREATE_PLOTS){
        col= drug_cols2[thetas_9MS$drug],
        main = expression(log[10]~('posterior probability of relapse')),pch=20)
   lines(-10:10,-10:10)
-  legend('bottomright', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+  legend('bottomright', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
   
   # Annotate by examples
   points(x = log10(Time_Estimates_1$Relapse_mean_theta[Time1_example_inds]), 
@@ -624,7 +662,7 @@ if(CREATE_PLOTS){
          xlab = 'Rank', 
          ylab = sprintf('Probability of %s state', state),
          main = 'Genetic model given time-to-event prior')
-    legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ'),pch=20)
+    legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ+'),pch=20)
     
     # Add CIs
     ind = grepl(state,colnames(Thetas_full_post)) & !grepl('Episode_Identifier',colnames(Thetas_full_post)) 
@@ -646,7 +684,7 @@ if(CREATE_PLOTS){
          xlab = 'Rank', 
          ylab = sprintf('Probability of %s state',state),
          main = 'Genetic model given time-agnostic prior')
-    legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ'),pch=20)
+    legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ+'),pch=20)
   }
 }
 ```
@@ -988,7 +1026,7 @@ if(CREATE_PLOTS){
   legend('top', col = drug_cols2[2:3], 
          cex = 1, bty = 'n', y.intersp = 0.75, 
          lty = 1, lwd = 1,
-         legend = c('No PMQ', 'PMQ'))
+         legend = c('No PMQ', 'PMQ+'))
 }
 
 writeLines(sprintf('The Coatney style plot is showing %s recurrences in %s individuals',
@@ -1029,7 +1067,7 @@ if(CREATE_PLOTS){
   
   legend(x=0.8*nrow(MS_final), y = 0.8, col = drug_cols2[2:3], 
          pch = 20, cex = 1.2, bty = 'o', border = 'white',
-         legend = c('No PMQ','PMQ'))
+         legend = c('No PMQ','PMQ+'))
   
   # Against time
   plot(NULL, 
@@ -1065,7 +1103,7 @@ if(CREATE_PLOTS){
   
   legend(x=0.8*max(MS_final$timeSinceLastEpisode), y = 0.8, col = drug_cols2[2:3], 
          pch = 20, cex = 1.2, bty = 'o', border = 'white', 
-         legend = c('No PMQ','PMQ'))
+         legend = c('No PMQ','PMQ+'))
   
   
 }
@@ -1457,7 +1495,7 @@ plot(log10(thetas_9MS$L), log10(thetas_9MS$L)-log10(thetas_9MS_alphaUpper$L),
      xlab = 'Relapse Probability: no inbreeding',
      col= drug_cols2[thetas_9MS$drug],pch=20)
 abline(h=0,lty=2)
-legend('topleft', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
 
 ###****** Reinfection : comparison *****#####
 par(las=1, bty='n')
@@ -1471,7 +1509,7 @@ plot(log10(thetas_9MS$I), log10(thetas_9MS$I)-log10(thetas_9MS_alphaUpper$I),
      ylab = 'Difference in Log Reinfection Probabilities',
      xlab = 'Reinfection: no inbreeding',
      col= drug_cols2[thetas_9MS$drug],pch=20)
-legend('topleft', legend = c('No PMQ', 'PMQ'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
 
 abline(h=0,lty=2)
 ```
