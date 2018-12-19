@@ -358,9 +358,9 @@ monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
 save(monoclonal_data, Fs_Combined, file = '../RData/Data_for_relatedness.RData')
 ```
 
-Calculate the effective allele size for each microsatellite marker using a simulation approach.
+Calculate the effective marker cardinality for each microsatellite marker using a simulation approach.
 Under a discrete uniform distribution over $n$ alleles, the probability of seeing the same alleles twice by chance is simply $x = 1 - \frac{1}{n(n-1)}$ (1 minus the probability of seeing two different ones).
-Therefore, to calculate the effective allele size, we solve the quadratic $x = 1 - \frac{1}{n(n-1)}$ for n, which has a real solution at $n = \frac{1+\sqrt{1+4(\frac{1}{1-x})}}{2}$.
+Therefore, to calculate the effective marker cardinality, we solve the quadratic $x = 1 - \frac{1}{n(n-1)}$ for n, which has a real solution at $n = \frac{1+\sqrt{1+4(\frac{1}{1-x})}}{2}$.
 
 ```{r}
 N = 10^6
@@ -374,19 +374,19 @@ for(ms in MSs_all){
   # I get effective sample sizes below 2
   x = sum(draw1 == draw2)/N
   n = (1 + sqrt(1+4*(1/(1-x))))/2 
-  writeLines(sprintf('The effective allele size for %s is %s', ms, round(n,2)))
+  writeLines(sprintf('The effective marker cardinality for %s is %s', ms, round(n,2)))
   Effective_Allele_size[[ms]] = round(n,1)
 }
 ```
 
-The interpretation of effective allele size can be visualised by the probability of identity by chance as a function of effective allele size. There is little gain for each incremental allele size above 4.
+The interpretation of effective marker cardinality can be visualised by the probability of identity by chance as a function of effective marker cardinality. There is little gain for each incremental allele size above 4.
 
 ```{r Nstar_versus_IBC, echo=FALSE}
 xs = seq(2,10,by=.01)
 ys = (1/xs)*(1/(xs-1))
 par(las=1, bty='n')
 plot(xs,ys, type='l',lwd=3, yaxt ='n',ylim = c(0,0.5),xaxt='n',
-     xlab = 'Effective allele size', panel.first =grid(),
+     xlab = 'effective marker cardinality', panel.first =grid(),
      ylab='probability of identity by chance')
 axis(1, at = 2:10)
 axis(2, at= c(0.5, .3,.1,0))
