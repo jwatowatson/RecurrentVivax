@@ -201,20 +201,33 @@ Bug in the next bit so commented out: I don't get a bug
 
 ```{r VHX_typed_untyped}
 #=================================================================
-# Is there a significant difference in episode counts between VHX that where genetically typed and not?
+# Is there a significant difference in episode counts between VHX 
+# that where genetically typed and not?
 #=================================================================
-All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] # Condition on those that have one or more recurrence
+
+# Condition on CQ (comment out next three lines of code to remove condition)
+CQ_ind_epi <- Combined_Time_Data$arm_num == "CHQ" 
+# vector of patientids excluding censored rows and those without CQ
+uncensored_patientids = Combined_Time_Data[!censored_ind & CQ_ind_epi, 'patientid'] 
+# Number of episodes per person VHX
+All_VHX_epi_count = table(uncensored_patientids[grepl('VHX_',uncensored_patientids)]) 
+
+# Condition on those that have one or more recurrence
+All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] 
 x1 = no_of_epi_per_person_typed_VHX
 x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # No of epi per person untyped
 # setequal(names(x1), names(x2)) # Check mutually exclusive
 # setequal(names(x2), unique(names(MS_pooled_summary$ID))) # Further check 
 max_rec = max(All_VHX_rec_count)
 
+# plot store was generated for barplot (replaced by histogram)
 plot_store = array(dim = c(2, max_rec), dimnames = list(c('Untyped','Typed'), 1:max_rec))
 plot_store['Untyped', names(table(x2))] = table(x2)
 plot_store['Typed', names(table(x1))] = table(x1)
-barplot(plot_store, col = c('lightgray','red'), beside = T, density = c(100,25),
-        main='VHX subset', xlab = 'Number of episodes')
+
+hist(x2, col = 'lightgray', freq = F, breaks = seq(0.5, max_rec+0.5, 1), ylim = c(0,0.35), 
+     main='VHX subset', xlab = 'Number of episodes')
+hist(x1, col = 'red', density = 15, add = T, freq = F, breaks = seq(0.5, max_rec+0.5, 1))
 legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'),
        density = c(100,25), bty = 'n')
 
@@ -225,7 +238,7 @@ theta_hat_boot = sapply(1:5000, function(x){
   x2boot = sample(x2, size = length(x2), replace = T)
   median(x1boot) - median(x2boot)})
 se = sd(theta_hat_boot)
-Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Significant
+Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Not significant
 percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
 pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
 ```
