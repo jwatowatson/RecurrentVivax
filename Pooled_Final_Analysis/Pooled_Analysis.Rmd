@@ -199,15 +199,13 @@ plot(x = as.numeric(no_of_epi_per_person_typed_BPD), y = as.numeric(no_of_typed_
 abline(a = 0, b = 1, lty = 'dotted')
 ```
 
-Bug in the next bit so commented out: I don't get a bug
 
 ```{r VHX_typed_untyped}
 #=================================================================
-# Is there a significant difference in episode counts between VHX 
-# that where genetically typed and not?
+# Visual check of difference in episode counts between VHX 
+# that where genetically typed and not
 #=================================================================
-
-# Condition on CQ (comment out next three lines of code to remove condition)
+# Condition on CQ since these were the ones selected for genotyping 
 CQ_ind_epi <- Combined_Time_Data$arm_num == "CHQ" 
 # vector of patientids excluding censored rows and those without CQ
 uncensored_patientids = Combined_Time_Data[!censored_ind & CQ_ind_epi, 'patientid'] 
@@ -222,27 +220,12 @@ x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # No of epi per
 # setequal(names(x2), unique(names(MS_pooled_summary$ID))) # Further check 
 max_rec = max(All_VHX_rec_count)
 
-# plot store was generated for barplot (replaced by histogram)
-plot_store = array(dim = c(2, max_rec), dimnames = list(c('Untyped','Typed'), 1:max_rec))
-plot_store['Untyped', names(table(x2))] = table(x2)
-plot_store['Typed', names(table(x1))] = table(x1)
-
+# Typed more heavy tailed
 hist(x2, col = 'lightgray', freq = F, breaks = seq(0.5, max_rec+0.5, 1), ylim = c(0,0.35), 
      main='VHX subset', xlab = 'Number of episodes')
 hist(x1, col = 'red', density = 15, add = T, freq = F, breaks = seq(0.5, max_rec+0.5, 1))
 legend('topright', legend = c('Untyped', 'Typed'), fill =c('lightgray', 'red'),
        density = c(100,25), bty = 'n')
-
-# Bootstap test of difference in median
-theta_hat = median(x1) - median(x2) # More episodes per person in untyped
-theta_hat_boot = sapply(1:5000, function(x){
-  x1boot = sample(x1, size = length(x1), replace = T)
-  x2boot = sample(x2, size = length(x2), replace = T)
-  median(x1boot) - median(x2boot)})
-se = sd(theta_hat_boot)
-Normal_95CI = c(theta_hat - 1.96*se, theta_hat + 1.96*se)  # Not significant
-percentile_95CI = quantile(theta_hat_boot, probs = c(0.025, 0.975)) # Not significant
-pivotal_95CI = 2*theta_hat - rev(percentile_95CI) # Significant
 ```
 
 Summary of complexity of infection based on numbers of alleles observed. This is broken down by enrollment episodes (this is independent of drug given) and subsequent recurrences which could be drug dependent.
@@ -359,43 +342,40 @@ save(monoclonal_data, Fs_Combined, file = '../RData/Data_for_relatedness.RData')
 ```
 
 Calculate the effective marker cardinality for each microsatellite marker using a simulation approach.
-Under a discrete uniform distribution over $n$ alleles, the probability of seeing the same alleles twice by chance is simply $1 - \frac{1}{n(n-1)}$ (1 minus the probability of seeing two different ones). Therefore, to calculate the effective marker cardinality, we solve the quadratic $x = 1 - \frac{1}{n(n-1)}$ for n, which has a real solution at $n = \frac{1+\sqrt{1+4(\frac{1}{1-x})}}{2}$.
+<!-- Under a discrete uniform distribution over $n$ alleles, the probability of seeing the same alleles twice by chance is simply $1 - \frac{1}{n(n-1)}$ (1 minus the probability of seeing two different ones). Therefore, to calculate the effective marker cardinality, we solve the quadratic $x = 1 - \frac{1}{n(n-1)}$ for n, which has a real solution at $n = \frac{1+\sqrt{1+4(\frac{1}{1-x})}}{2}$. -->
+
+<!-- James, above x is mathematically defined as the probability of seeing two the same. In the code it is the probability of them being different (i.e. 1- sum(draw1 == draw2)/N = mean(draw1 != draw2)). If let $x = \frac{1}{n(n-1)}$, then $n^2 - n - \dfrac{1}{x} = 0$ and $n = \frac{1+\sqrt{1+\frac{4}{x}}}{2}$. In any case, after much de-bugging I realise $x = \frac{1}{n(n-1)}$ is NOT the probability of two things being different (it decreases as n increases). The probability of two things being different under a discrete uniform is simply $\frac{1}{n} = n \times \frac{1}{n^2}$. I've checked this numerically below, and recalculated the effective allele sizes, now 13.  -->
 
 ```{r}
 N = 10^6
+set.seed(1)
 Effective_Allele_size = list()
-for(ms in MSs_all){
-  draw1 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
-  draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
-  # calculate the probabilty of seeing different alleles by simulation 
-  x = 1-sum(draw1 == draw2)/N
-  n = (1 + sqrt(1+4*(1/(1-x))))/2 
-  writeLines(sprintf('The effective marker cardinality for %s is %s', ms, round(n,2)))
-  Effective_Allele_size[[ms]] = round(n,1)
-}
-```
+# for(ms in MSs_all){
+#   draw1 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
+#   draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
+#   # calculate the probabilty of seeing different alleles by simulation 
+#   x = 1-sum(draw1 == draw2)/N
+#   n = (1 + sqrt(1+4*(1/(1-x))))/2 
+#   writeLines(sprintf('The effective marker cardinality for %s is %s', ms, round(n,2)))
+#   Effective_Allele_size[[ms]] = round(n,1)
+# }
 
-James, above x is mathematically defined as the probability of seeing two the same. In the code it is the probability of them being different (i.e. 1- sum(draw1 == draw2)/N = mean(draw1 != draw2)). If let $x = \frac{1}{n(n-1)}$, then $n^2 - n - \dfrac{1}{x} = 0$ and $n = \frac{1+\sqrt{1+\frac{4}{x}}}{2}$. In any case, after much de-bugging I realise $x = \frac{1}{n(n-1)}$ is NOT the probability of two things being different (it decreases as n increases). The probability of two things being different under a discrete uniform is simply $\frac{1}{n} = n \times \frac{1}{n^2}$. I've checked this numerically below, and recalculated the effective allele sizes. 
 
-```{r}
 # Check function meets expectation 
-check_AT <- function(n_in){
+check <- function(n_in){
   draw1 = sample(x = n_in, replace = T, size = N)
   draw2 = sample(x = n_in, replace = T, size = N)
   x_same_num = mean(draw1 == draw2)
   x_same_cal = 1/n_in
   n_out_num = 1/x_same_num
-  return(c(n_in, x_same_cal, x_same_num, n_out_num))  
+  return(c(n_in = n_in, x_same_cal = x_same_cal, x_same_num = x_same_num, n_out_num = n_out_num))  
 }
-X = sapply(c(2, 2:10), check_AT)
+X = sapply(c(2, 2:10), check)
 plot(x = X[2,], y = X[3,], 
      ylab = 'Prob same by calculation', xlab = 'Prob same numerically')
 abline(a = 0, b = 1)
 
-
 # Re-analyse
-N = 10^6
-set.seed(1)
 Effective_Allele_size = list()
 for(ms in MSs_all){
   n_obs_alleles = length(table(MS_pooled[Ind_Primary,ms]))
@@ -403,9 +383,18 @@ for(ms in MSs_all){
   draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
   x = mean(draw1 == draw2)
   n = 1/x
-  writeLines(sprintf('The effective marker cardinality for %s with %s alleles is %s', ms, n_obs_alleles, round(n,2)))
-  Effective_Allele_size[[ms]] = round(n,1)
+  writeLines(sprintf('The effective marker cardinality for %s with %s observed alleles is %s', ms, n_obs_alleles, round(n,2)))
+  Effective_Allele_size[[ms]] = n
 }
+
+# # Check roughly the same
+# check(Effective_Allele_size[[ms]])
+
+# The mean and range in our data set
+writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s', 
+                   round(mean(unlist(Effective_Allele_size)),2), 
+                   round(min(unlist(Effective_Allele_size)),2), 
+                   round(max(unlist(Effective_Allele_size)),2)))
 ```
 
 The interpretation of effective marker cardinality can be visualised by the probability of identity by chance as a function of effective marker cardinality. There is little gain for each incremental allele size above 4.

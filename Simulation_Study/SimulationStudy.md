@@ -1,43 +1,22 @@
 ---
 title: "Simulation study to test vivax relatedness model"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
     keep_md: TRUE
+  pdf_document: default
 ---
 
 To-do: change plot N_alleles to N_alleles_Choices
 
-```{r, echo=FALSE, include=F}
-knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
-                      echo = TRUE, include = TRUE, 
-                      fig.width = 7, fig.height = 7,
-                      fig.pos = 'H', 
-                      dev = 'png', dpi = 300)
 
-require(dplyr)
-require(Matrix)
-require(gtools)
-require(tictoc)
-require(doParallel)
-require(igraph)
-require(matrixStats)
-require(RColorBrewer)
-```
 
-```{r, echo=FALSE}
-source('../Genetic_Model/iGraph_functions.R')
-source('../Genetic_Model/Likelihood_function.R')
-source('../Genetic_Model/Data_functions.R')
-source('../Genetic_Model/test_Rn_compatible.R')
-source('../Genetic_Model/post_prob_CLI.R')
-source('BuildSimData.R')
-```
+
 
 
 Determines whether to run the full suite of simulations (takes a long time to run).
-```{r}
+
+```r
 RUN_MODELS = F
 PLOT_RESULTS = T
 ```
@@ -56,9 +35,10 @@ Outline of simulation is as follows:
 * Compute resulting recurrence state estimates
 * Plot resulting recurrence state estimates as a function of the problem complexity, and the effective MOI
 
-```{r}
+
+```r
 # Setup simulation study parameters
-N_alleles_Choices = c(13,4,28) # Marker cardinality (set to match mean and range our panel)
+N_alleles_Choices = c(4,13,28) # Marker cardinality (set to match mean and range our panel)
 K_indivs = 1000 # Number of indiviuduals
 Ms = seq(3,15, by = 3) # Number of markers
 K_poly_markers = 3 # Number of polyallelic markers 
@@ -76,7 +56,8 @@ settings$MOI_pattern <- paste(settings$MOI_1, settings$MOI_2, sep = "_")
 JOBS = nrow(settings)
 ```
 
-```{r}
+
+```r
 # All simulation parameter settings possible
 if(RUN_MODELS){
   # iterate over cardinality of markers
@@ -140,7 +121,8 @@ if(RUN_MODELS){
 
 ### Plot results
 
-```{r results_MOI_effect, fig.width = 12, fig.height = 5}
+
+```r
 if(PLOT_RESULTS){
   
   # Alternative vizualisation: show one row in main plot
@@ -155,7 +137,7 @@ if(PLOT_RESULTS){
   
   for(pattern in unique(settings$MOI_pattern)){
     JOBS_pattern <- which(settings$MOI_pattern == as.character(pattern))
-    for(N_alleles in c(10,4,5)){ # N_alleles_Choices
+    for(N_alleles in c(4,5,10)){ # N_alleles_Choices
       
       # Iterate over simulation scenarions (types of data)
       for(related_type in names(related_type_names)){
@@ -181,8 +163,7 @@ if(PLOT_RESULTS){
                     names.arg = settings[JOBS_pattern,'M'], 
                     ylab = 'Probability', xlab = 'Number of markers', 
                     main = related_type_names[related_type])
-        legend(ifelse(BESIDES,'topleft','top'), fill = mycols[1:3], 
-               legend = State_names[States], inset = 0.01,cex = 0.75)
+        legend(ifelse(BESIDES,'topleft','top'), fill = mycols[1:3], legend = State_names[States], inset = 0.01)
         
         # Title
         mtext(text = sprintf('Marker cardinality: %s \n COI of first and second infection: %s and %s respectively', 
@@ -202,4 +183,6 @@ if(PLOT_RESULTS){
   }
 }
 ```
+
+![](SimulationStudy_files/figure-html/results_MOI_effect-1.png)<!-- -->![](SimulationStudy_files/figure-html/results_MOI_effect-2.png)<!-- -->![](SimulationStudy_files/figure-html/results_MOI_effect-3.png)<!-- -->![](SimulationStudy_files/figure-html/results_MOI_effect-4.png)<!-- -->![](SimulationStudy_files/figure-html/results_MOI_effect-5.png)<!-- -->![](SimulationStudy_files/figure-html/results_MOI_effect-6.png)<!-- -->![](SimulationStudy_files/figure-html/results_MOI_effect-7.png)<!-- -->![](SimulationStudy_files/figure-html/results_MOI_effect-8.png)<!-- -->![](SimulationStudy_files/figure-html/results_MOI_effect-9.png)<!-- -->
 
