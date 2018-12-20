@@ -359,8 +359,7 @@ save(monoclonal_data, Fs_Combined, file = '../RData/Data_for_relatedness.RData')
 ```
 
 Calculate the effective marker cardinality for each microsatellite marker using a simulation approach.
-Under a discrete uniform distribution over $n$ alleles, the probability of seeing the same alleles twice by chance is simply $1 - \frac{1}{n(n-1)}$ (1 minus the probability of seeing two different ones).
-Therefore, to calculate the effective marker cardinality, we solve the quadratic $x = 1 - \frac{1}{n(n-1)}$ for n, which has a real solution at $n = \frac{1+\sqrt{1+4(\frac{1}{1-x})}}{2}$.
+Under a discrete uniform distribution over $n$ alleles, the probability of seeing the same alleles twice by chance is simply $1 - \frac{1}{n(n-1)}$ (1 minus the probability of seeing two different ones). Therefore, to calculate the effective marker cardinality, we solve the quadratic $x = 1 - \frac{1}{n(n-1)}$ for n, which has a real solution at $n = \frac{1+\sqrt{1+4(\frac{1}{1-x})}}{2}$.
 
 ```{r}
 N = 10^6
@@ -376,22 +375,35 @@ for(ms in MSs_all){
 }
 ```
 
-<!-- James, above x is mathematically defined as the probability of seeing two the same (i.e. sum(draw1 == draw2)/N). In the code it is the probability of them being different (i.e. sum(draw1 != draw2)/N =  1- sum(draw1 == draw2)/N)  -->
-
-Let the probability of drawing any two different alleles be $x = \frac{1}{n(n-1)}$ s.t. $n^2 - n - \dfrac{1}{x} = 0$ and $n = \frac{1+\sqrt{1+\frac{4}{x}}}{2}$.
+James, above x is mathematically defined as the probability of seeing two the same. In the code it is the probability of them being different (i.e. 1- sum(draw1 == draw2)/N = mean(draw1 != draw2)). If let $x = \frac{1}{n(n-1)}$, then $n^2 - n - \dfrac{1}{x} = 0$ and $n = \frac{1+\sqrt{1+\frac{4}{x}}}{2}$. In any case, after much de-bugging I realise $x = \frac{1}{n(n-1)}$ is NOT the probability of two things being different (it decreases as n increases). The probability of two things being different under a discrete uniform is simply $\frac{1}{n} = n \times \frac{1}{n^2}$. I've checked this numerically below, and recalculated the effective allele sizes. 
 
 ```{r}
+# Check function meets expectation 
+check_AT <- function(n_in){
+  draw1 = sample(x = n_in, replace = T, size = N)
+  draw2 = sample(x = n_in, replace = T, size = N)
+  x_same_num = mean(draw1 == draw2)
+  x_same_cal = 1/n_in
+  n_out_num = 1/x_same_num
+  return(c(n_in, x_same_cal, x_same_num, n_out_num))  
+}
+X = sapply(c(2, 2:10), check_AT)
+plot(x = X[2,], y = X[3,], 
+     ylab = 'Prob same by calculation', xlab = 'Prob same numerically')
+abline(a = 0, b = 1)
+
+
+# Re-analyse
 N = 10^6
+set.seed(1)
 Effective_Allele_size = list()
 for(ms in MSs_all){
+  n_obs_alleles = length(table(MS_pooled[Ind_Primary,ms]))
   draw1 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
   draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
-  x_same = sum(draw1 == draw2)/N # prob of same
-  x_diff = sum(draw1 != draw2)/N # prob of different
-  n1 = (1 + sqrt(1+(4/x_diff)))/2  # if x is prob of different
-  n2 = (1 + sqrt(1+(4/(1-x_same))))/2  # if x is prob of different
-  print(n1 == n1) # Always the same
-  writeLines(sprintf('The effective marker cardinality for %s is %s', ms, round(n1,2)))
+  x = mean(draw1 == draw2)
+  n = 1/x
+  writeLines(sprintf('The effective marker cardinality for %s with %s alleles is %s', ms, n_obs_alleles, round(n,2)))
   Effective_Allele_size[[ms]] = round(n,1)
 }
 ```
@@ -1445,110 +1457,110 @@ writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%
 
 
 This won't go into this paper but looking out of interest:
-
-Does 2D6 correlate with carboxy ?
-
-```{r}
-TwoD6_dat = read.csv('../RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
-TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],
-                                                     as.integer(x['Patient.ID']),
-                                                     sep = '_'))
-TwoD6_dat$Phenotype = mapvalues(TwoD6_dat$X2D6.Phenotype, 
-                                from = c('PM','IM', 'EM'), to = 1:3)
-Combined_Time_Data$Phenotype = Combined_Time_Data$ASscore = NA
-for(i in 1:nrow(Combined_Time_Data)){
+  
+  Does 2D6 correlate with carboxy ?
+  
+  ```{r}
+  TwoD6_dat = read.csv('../RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
+  TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],
+  as.integer(x['Patient.ID']),
+  sep = '_'))
+  TwoD6_dat$Phenotype = mapvalues(TwoD6_dat$X2D6.Phenotype, 
+  from = c('PM','IM', 'EM'), to = 1:3)
+  Combined_Time_Data$Phenotype = Combined_Time_Data$ASscore = NA
+  for(i in 1:nrow(Combined_Time_Data)){
   id = Combined_Time_Data$patientid[i]
   if(sum(TwoD6_dat$ID==id)>0){
-    Combined_Time_Data$ASscore[i] = TwoD6_dat$AS.score[TwoD6_dat$ID==id]
-    Combined_Time_Data$Phenotype[i] = TwoD6_dat$Phenotype[TwoD6_dat$ID==id]
+  Combined_Time_Data$ASscore[i] = TwoD6_dat$AS.score[TwoD6_dat$ID==id]
+  Combined_Time_Data$Phenotype[i] = TwoD6_dat$Phenotype[TwoD6_dat$ID==id]
   }
-}
-
-mod_2D6 = lmer(log10_carboxyPMQ ~ ASscore + NumberDaysPMQ + (1 | patientid), 
-               data = Combined_Time_Data)
-summary(mod_2D6)
-plot(Combined_Time_Data$ASscore, Combined_Time_Data$log10_carboxyPMQ, pch=20)
-lines(xs, predict(mod_2D6, data.frame(ASscore=xs,NumberDaysPMQ=7,patientid='new'),allow.new.levels=T),lwd=3)
-```
-
-
-```{r}
-Combined_2D6data = filter(Combined_Time_Data, !is.na(ASscore), !Censored)
-for(id in unique(Combined_2D6data$patientid)){
+  }
+  
+  mod_2D6 = lmer(log10_carboxyPMQ ~ ASscore + NumberDaysPMQ + (1 | patientid), 
+  data = Combined_Time_Data)
+  summary(mod_2D6)
+  plot(Combined_Time_Data$ASscore, Combined_Time_Data$log10_carboxyPMQ, pch=20)
+  lines(xs, predict(mod_2D6, data.frame(ASscore=xs,NumberDaysPMQ=7,patientid='new'),allow.new.levels=T),lwd=3)
+  ```
+  
+  
+  ```{r}
+  Combined_2D6data = filter(Combined_Time_Data, !is.na(ASscore), !Censored)
+  for(id in unique(Combined_2D6data$patientid)){
   ind = Combined_2D6data$patientid==id
   Combined_2D6data$Failure_YN[ind] = max(Combined_2D6data$Failure_YN[ind])
-}
-Combined_2D6data = Combined_2D6data[!duplicated(Combined_2D6data$patientid),]
-mod_Failure = glm(Failure_YN ~ ASscore, 
-                  data = Combined_2D6data, family = 'binomial')
-summary(mod_Failure)
-```
-
-
-# Extra Analyses
-
-## Looking at the effect of inbreeding coefficient
-
-Our model has a parameter $\alpha$ which defines the level of inbreeding within the population.
-Taylor is developing methods for the estimation of $\alpha$ from genetic data (in preparation).
-
-We look at the sensitivity of the results (all the above is with $\alpha=0$) for a reasonable upper bound of $\alpha=0.175$.
-
-We rerun the analysis on the single run isolates (low computational complexity):
-
-```{r}
-alphaUpper = 0.175
-if(RUN_MODELS_SINGLE_SIMPLE){
+  }
+  Combined_2D6data = Combined_2D6data[!duplicated(Combined_2D6data$patientid),]
+  mod_Failure = glm(Failure_YN ~ ASscore, 
+  data = Combined_2D6data, family = 'binomial')
+  summary(mod_Failure)
+  ```
+  
+  
+  # Extra Analyses
+  
+  ## Looking at the effect of inbreeding coefficient
+  
+  Our model has a parameter $\alpha$ which defines the level of inbreeding within the population.
+  Taylor is developing methods for the estimation of $\alpha$ from genetic data (in preparation).
+  
+  We look at the sensitivity of the results (all the above is with $\alpha=0$) for a reasonable upper bound of $\alpha=0.175$.
+  
+  We rerun the analysis on the single run isolates (low computational complexity):
+  
+  ```{r}
+  alphaUpper = 0.175
+  if(RUN_MODELS_SINGLE_SIMPLE){
   #===============================================
   # Run (with time-to-event)
   #===============================================
   # Approx 100 secs per full model run
   tic()
   thetas_9MS_alphaUpper = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
-                                        p = p, cores = 6, verbose = F, alpha = alphaUpper) 
+  p = p, cores = 6, verbose = F, alpha = alphaUpper) 
   thetas_9MS_alphaUpper$Episode_Identifier = rownames(thetas_9MS_alphaUpper)
   save(thetas_9MS_alphaUpper, file = '../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
   toc()
-} else {
+  } else {
   load('../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
-}
-```
-
-```{r}
-par(las=1, bty='n', mfrow=c(2,2))
-plot(log10(thetas_9MS$L), log10(thetas_9MS_alphaUpper$L),
-     ylab = 'Relapse: inbred',
-     xlab = 'Relapse: no inbreeding',
-     col= drug_cols2[thetas_9MS$drug],pch=20)
-lines(c(-10,10),c(-10,10),lty=2)
-
-plot(log10(thetas_9MS$L), log10(thetas_9MS$L)-log10(thetas_9MS_alphaUpper$L),
-     ylab = 'Difference in Log Relapse Probabilities',
-     xlab = 'Relapse Probability: no inbreeding',
-     col= drug_cols2[thetas_9MS$drug],pch=20)
-abline(h=0,lty=2)
-legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
-
-###****** Reinfection : comparison *****#####
-par(las=1, bty='n')
-plot(log10(thetas_9MS$I), log10(thetas_9MS_alphaUpper$I),
-     ylab = 'Reinfection: inbred',
-     xlab = 'Reinfection: no inbreeding',
-     col= drug_cols2[thetas_9MS$drug],pch=20)
-lines(c(-10,10),c(-10,10),lty=2)
-
-plot(log10(thetas_9MS$I), log10(thetas_9MS$I)-log10(thetas_9MS_alphaUpper$I),
-     ylab = 'Difference in Log Reinfection Probabilities',
-     xlab = 'Reinfection: no inbreeding',
-     col= drug_cols2[thetas_9MS$drug],pch=20)
-legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
-
-abline(h=0,lty=2)
-```
-
-Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
-This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
-
-For the non-primaquine group, it is just tempering the very low probabilities of reinfection seen for some episodes.
-
-In conclusion, this isn't changing the results significantly and would imply a greater primaquine efficacy that reported in the paper.
+  }
+  ```
+  
+  ```{r}
+  par(las=1, bty='n', mfrow=c(2,2))
+  plot(log10(thetas_9MS$L), log10(thetas_9MS_alphaUpper$L),
+  ylab = 'Relapse: inbred',
+  xlab = 'Relapse: no inbreeding',
+  col= drug_cols2[thetas_9MS$drug],pch=20)
+  lines(c(-10,10),c(-10,10),lty=2)
+  
+  plot(log10(thetas_9MS$L), log10(thetas_9MS$L)-log10(thetas_9MS_alphaUpper$L),
+  ylab = 'Difference in Log Relapse Probabilities',
+  xlab = 'Relapse Probability: no inbreeding',
+  col= drug_cols2[thetas_9MS$drug],pch=20)
+  abline(h=0,lty=2)
+  legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+  
+  ###****** Reinfection : comparison *****#####
+  par(las=1, bty='n')
+  plot(log10(thetas_9MS$I), log10(thetas_9MS_alphaUpper$I),
+  ylab = 'Reinfection: inbred',
+  xlab = 'Reinfection: no inbreeding',
+  col= drug_cols2[thetas_9MS$drug],pch=20)
+  lines(c(-10,10),c(-10,10),lty=2)
+  
+  plot(log10(thetas_9MS$I), log10(thetas_9MS$I)-log10(thetas_9MS_alphaUpper$I),
+  ylab = 'Difference in Log Reinfection Probabilities',
+  xlab = 'Reinfection: no inbreeding',
+  col= drug_cols2[thetas_9MS$drug],pch=20)
+  legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+  
+  abline(h=0,lty=2)
+  ```
+  
+  Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
+  This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
+  
+  For the non-primaquine group, it is just tempering the very low probabilities of reinfection seen for some episodes.
+  
+  In conclusion, this isn't changing the results significantly and would imply a greater primaquine efficacy that reported in the paper.
