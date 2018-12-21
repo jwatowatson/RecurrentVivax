@@ -4,10 +4,7 @@ author: "Aimee Taylor and James Watson"
 output:
   html_document:
     df_print: paged
-    keep_md: TRUE
-  pdf_document: default
-  keep_md: TRUE
-  html_notebook: default
+    keep_md: yes
 ---
 
 # Preamble
@@ -34,7 +31,7 @@ Summary of the data and the whole of the VHX data set versus the subset typed (i
 
 ```
 ## 
-## Overall in the dataset: breakdown by treatment group:
+## Overall in the dataset: breakdown by treatment group (individuals typed):
 ```
 
 ```
@@ -45,7 +42,7 @@ Summary of the data and the whole of the VHX data set versus the subset typed (i
 
 ```
 ## 
-## Within VHX: breakdown by treatment group:
+## Within VHX: breakdown by treatment group (VHX individuals typed):
 ```
 
 ```
@@ -56,25 +53,35 @@ Summary of the data and the whole of the VHX data set versus the subset typed (i
 
 ```
 ## 
-## From BPD trial there are 80 individuals with total of 167 episodes typed
+## From BPD trial there are 80 individuals with total of 167 episodes typed (enrollment: 79; recurrent 88)
 ```
 
 ```
-## From VHX trial there are 137 individuals with total of 543 episodes typed
+## From VHX trial there are 137 individuals with total of 543 episodes typed (enrollment: 137; recurrent 406)
 ```
 
 
 
 ```
-## Of 0 of 137 VHX individual/s selected for genotyping, 1 to 8 of their episodes were not typed
+## [1] 644
 ```
 
 ```
-## Of 0 of 80 BPD individual/s selected for genotyping, 1 to 2 of their episodes were not typed
+## [1] 655
 ```
 
-Bug in the next bit so commented out
+```
+## VHX: for 27 of 137 VHX individual/s selected for genotyping: 1 to 7 of their episodes were not typed (total of 52 episodes untyped summing over the 27 individuals)
+```
 
+```
+## BPD: of 81 of the people who recurred: 1 person/people with 1 recurrence/s was not selected for genotyping. Of 4 of 80 BPD individual/s selected for genotyping: 1 to 1 of their episodes were not typed (4 episodes summing over the 4 individuals). Of the 4 episodes not typed 3 were recurrences. In total there were 92 recurrences: 4 untyped.
+```
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
+
+
+![](Pooled_Analysis_files/figure-html/VHX_typed_untyped-1.png)<!-- -->
 
 Summary of complexity of infection based on numbers of alleles observed. This is broken down by enrollment episodes (this is independent of drug given) and subsequent recurrences which could be drug dependent.
 
@@ -111,6 +118,15 @@ Summary of complexity of infection based on numbers of alleles observed. This is
 ## Mean complexity of recurrent episodes is 1.29, and mean complexity of enrollment episodes is 1.45
 ```
 
+```
+## Median COI in VHX and BPD: 1 and 1, respectively
+```
+
+```
+## 30 of 710 episodes (4 percent) with COI greater than or equal to 3
+```
+
+
 From this Poisson regression, there appears to be evidence that enrollment episodes have higher complexities of infection than recurrences. This implies that relapses are more likely to be single hypnozoite activated infections?
 
 
@@ -119,12 +135,35 @@ From this Poisson regression, there appears to be evidence that enrollment episo
 First we define the set of microsatellite markers used in this analysis:
 
 
-We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 0$ recovers unweighted empirical allele frequencies. 
+We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 0$ recovers the empirical allele frequencies. 
 
 
 ```
 ## Number of episodes used to compute frequencies: 216
 ```
+
+
+
+Calculate the effective marker cardinality for each microsatellite marker using a simulation approach.
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+
+```
+## The effective marker cardinality for PV.3.502 with 13 observed alleles is 7.03
+## The effective marker cardinality for PV.3.27 with 33 observed alleles is 13.74
+## The effective marker cardinality for PV.ms8 with 46 observed alleles is 28.12
+## The effective marker cardinality for PV.1.501 with 17 observed alleles is 12.99
+## The effective marker cardinality for PV.ms1 with 7 observed alleles is 4.31
+## The effective marker cardinality for PV.ms5 with 24 observed alleles is 12
+## The effective marker cardinality for PV.ms6 with 25 observed alleles is 11.93
+## The effective marker cardinality for PV.ms7 with 14 observed alleles is 6.9
+## The effective marker cardinality for PV.ms16 with 39 observed alleles is 19.91
+```
+
+```
+## The mean effective marker cardinality is 12.98, range: 4.3 to 28.1
+```
+
 
 
 ## Plotting allele frequencies
@@ -144,10 +183,6 @@ The approach is Bayesian and consists of the following:
 
 The following iterates through each individual and computes the probability of relatedness states.
 
-
-```
-## Warning: package 'bindrcpp' was built under R version 3.4.4
-```
 
 ```
 ## Number of individuals with at least two episodes typed: 212
@@ -193,7 +228,7 @@ Plotted by radical cure versus no radical cure, as that is the most informative 
 
 Probability of states, ordered from most to least likely:
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-12-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-14-1.png)<!-- -->
 
 
 # BPD Final plot
@@ -337,14 +372,6 @@ We exclude the two recurrences seen in patient BPD_444
 
 
 ```
-## Loading required package: lme4
-```
-
-```
-## Warning: package 'lme4' was built under R version 3.4.4
-```
-
-```
 ## Generalized linear mixed model fit by maximum likelihood (Laplace
 ##   Approximation) [glmerMod]
 ##  Family: binomial  ( logit )
@@ -380,7 +407,7 @@ We exclude the two recurrences seen in patient BPD_444
 ![](Pooled_Analysis_files/figure-html/CarboxyPredictionFailure-1.png)<!-- -->
 
 Now we remove outliers and fit the same model (CPMQ outliers)
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-23-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
 
 ```
 ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -421,93 +448,93 @@ Now we calculate a compressed dataset and failure for each individual
 
 
 ```
-## The primaquine failure rate in the 655 individuals is 2.58% (2.03-3.46) over the course of 522 years total follow-up.
+## The primaquine failure rate in the 655 individuals is 2.59% (2.02-3.47) over the course of 522 years total follow-up.
 ```
 
 
 This won't go into this paper but looking out of interest:
-
-Does 2D6 correlate with carboxy ?
-
-
-```
-## Linear mixed model fit by REML ['lmerMod']
-## Formula: log10_carboxyPMQ ~ ASscore + NumberDaysPMQ + (1 | patientid)
-##    Data: Combined_Time_Data
-## 
-## REML criterion at convergence: 190.6
-## 
-## Scaled residuals: 
-##     Min      1Q  Median      3Q     Max 
-## -4.6041 -0.2741  0.0758  0.3798  5.0223 
-## 
-## Random effects:
-##  Groups    Name        Variance Std.Dev.
-##  patientid (Intercept) 0.07392  0.2719  
-##  Residual              0.06576  0.2564  
-## Number of obs: 234, groups:  patientid, 154
-## 
-## Fixed effects:
-##                Estimate Std. Error t value
-## (Intercept)    3.535077   0.113075  31.263
-## ASscore       -0.085651   0.056897  -1.505
-## NumberDaysPMQ -0.059412   0.006522  -9.109
-## 
-## Correlation of Fixed Effects:
-##             (Intr) ASscor
-## ASscore     -0.697       
-## NumbrDysPMQ -0.710  0.055
-```
-
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
-
-
-
-```
-## 
-## Call:
-## glm(formula = Failure_YN ~ ASscore, family = "binomial", data = Combined_2D6data)
-## 
-## Deviance Residuals: 
-##     Min       1Q   Median       3Q      Max  
-## -0.3616  -0.2074  -0.1566  -0.1566   2.7748  
-## 
-## Coefficients:
-##             Estimate Std. Error z value Pr(>|z|)  
-## (Intercept)   -2.695      1.518  -1.776   0.0758 .
-## ASscore       -1.134      1.327  -0.854   0.3930  
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## (Dispersion parameter for binomial family taken to be 1)
-## 
-##     Null deviance: 20.065  on 111  degrees of freedom
-## Residual deviance: 19.366  on 110  degrees of freedom
-##   (2 observations deleted due to missingness)
-## AIC: 23.366
-## 
-## Number of Fisher Scoring iterations: 7
-```
-
-
-# Extra Analyses
-
-## Looking at the effect of inbreeding coefficient
-
-Our model has a parameter $\alpha$ which defines the level of inbreeding within the population.
-Taylor is developing methods for the estimation of $\alpha$ from genetic data (in preparation).
-
-We look at the sensitivity of the results (all the above is with $\alpha=0$) for a reasonable upper bound of $\alpha=0.175$.
-
-We rerun the analysis on the single run isolates (low computational complexity):
-
-
-
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-28-1.png)<!-- -->
-
-Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
-This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
-
-For the non-primaquine group, it is just tempering the very low probabilities of reinfection seen for some episodes.
-
-In conclusion, this isn't changing the results significantly and would imply a greater primaquine efficacy that reported in the paper.
+  
+  Does 2D6 correlate with carboxy ?
+  
+  
+  ```
+  ## Linear mixed model fit by REML ['lmerMod']
+  ## Formula: log10_carboxyPMQ ~ ASscore + NumberDaysPMQ + (1 | patientid)
+  ##    Data: Combined_Time_Data
+  ## 
+  ## REML criterion at convergence: 190.6
+  ## 
+  ## Scaled residuals: 
+  ##     Min      1Q  Median      3Q     Max 
+  ## -4.6041 -0.2741  0.0758  0.3798  5.0223 
+  ## 
+  ## Random effects:
+  ##  Groups    Name        Variance Std.Dev.
+  ##  patientid (Intercept) 0.07392  0.2719  
+  ##  Residual              0.06576  0.2564  
+  ## Number of obs: 234, groups:  patientid, 154
+  ## 
+  ## Fixed effects:
+  ##                Estimate Std. Error t value
+  ## (Intercept)    3.535077   0.113075  31.263
+  ## ASscore       -0.085651   0.056897  -1.505
+  ## NumberDaysPMQ -0.059412   0.006522  -9.109
+  ## 
+  ## Correlation of Fixed Effects:
+  ##             (Intr) ASscor
+  ## ASscore     -0.697       
+  ## NumbrDysPMQ -0.710  0.055
+  ```
+  
+  ![](Pooled_Analysis_files/figure-html/unnamed-chunk-27-1.png)<!-- -->
+  
+  
+  
+  ```
+  ## 
+  ## Call:
+  ## glm(formula = Failure_YN ~ ASscore, family = "binomial", data = Combined_2D6data)
+  ## 
+  ## Deviance Residuals: 
+  ##     Min       1Q   Median       3Q      Max  
+  ## -0.3616  -0.2074  -0.1566  -0.1566   2.7748  
+  ## 
+  ## Coefficients:
+  ##             Estimate Std. Error z value Pr(>|z|)  
+  ## (Intercept)   -2.695      1.518  -1.776   0.0758 .
+  ## ASscore       -1.134      1.327  -0.854   0.3930  
+  ## ---
+  ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+  ## 
+  ## (Dispersion parameter for binomial family taken to be 1)
+  ## 
+  ##     Null deviance: 20.065  on 111  degrees of freedom
+  ## Residual deviance: 19.366  on 110  degrees of freedom
+  ##   (2 observations deleted due to missingness)
+  ## AIC: 23.366
+  ## 
+  ## Number of Fisher Scoring iterations: 7
+  ```
+  
+  
+  # Extra Analyses
+  
+  ## Looking at the effect of inbreeding coefficient
+  
+  Our model has a parameter $\alpha$ which defines the level of inbreeding within the population.
+  Taylor is developing methods for the estimation of $\alpha$ from genetic data (in preparation).
+  
+  We look at the sensitivity of the results (all the above is with $\alpha=0$) for a reasonable upper bound of $\alpha=0.175$.
+  
+  We rerun the analysis on the single run isolates (low computational complexity):
+  
+  
+  
+  ![](Pooled_Analysis_files/figure-html/unnamed-chunk-30-1.png)<!-- -->
+  
+  Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
+  This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
+  
+  For the non-primaquine group, it is just tempering the very low probabilities of reinfection seen for some episodes.
+  
+  In conclusion, this isn't changing the results significantly and would imply a greater primaquine efficacy that reported in the paper.

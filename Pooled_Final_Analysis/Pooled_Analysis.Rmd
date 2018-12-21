@@ -4,8 +4,7 @@ author: "Aimee Taylor and James Watson"
 output:
   html_document:
     df_print: paged
-  pdf_document: default
-  html_notebook: default
+    keep_md: yes
 ---
 
 # Preamble
@@ -342,25 +341,10 @@ save(monoclonal_data, Fs_Combined, file = '../RData/Data_for_relatedness.RData')
 ```
 
 Calculate the effective marker cardinality for each microsatellite marker using a simulation approach.
-<!-- Under a discrete uniform distribution over $n$ alleles, the probability of seeing the same alleles twice by chance is simply $1 - \frac{1}{n(n-1)}$ (1 minus the probability of seeing two different ones). Therefore, to calculate the effective marker cardinality, we solve the quadratic $x = 1 - \frac{1}{n(n-1)}$ for n, which has a real solution at $n = \frac{1+\sqrt{1+4(\frac{1}{1-x})}}{2}$. -->
-
-<!-- James, above x is mathematically defined as the probability of seeing two the same. In the code it is the probability of them being different (i.e. 1- sum(draw1 == draw2)/N = mean(draw1 != draw2)). If let $x = \frac{1}{n(n-1)}$, then $n^2 - n - \dfrac{1}{x} = 0$ and $n = \frac{1+\sqrt{1+\frac{4}{x}}}{2}$. In any case, after much de-bugging I realise $x = \frac{1}{n(n-1)}$ is NOT the probability of two things being different (it decreases as n increases). The probability of two things being different under a discrete uniform is simply $\frac{1}{n} = n \times \frac{1}{n^2}$. I've checked this numerically below, and recalculated the effective allele sizes, now 13.  -->
 
 ```{r}
 N = 10^6
-set.seed(1)
-Effective_Allele_size = list()
-# for(ms in MSs_all){
-#   draw1 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
-#   draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
-#   # calculate the probabilty of seeing different alleles by simulation 
-#   x = 1-sum(draw1 == draw2)/N
-#   n = (1 + sqrt(1+4*(1/(1-x))))/2 
-#   writeLines(sprintf('The effective marker cardinality for %s is %s', ms, round(n,2)))
-#   Effective_Allele_size[[ms]] = round(n,1)
-# }
-
-
+set.seed(1765765)
 # Check function meets expectation 
 check <- function(n_in){
   draw1 = sample(x = n_in, replace = T, size = N)
@@ -384,7 +368,7 @@ for(ms in MSs_all){
   x = mean(draw1 == draw2)
   n = 1/x
   writeLines(sprintf('The effective marker cardinality for %s with %s observed alleles is %s', ms, n_obs_alleles, round(n,2)))
-  Effective_Allele_size[[ms]] = n
+  Effective_Allele_size[[ms]] = round(n,1)
 }
 
 # # Check roughly the same
@@ -397,19 +381,7 @@ writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s
                    round(max(unlist(Effective_Allele_size)),2)))
 ```
 
-The interpretation of effective marker cardinality can be visualised by the probability of identity by chance as a function of effective marker cardinality. There is little gain for each incremental allele size above 4.
 
-```{r Nstar_versus_IBC, echo=FALSE}
-xs = seq(2,10,by=.01)
-ys = (1/xs)*(1/(xs-1))
-par(las=1, bty='n')
-plot(x = xs, y = ys, type='l',lwd=3, yaxt ='n',ylim = c(0,0.5), xaxt='n',
-     xlab = 'effective marker cardinality', panel.first =grid(),
-     ylab='probability of identity by chance')
-axis(1, at = 2:10)
-axis(2, at= c(0.5, .3,.1,0))
-abline(h=0, lty=2)
-```
 
 ## Plotting allele frequencies
 
@@ -435,7 +407,8 @@ if(CREATE_PLOTS){
     abline(h=1/K, lty = 'dashed', lwd = 1)
     title(ylab='Frequency', line = 3.25)
     title(xlab= sprintf('Repeat length (motif length = %s)', MSs_Motifs[[ms]]), line = 2.5)
-    mtext(side = 3, text = sprintf('(n = %s)',N_MS), line = 0.5, cex = 0.65, adj = 0)
+    # made the number of individuals N: same as appendix notation
+    mtext(side = 3, text = sprintf('(N = %s)',N_MS), line = 0.5, cex = 0.65, adj = 0)
     mtext(side = 3, text = sprintf('(n* = %s)',Effective_Allele_size[[ms]]), 
           line = 0.5, cex = 0.65, adj = 1)
     for(k in 1:ncol(xs)){

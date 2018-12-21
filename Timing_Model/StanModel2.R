@@ -34,7 +34,8 @@ data {
   real<lower=0>   sigma_CQ_shape;
   real<lower=0>   mu_CQ_scale;
   real<lower=0>   sigma_CQ_scale;
-
+  real<lower=0>   mu_inv_recrud;
+  real<lower=0>   sigma_inv_recrud;
 }
 
 parameters {
@@ -50,8 +51,7 @@ parameters {
   real<lower=0>         logit_sd_p;           // logit sd of proportion of reInfection (no rad cure)
   real                  logit_mean_p_PMQ;     // logit mean proportion of reInfection (after rad cure)
   real<lower=0>         logit_sd_p_PMQ;       // logit sd of proportion of reInfection (after rad cure)
-  real<lower=0>         Recrud_shape;         // Weibull shape parameter: recrudescence
-  real<lower=0>         Recrud_scale;         // Weibull scale parameter: recrudescence
+  real<lower=0>         inv_Recrud_lambda;    // Mean time to recrudescence
   real<lower=1>         AS_shape;             // Weibull shape parameter: Artesunate
   real<lower=0>         AS_scale;             // Weibull scale parameter: Artesunate
   real<lower=1>         CQ_shape;             // Weibull shape parameter: Chloroquine
@@ -63,6 +63,7 @@ transformed parameters{
   // Turn the inverse rates into rate parameters for the likelihood calculation
   real lambda = 1/inv_lambda;   
   real gamma = 1/inv_gamma;   
+  real lambda_recrud = 1/inv_Recrud_lambda;
 
   // Compute the reInfection and recrudescence rates
   // We define log scale parameters from inverse logit transformation
@@ -94,15 +95,13 @@ model {
   // ********* Prior *********
   inv_lambda ~ normal(mu_inv_lambda,sigma_inv_lambda);
   inv_gamma ~ normal(mu_inv_gamma,sigma_inv_gamma);
+  inv_Recrud_lambda ~ normal(mu_inv_recrud, sigma_inv_recrud);
 
   logit_mean_p ~ normal(Hyper_logit_mean_p, Hyper_logit_sd_p);
   logit_sd_p ~ normal(1, 0.5);
   
   logit_mean_p_PMQ ~ normal(Hyper_logit_mean_p_PMQ,Hyper_logit_sd_p_PMQ);
   logit_sd_p_PMQ ~ normal(1, 0.5);
-
-  Recrud_shape ~ normal(2, 1);
-  Recrud_scale ~ normal(10, 1);
 
   AS_shape ~ normal(mu_AS_shape,sigma_AS_shape);
   AS_scale ~ normal(mu_AS_scale,sigma_AS_scale);
@@ -143,7 +142,7 @@ model {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_AS + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_AS + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_AS + exponential_lpdf(Durations[i] | lambda_recrud);
 
         target += log_sum_exp(log_probs);
       } 
@@ -157,7 +156,7 @@ model {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_CQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + exponential_lpdf(Durations[i] | lambda_recrud);
 
         target += log_sum_exp(log_probs);
       }
@@ -171,7 +170,7 @@ model {
         // Late reLapse
         log_probs[3] = log_1m_p_PMQ[Ind] + log_1m_c1_CQ_PMQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p_PMQ[Ind] + log_c1_CQ_PMQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p_PMQ[Ind] + log_c1_CQ_PMQ + exponential_lpdf(Durations[i] | lambda_recrud);
         
         target += log_sum_exp(log_probs);
       }
@@ -187,7 +186,7 @@ model {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_AS + log_1m_EarlyL + exponential_lccdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_AS + weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_AS + exponential_lccdf(Durations[i] | lambda_recrud);
         
         target += log_sum_exp(log_probs);
 
@@ -202,7 +201,7 @@ model {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_CQ + log_1m_EarlyL + exponential_lccdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + exponential_lccdf(Durations[i] | lambda_recrud);
         
         target += log_sum_exp(log_probs);
       } 
@@ -216,7 +215,7 @@ model {
         // Late reLapse
         log_probs[3] = log_1m_p_PMQ[Ind] + log_1m_c1_CQ_PMQ + log_1m_EarlyL + exponential_lccdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p_PMQ[Ind] + log_c1_CQ_PMQ + weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p_PMQ[Ind] + log_c1_CQ_PMQ + exponential_lccdf(Durations[i] | lambda_recrud);
         
         target += log_sum_exp(log_probs);
       }
@@ -243,7 +242,7 @@ generated quantities {
         // Late Relapse
         prob_labels_raw[3] = exp(log_1m_p[Ind])*exp(log_1m_c1_AS)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(exponential_lpdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 1){ // Chloroquine Monotherapy
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
@@ -254,7 +253,7 @@ generated quantities {
         // Late Relapse
         prob_labels_raw[3] = exp(log_1m_p[Ind])*exp(log_1m_c1_CQ)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(exponential_lpdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 2){ // Chloroquine + Primaquine
         Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
@@ -265,7 +264,7 @@ generated quantities {
         // Late Relapse
         prob_labels_raw[3] = exp(log_1m_p_PMQ[Ind])*exp(log_1m_c1_CQ_PMQ)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p_PMQ[Ind])*exp(log_c1_CQ_PMQ)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = exp(log_1m_p_PMQ[Ind])*exp(log_c1_CQ_PMQ)*exp(exponential_lpdf(Durations[i] | lambda_recrud));
       }
     } 
     if(Censored[i] == 1){ // this is a right censored time to new infection
@@ -278,7 +277,7 @@ generated quantities {
         // Late Relapse
         prob_labels_raw[3] = exp(log_1m_p[Ind])*exp(log_1m_c1_AS)*exp(log_1m_EarlyL)*exp(exponential_lccdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(exponential_lccdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 1){ // Chloroquine Monotherapy
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
@@ -289,7 +288,7 @@ generated quantities {
         // Late Relapse
         prob_labels_raw[3] = exp(log_1m_p[Ind])*exp(log_1m_c1_CQ)*exp(log_1m_EarlyL)*exp(exponential_lccdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(exponential_lccdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 2){ // Chloroquine + Primaquine
         Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
@@ -300,7 +299,7 @@ generated quantities {
         // Late Relapse
         prob_labels_raw[3] = exp(log_1m_p_PMQ[Ind])*exp(log_1m_c1_CQ_PMQ)*exp(log_1m_EarlyL)*exp(exponential_lccdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p_PMQ[Ind])*exp(log_c1_CQ_PMQ)*exp(weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = exp(log_1m_p_PMQ[Ind])*exp(log_c1_CQ_PMQ)*exp(exponential_lccdf(Durations[i] | lambda_recrud));
 
       }
     }
@@ -326,7 +325,7 @@ generated quantities {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_AS + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_AS + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_AS + exponential_lpdf(Durations[i] | lambda_recrud);
 
         log_lik[i] = log_sum_exp(log_probs);
       }
@@ -340,7 +339,7 @@ generated quantities {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_CQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + exponential_lpdf(Durations[i] | lambda_recrud);
 
         log_lik[i] = log_sum_exp(log_probs);
       }
@@ -354,7 +353,7 @@ generated quantities {
         // Late reLapse
         log_probs[3] = log_1m_p_PMQ[Ind] + log_1m_c1_CQ_PMQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p_PMQ[Ind] + log_c1_CQ_PMQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p_PMQ[Ind] + log_c1_CQ_PMQ + exponential_lpdf(Durations[i] | lambda_recrud);
         
         log_lik[i] = log_sum_exp(log_probs);
 
@@ -372,7 +371,7 @@ generated quantities {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_AS + log_1m_EarlyL + exponential_lccdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_AS + weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_AS + exponential_lccdf(Durations[i] | lambda_recrud);
 
         log_lik[i] = log_sum_exp(log_probs);
       }
@@ -386,7 +385,7 @@ generated quantities {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_CQ + log_1m_EarlyL + exponential_lccdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + exponential_lccdf(Durations[i] | lambda_recrud);
 
         log_lik[i] = log_sum_exp(log_probs);
       }
@@ -400,7 +399,7 @@ generated quantities {
         // Late reLapse
         log_probs[3] = log_1m_p_PMQ[Ind] + log_1m_c1_CQ_PMQ + log_1m_EarlyL + exponential_lccdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p_PMQ[Ind] + log_c1_CQ_PMQ + weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p_PMQ[Ind] + log_c1_CQ_PMQ + exponential_lccdf(Durations[i] | lambda_recrud);
         
         log_lik[i] = log_sum_exp(log_probs);
       }
