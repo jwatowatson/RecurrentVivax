@@ -5,6 +5,7 @@ output:
   html_document:
     df_print: paged
     keep_md: yes
+  pdf_document: default
 ---
 
 # Preamble
@@ -289,15 +290,15 @@ for(ms in MSs_all){
 ```
 
 ```
-## The effective cardinality for PV.3.502 with 13 observed alleles is 7.04
-## The effective cardinality for PV.3.27 with 33 observed alleles is 13.83
-## The effective cardinality for PV.ms8 with 46 observed alleles is 28.45
-## The effective cardinality for PV.1.501 with 17 observed alleles is 12.95
-## The effective cardinality for PV.ms1 with 7 observed alleles is 4.3
-## The effective cardinality for PV.ms5 with 24 observed alleles is 11.98
-## The effective cardinality for PV.ms6 with 25 observed alleles is 11.91
-## The effective cardinality for PV.ms7 with 14 observed alleles is 6.91
-## The effective cardinality for PV.ms16 with 39 observed alleles is 20.14
+## The effective cardinality for PV.3.502 with 13 observed alleles is 7.02
+## The effective cardinality for PV.3.27 with 33 observed alleles is 13.69
+## The effective cardinality for PV.ms8 with 46 observed alleles is 28.08
+## The effective cardinality for PV.1.501 with 17 observed alleles is 12.94
+## The effective cardinality for PV.ms1 with 7 observed alleles is 4.33
+## The effective cardinality for PV.ms5 with 24 observed alleles is 11.91
+## The effective cardinality for PV.ms6 with 25 observed alleles is 11.94
+## The effective cardinality for PV.ms7 with 14 observed alleles is 6.92
+## The effective cardinality for PV.ms16 with 39 observed alleles is 20.01
 ```
 
 ```r
@@ -309,7 +310,7 @@ writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s
 ```
 
 ```
-## The mean effective marker cardinality is 13.06, range: 4.3 to 28.5
+## The mean effective marker cardinality is 12.97, range: 4.3 to 28.1
 ```
 
 
@@ -336,40 +337,33 @@ The following iterates through each individual and computes the probability of r
 # # We also remove MS data for which there are no recurrent data
 N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
 MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
-```
-
-```
-## Warning: package 'bindrcpp' was built under R version 3.4.4
-```
-
-```r
 # recreate pooled summary dataset
 MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] 
 
-writeLines(sprintf('Number of individuals with at least two episodes typed: %s',
+writeLines(sprintf('Number of individuals with at least two typed episodes analysed: %s',
                    length(unique(MS_pooled$ID))))
 ```
 
 ```
-## Number of individuals with at least two episodes typed: 212
+## Number of individuals with at least two typed episodes analysed: 212
 ```
 
 ```r
-writeLines(sprintf('Number of episodes in individuals with at least two episodes: %s',
+writeLines(sprintf('Number of episodes in individuals with at least two typed episodes analysed: %s',
                    length(unique(MS_pooled$Episode_Identifier))))
 ```
 
 ```
-## Number of episodes in individuals with at least two episodes: 705
+## Number of episodes in individuals with at least two typed episodes analysed: 705
 ```
 
 ```r
-writeLines(sprintf('Number of recurrences typed: %s',
+writeLines(sprintf('Number of typed recurrences analysed: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
 ```
 
 ```
-## Number of recurrences typed: 493
+## Number of typed recurrences analysed: 493
 ```
 
 
@@ -506,9 +500,7 @@ for(i in 1:nrow(MS_inflated_summary)){
 Results_Inflated$ID_True = MS_inflated_summary$ID_True
 Results_Inflated$First_EpNumber = MS_inflated_summary$First_EpNumber
 Results_Inflated$Second_EpNumber = MS_inflated_summary$Second_EpNumber
-## Threshold value for classification
-Epsilon_upper = 0.7
-Epsilon_lower = 0.3
+
 
 # Iterate through the ones we can calculate in one go
 episodes_full_model = unique(Thetas_full_post$Episode_Identifier)
@@ -756,9 +748,9 @@ if(RUN_MODELS_FALSE_POSITIVE){
   toc()
   save(Inflated_Results, file = 'Inflated_Results.bigRData')
 } else {
-  load('Inflated_Results.bigRData')
+  load('~/Dropbox/RecurrentVivax/Pooled_Final_Analysis/Inflated_Results.bigRData')
   Inflated_Results = Inflated_Results[!is.na(Inflated_Results$L),]
-  load('APC_MSdata.bigRData')
+  load('~/Dropbox/RecurrentVivax/Pooled_Final_Analysis/APC_MSdata.bigRData')
 }
 ```
 
@@ -861,10 +853,6 @@ require(lme4)
 
 ```
 ## Loading required package: lme4
-```
-
-```
-## Warning: package 'lme4' was built under R version 3.4.4
 ```
 
 ```r
@@ -1073,7 +1061,7 @@ Does 2D6 correlate with carboxy ?
 
 
 ```r
-TwoD6_dat = read.csv('../RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
+TwoD6_dat = read.csv('~/Dropbox/RecurrentVivax/RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
 TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],
                                                      as.integer(x['Patient.ID']),
                                                      sep = '_'))
@@ -1134,12 +1122,12 @@ lines(xs, predict(mod_2D6, data.frame(ASscore=xs,NumberDaysPMQ=7,patientid='new'
 ```r
 Combined_2D6data = filter(Combined_Time_Data, !is.na(ASscore), !Censored)
 for(id in unique(Combined_2D6data$patientid)){
-ind = Combined_2D6data$patientid==id
-Combined_2D6data$Failure_YN[ind] = max(Combined_2D6data$Failure_YN[ind])
+  ind = Combined_2D6data$patientid==id
+  Combined_2D6data$Failure_YN[ind] = max(Combined_2D6data$Failure_YN[ind])
 }
 Combined_2D6data = Combined_2D6data[!duplicated(Combined_2D6data$patientid),]
 mod_Failure = glm(Failure_YN ~ ASscore, 
-data = Combined_2D6data, family = 'binomial')
+                  data = Combined_2D6data, family = 'binomial')
 summary(mod_Failure)
 ```
 
@@ -1185,18 +1173,18 @@ We rerun the analysis on the single run isolates (low computational complexity):
 ```r
 alphaUpper = 0.175
 if(RUN_MODELS_SINGLE_SIMPLE){
-#===============================================
-# Run (with time-to-event)
-#===============================================
-# Approx 100 secs per full model run
-tic()
-thetas_9MS_alphaUpper = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
-p = p, cores = 6, verbose = F, alpha = alphaUpper) 
-thetas_9MS_alphaUpper$Episode_Identifier = rownames(thetas_9MS_alphaUpper)
-save(thetas_9MS_alphaUpper, file = '../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
-toc()
+  #===============================================
+  # Run (with time-to-event)
+  #===============================================
+  # Approx 100 secs per full model run
+  tic()
+  thetas_9MS_alphaUpper = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
+                                        p = p, cores = 6, verbose = F, alpha = alphaUpper) 
+  thetas_9MS_alphaUpper$Episode_Identifier = rownames(thetas_9MS_alphaUpper)
+  save(thetas_9MS_alphaUpper, file = '../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
+  toc()
 } else {
-load('../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
+  load('../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
 }
 ```
 
@@ -1204,30 +1192,30 @@ load('../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
 ```r
 par(las=1, bty='n', mfrow=c(2,2))
 plot(log10(thetas_9MS$L), log10(thetas_9MS_alphaUpper$L),
-ylab = 'Relapse: inbred',
-xlab = 'Relapse: no inbreeding',
-col= drug_cols2[thetas_9MS$drug],pch=20)
+     ylab = 'Relapse: inbred',
+     xlab = 'Relapse: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
 lines(c(-10,10),c(-10,10),lty=2)
 
 plot(log10(thetas_9MS$L), log10(thetas_9MS$L)-log10(thetas_9MS_alphaUpper$L),
-ylab = 'Difference in Log Relapse Probabilities',
-xlab = 'Relapse Probability: no inbreeding',
-col= drug_cols2[thetas_9MS$drug],pch=20)
+     ylab = 'Difference in Log Relapse Probabilities',
+     xlab = 'Relapse Probability: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
 abline(h=0,lty=2)
 legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
 
 ###****** Reinfection : comparison *****#####
 par(las=1, bty='n')
 plot(log10(thetas_9MS$I), log10(thetas_9MS_alphaUpper$I),
-ylab = 'Reinfection: inbred',
-xlab = 'Reinfection: no inbreeding',
-col= drug_cols2[thetas_9MS$drug],pch=20)
+     ylab = 'Reinfection: inbred',
+     xlab = 'Reinfection: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
 lines(c(-10,10),c(-10,10),lty=2)
 
 plot(log10(thetas_9MS$I), log10(thetas_9MS$I)-log10(thetas_9MS_alphaUpper$I),
-ylab = 'Difference in Log Reinfection Probabilities',
-xlab = 'Reinfection: no inbreeding',
-col= drug_cols2[thetas_9MS$drug],pch=20)
+     ylab = 'Difference in Log Reinfection Probabilities',
+     xlab = 'Reinfection: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
 legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
 
 abline(h=0,lty=2)

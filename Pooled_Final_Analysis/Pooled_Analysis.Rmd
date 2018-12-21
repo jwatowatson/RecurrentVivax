@@ -5,6 +5,7 @@ output:
   html_document:
     df_print: paged
     keep_md: yes
+  pdf_document: default
 ---
 
 # Preamble
@@ -74,8 +75,14 @@ states = c(relapse = 'L', reinfection = 'I', recrudescence = 'C')
 
 # James, there are some odd bugs something to do with !duplicated() and the tibble...
 # https://stackoverflow.com/questions/39041115/fixing-a-multiple-warning-unknown-column
-# Also, Thetas_full_post has redundant column names
+# Also, Thetas_full_post has redundant column names, this is a quick solution
 Combined_Time_Data <- as.data.frame(Combined_Time_Data)
+
+## Threshold value for classification
+Epsilon_upper = 0.7
+Epsilon_lower = 0.3
+transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
+
 ```
 
 
@@ -421,11 +428,11 @@ MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]
 # recreate pooled summary dataset
 MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] 
 
-writeLines(sprintf('Number of individuals with at least two episodes typed: %s',
+writeLines(sprintf('Number of individuals with at least two typed episodes analysed: %s',
                    length(unique(MS_pooled$ID))))
-writeLines(sprintf('Number of episodes in individuals with at least two episodes: %s',
+writeLines(sprintf('Number of episodes in individuals with at least two typed episodes analysed: %s',
                    length(unique(MS_pooled$Episode_Identifier))))
-writeLines(sprintf('Number of recurrences typed: %s',
+writeLines(sprintf('Number of typed recurrences analysed: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
 ```
 
@@ -572,15 +579,34 @@ Plotted by radical cure versus no radical cure, as that is the most informative 
 if(CREATE_PLOTS){
   par(mfrow=c(2,2),las=1, bty='n',family='serif')
   
+  
   # Time agnostic versus full posterior 
-  plot(x = log10(thetas_9MS_Tagnostic$L), 
-       y = log10(thetas_9MS$L), 
+  plot(x = thetas_9MS_Tagnostic$L, 
+       y = thetas_9MS$L, 
+       log = 'xy', 
        xlab = 'Genetic given time-agnostic prior', 
-       ylab = 'Genetic given time-to-event prior',
+       ylab = 'Genetic given time-to-event based prior',
        panel.first = grid(),
        col = drug_cols2[thetas_9MS$drug], 
-       main = expression(log[10]~('posterior probability of relapse')),pch=20)
-  lines(-10:0,-10:0)
+       main = 'Probability of relapse',pch=20)
+  abline(a = 0, b = 1)
+  
+  polygon(x = c(range(thetas_9MS_Tagnostic$L, na.rm = T),
+                rev(range(thetas_9MS_Tagnostic$L, na.rm = T))),
+          y = c(Epsilon_lower,
+                Epsilon_lower,
+                Epsilon_upper,
+                Epsilon_upper),
+          col = transparent_pink_band, border = NA)
+  
+  polygon(y = c(range(thetas_9MS$L, na.rm = T),
+                rev(range(thetas_9MS$L, na.rm = T))),
+          x = c(Epsilon_lower,
+                Epsilon_lower,
+                Epsilon_upper,
+                Epsilon_upper),
+          col = transparent_pink_band, border = NA)
+  
   
   # Annotate by examples
   if(Hightlight_BPD_examples){
@@ -592,28 +618,60 @@ if(CREATE_PLOTS){
          labels = example_ids, pos = 2, cex = 0.7)
   }
   
-  plot(x = log10(thetas_9MS_Tagnostic$I), 
-       y = log10(thetas_9MS$I), 
+  plot(x = thetas_9MS_Tagnostic$I, 
+       y = thetas_9MS$I, 
        xlab = 'Genetic given time-agnostic prior', 
-       ylab = 'Genetic given time-to-event prior',
+       ylab = 'Genetic given time-to-event based prior',
+       log = 'xy', 
        panel.first = grid(),
        col = drug_cols2[thetas_9MS$drug], 
-       main = expression(log[10]~('posterior probability of reinfection')),pch=20)
-  lines(-20:0,-20:0)
-  legend('topleft', legend = c('No PMQ', 'PMQ+'), 
+       main = 'Probability of reinfection',pch=20)
+  abline(a = 0, b = 1)
+  legend('topleft', legend = c('No PMQ', 'PMQ+'), inset = 0.05, 
          col = drug_cols2[2:3], pch = 20, bty = 'o', bg = 'white')
   
+  # polygon(x = c(range(thetas_9MS_Tagnostic$I, na.rm = T),
+  #               rev(range(thetas_9MS_Tagnostic$I, na.rm = T))),
+  #         y = c(Epsilon_lower,
+  #               Epsilon_lower,
+  #               Epsilon_upper,
+  #               Epsilon_upper),
+  #         col = transparent_pink_band, border = NA)
+  # 
+  # polygon(y = c(range(thetas_9MS$I, na.rm = T),
+  #               rev(range(thetas_9MS$I, na.rm = T))),
+  #         x = c(Epsilon_lower,
+  #               Epsilon_lower,
+  #               Epsilon_upper,
+  #               Epsilon_upper),
+  #         col = transparent_pink_band, border = NA)
+  
   # Prior versus full posterior
-  plot(x = log10(Time_Estimates_1$Relapse_mean_theta),
-       y = log10(thetas_9MS$L),
-       xlab = 'Time-to-event prior', 
-       ylab = 'Genetic given time-to-event prior',
+  plot(x = Time_Estimates_1$Relapse_mean_theta,
+       y = thetas_9MS$L,
+       xlab = 'Time-to-event (genetic time-to-event based prior)', 
+       ylab = 'Genetic given time-to-event-based prior',
+       log = 'xy', 
        panel.first = grid(),
        col= drug_cols2[thetas_9MS$drug],
-       main = expression(log[10]~('posterior probability of relapse')),pch=20)
-  lines(-10:10,-10:10)
-  #legend('bottomright', legend = c('No PMQ', 'PMQ+'), 
-  #       col = drug_cols2[2:3], pch = 20, bty = 'n')
+       main = 'Probability of relapse',pch=20)
+  abline(a = 0, b = 1)
+  
+  polygon(x = c(range(Time_Estimates_1$Relapse_mean_theta, na.rm = T),
+                rev(range(Time_Estimates_1$Relapse_mean_theta, na.rm = T))),
+          y = c(Epsilon_lower,
+                Epsilon_lower,
+                Epsilon_upper,
+                Epsilon_upper),
+          col = transparent_pink_band, border = NA)
+
+  polygon(y = c(range(thetas_9MS$L, na.rm = T),
+                rev(range(thetas_9MS$L, na.rm = T))),
+          x = c(Epsilon_lower,
+                Epsilon_lower,
+                Epsilon_upper,
+                Epsilon_upper),
+          col = transparent_pink_band, border = NA)
   
   # Annotate by examples
   if(Hightlight_BPD_examples){
@@ -624,14 +682,32 @@ if(CREATE_PLOTS){
          y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
          labels = example_ids, pos = 2, cex = 0.7)
   }
-  plot(log10(Time_Estimates_1$ReInfection_mean_theta),
-       log10(thetas_9MS$I),
-       xlab = 'Time-to-event prior', 
-       ylab = 'Genetic given time-to-event prior',
+  plot(x = Time_Estimates_1$ReInfection_mean_theta,
+       y = thetas_9MS$I,
+       log = 'xy', 
+       xlab = 'Time-to-event (genetic time-to-event based prior)', 
+       ylab = 'Genetic given time-to-event-based prior',
        panel.first = grid(), 
        col= drug_cols2[thetas_9MS$drug], 
-       main = expression(log[10]~('posterior probability of reinfection')), pch=20)
-  lines(-10:10,-10:10)
+       main = 'Probability of reinfection', pch=20)
+  abline(a = 0, b = 1)
+  
+  # polygon(x = c(range(Time_Estimates_1$ReInfection_mean_theta, na.rm = T),
+  #               rev(range(Time_Estimates_1$ReInfection_mean_theta, na.rm = T))),
+  #         y = c(Epsilon_lower,
+  #               Epsilon_lower,
+  #               Epsilon_upper,
+  #               Epsilon_upper),
+  #         col = transparent_pink_band, border = NA)
+  # 
+  # polygon(y = c(range(thetas_9MS$I, na.rm = T),
+  #               rev(range(thetas_9MS$I, na.rm = T))),
+  #         x = c(Epsilon_lower,
+  #               Epsilon_lower,
+  #               Epsilon_upper,
+  #               Epsilon_upper),
+  #         col = transparent_pink_band, border = NA)
+  
   
 }
 ```
@@ -854,9 +930,7 @@ for(i in 1:nrow(MS_inflated_summary)){
 Results_Inflated$ID_True = MS_inflated_summary$ID_True
 Results_Inflated$First_EpNumber = MS_inflated_summary$First_EpNumber
 Results_Inflated$Second_EpNumber = MS_inflated_summary$Second_EpNumber
-## Threshold value for classification
-Epsilon_upper = 0.7
-Epsilon_lower = 0.3
+
 
 # Iterate through the ones we can calculate in one go
 episodes_full_model = unique(Thetas_full_post$Episode_Identifier)
@@ -1040,7 +1114,6 @@ if(CREATE_PLOTS){
   mtext(text = 'Recurrence rank',side = 1, line = 2)
   axis(2, at = c(0,.5,1))
   title(ylab = 'Relapse posterior probability', line = 3)
-  transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
   polygon(x = c(-100,nrow(MS_final)+100,nrow(MS_final)+100,-100),
           y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
           col = transparent_pink_band, border = NA)
@@ -1235,9 +1308,9 @@ if(RUN_MODELS_FALSE_POSITIVE){
   toc()
   save(Inflated_Results, file = 'Inflated_Results.bigRData')
 } else {
-  load('Inflated_Results.bigRData')
+  load('~/Dropbox/RecurrentVivax/Pooled_Final_Analysis/Inflated_Results.bigRData')
   Inflated_Results = Inflated_Results[!is.na(Inflated_Results$L),]
-  load('APC_MSdata.bigRData')
+  load('~/Dropbox/RecurrentVivax/Pooled_Final_Analysis/APC_MSdata.bigRData')
 }
 ```
 
@@ -1451,7 +1524,7 @@ This won't go into this paper but looking out of interest:
 Does 2D6 correlate with carboxy ?
 
 ```{r}
-TwoD6_dat = read.csv('../RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
+TwoD6_dat = read.csv('~/Dropbox/RecurrentVivax/RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
 TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],
                                                      as.integer(x['Patient.ID']),
                                                      sep = '_'))
@@ -1477,12 +1550,12 @@ lines(xs, predict(mod_2D6, data.frame(ASscore=xs,NumberDaysPMQ=7,patientid='new'
 ```{r}
 Combined_2D6data = filter(Combined_Time_Data, !is.na(ASscore), !Censored)
 for(id in unique(Combined_2D6data$patientid)){
-ind = Combined_2D6data$patientid==id
-Combined_2D6data$Failure_YN[ind] = max(Combined_2D6data$Failure_YN[ind])
+  ind = Combined_2D6data$patientid==id
+  Combined_2D6data$Failure_YN[ind] = max(Combined_2D6data$Failure_YN[ind])
 }
 Combined_2D6data = Combined_2D6data[!duplicated(Combined_2D6data$patientid),]
 mod_Failure = glm(Failure_YN ~ ASscore, 
-data = Combined_2D6data, family = 'binomial')
+                  data = Combined_2D6data, family = 'binomial')
 summary(mod_Failure)
 ```
 
@@ -1501,48 +1574,48 @@ We rerun the analysis on the single run isolates (low computational complexity):
 ```{r}
 alphaUpper = 0.175
 if(RUN_MODELS_SINGLE_SIMPLE){
-#===============================================
-# Run (with time-to-event)
-#===============================================
-# Approx 100 secs per full model run
-tic()
-thetas_9MS_alphaUpper = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
-p = p, cores = 6, verbose = F, alpha = alphaUpper) 
-thetas_9MS_alphaUpper$Episode_Identifier = rownames(thetas_9MS_alphaUpper)
-save(thetas_9MS_alphaUpper, file = '../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
-toc()
+  #===============================================
+  # Run (with time-to-event)
+  #===============================================
+  # Approx 100 secs per full model run
+  tic()
+  thetas_9MS_alphaUpper = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
+                                        p = p, cores = 6, verbose = F, alpha = alphaUpper) 
+  thetas_9MS_alphaUpper$Episode_Identifier = rownames(thetas_9MS_alphaUpper)
+  save(thetas_9MS_alphaUpper, file = '../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
+  toc()
 } else {
-load('../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
+  load('../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
 }
 ```
 
 ```{r}
 par(las=1, bty='n', mfrow=c(2,2))
 plot(log10(thetas_9MS$L), log10(thetas_9MS_alphaUpper$L),
-ylab = 'Relapse: inbred',
-xlab = 'Relapse: no inbreeding',
-col= drug_cols2[thetas_9MS$drug],pch=20)
+     ylab = 'Relapse: inbred',
+     xlab = 'Relapse: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
 lines(c(-10,10),c(-10,10),lty=2)
 
 plot(log10(thetas_9MS$L), log10(thetas_9MS$L)-log10(thetas_9MS_alphaUpper$L),
-ylab = 'Difference in Log Relapse Probabilities',
-xlab = 'Relapse Probability: no inbreeding',
-col= drug_cols2[thetas_9MS$drug],pch=20)
+     ylab = 'Difference in Log Relapse Probabilities',
+     xlab = 'Relapse Probability: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
 abline(h=0,lty=2)
 legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
 
 ###****** Reinfection : comparison *****#####
 par(las=1, bty='n')
 plot(log10(thetas_9MS$I), log10(thetas_9MS_alphaUpper$I),
-ylab = 'Reinfection: inbred',
-xlab = 'Reinfection: no inbreeding',
-col= drug_cols2[thetas_9MS$drug],pch=20)
+     ylab = 'Reinfection: inbred',
+     xlab = 'Reinfection: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
 lines(c(-10,10),c(-10,10),lty=2)
 
 plot(log10(thetas_9MS$I), log10(thetas_9MS$I)-log10(thetas_9MS_alphaUpper$I),
-ylab = 'Difference in Log Reinfection Probabilities',
-xlab = 'Reinfection: no inbreeding',
-col= drug_cols2[thetas_9MS$drug],pch=20)
+     ylab = 'Difference in Log Reinfection Probabilities',
+     xlab = 'Reinfection: no inbreeding',
+     col= drug_cols2[thetas_9MS$drug],pch=20)
 legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
 
 abline(h=0,lty=2)
