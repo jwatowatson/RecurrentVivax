@@ -1426,7 +1426,7 @@ lines(Ts, log10(prob_labels_raw_CQPMQ[4,]), col=drug_cols3[3], lwd=2, lty=2)
 Recurrence_cols_PMQ = brewer.pal(4,'Greens')[2:4]
 Recurrence_cols_noPMQ = brewer.pal(4,'Oranges')[2:4]
 
-LinesTypes = c(1,3,5)
+LinesTypes = c(1,3,2)
 par(cex.lab=.7, cex.axis=.75)
 t_points = seq(0,360,by=1)/30
 PMQ_labels = Label_probability(drug = 'PMQ+',t = t_points*30, thetas = thetas_mod2)
@@ -1569,7 +1569,7 @@ par(las = 1, mfcol=c(2,2), bty='n')
 ind = Combined_Time_Data$arm_num!='CHQ/PMQ' & !Combined_Time_Data$Censored
 plot(log10(Combined_Time_Data$Relapse_mean_theta[ind]), 
      ylim = c(min(log10(Combined_Time_Data$Relapse_025_theta[ind]),na.rm = T), 0),
-              type='l',yaxt='n', main ='No PMQ',
+     type='l',yaxt='n', main ='No PMQ',
      ylab = 'Probability of relapse', xlab = '',panel.first = grid(),
      lwd=2, col = drug_cols2[2], xaxt='n')
 Nrecs = length(Combined_Time_Data$Relapse_mean_theta[ind])
@@ -1627,7 +1627,7 @@ plot(df$time, df$uncertainty,
      pch=20, xlab='', main = 'PMQ+')
 axis(1, at = seq(0,360, by = 60), labels = seq(0,360,by=60)/30)
 mtext(text = 'Months from last episode',side = 1, line = 3)
-f = loess(uncertainty ~ time, df, span = .3)
+f = loess(uncertainty ~ time, df, span = .32)
 lines((0:400), predict(f, data.frame(time=0:400)),lwd=2)
 ```
 
@@ -1654,31 +1654,31 @@ The labels on the observed recurrences along with 95% credible intervals:
 
 
 ```
-## Relapses are approximately  95.64 ( 94.2 - 96.7 ) % of recurrences after AS
+## Relapses are approximately  95.69 ( 94.2 - 96.9 ) % of recurrences after AS
 ```
 
 ```
-## Recrudescences are approximately  2.3 ( 1.4 - 3.5 ) % of recurrences after AS
+## Recrudescences are approximately  2.26 ( 1.4 - 3.4 ) % of recurrences after AS
 ```
 
 ```
-## Reinfections are approximately  2.06 ( 1.4 - 3 ) % of recurrences after AS
+## Reinfections are approximately  2.05 ( 1.4 - 3.1 ) % of recurrences after AS
 ```
 
 ```
-## Relapses are approximately  95.5 ( 94.3 - 96.7 ) % of recurrences after CQ
+## Relapses are approximately  95.5 ( 94.3 - 96.9 ) % of recurrences after CQ
 ```
 
 ```
-## Recrudescences are approximately  1.72 ( 1.1 - 2.6 ) % of recurrences after CQ
+## Recrudescences are approximately  1.7 ( 1 - 2.5 ) % of recurrences after CQ
 ```
 
 ```
-## Reinfections are approximately  2.75 ( 1.8 - 3.9 ) % of recurrences after CQ
+## Reinfections are approximately  2.77 ( 1.8 - 3.8 ) % of recurrences after CQ
 ```
 
 ```
-## Relapses are approximately  9.38 ( 6.9 - 11.8 ) % of recurrences after CQ+PMQ
+## Relapses are approximately  9.47 ( 7 - 12.2 ) % of recurrences after CQ+PMQ
 ```
 
 ```
@@ -1686,6 +1686,6 @@ The labels on the observed recurrences along with 95% credible intervals:
 ```
 
 ```
-## Reinfections are approximately  90.45 ( 88.1 - 92.9 ) % of recurrences after CQ+PMQ
+## Reinfections are approximately  90.36 ( 87.6 - 92.8 ) % of recurrences after CQ+PMQ
 ```
 

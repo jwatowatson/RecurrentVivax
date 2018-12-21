@@ -16,7 +16,7 @@ Load R packages, functions and data.
 # Set up
 #==========================================================================
 knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
-                      echo = FALSE, include = TRUE, 
+                      include = TRUE, 
                       fig.width = 7, fig.height = 7,
                       fig.pos = 'H', 
                       dev = 'png', dpi = 300)
@@ -176,8 +176,9 @@ X5 = lapply(ind_missing_typed_epi, function(x){
 
 X6 = lapply(1:length(X5), function(i){setdiff(X4[[i]], X5[[i]])}) # Not typed episodes
 X7 = sum(sapply(X6, function(x)sum(x>1))) # Not typed recurrence
+```
 
-
+```{r, echo=FALSE}
 writeLines(paste(sprintf('BPD: of %s of the people who recurred: %s person/people with %s recurrence/s was not selected for genotyping.',
                          length(unique(indivs_who_recurred)), 
                          length(unique(indivs_who_were_not_typed)), 
@@ -218,7 +219,9 @@ x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # No of epi per
 # setequal(names(x1), names(x2)) # Check mutually exclusive
 # setequal(names(x2), unique(names(MS_pooled_summary$ID))) # Further check 
 max_rec = max(All_VHX_rec_count)
+```
 
+```{r, echo=FALSE}
 # Typed more heavy tailed
 hist(x2, col = 'lightgray', freq = F, breaks = seq(0.5, max_rec+0.5, 1), ylim = c(0,0.35), 
      main='VHX subset', xlab = 'Number of episodes')
@@ -240,6 +243,9 @@ COIs$MOI = as.numeric(COIs$MOI)
 COIs$Enrollment = COIs$Enrollment=='TRUE'
 COIs$PMQ = 0 
 COIs$PMQ[!COIs$Enrollment & COIs$Drug=='PMQ']=1
+```
+
+```{r, echo=FALSE}
 par(las=1, mfrow=c(1,2))
 
 # Distribution of enrollment COIs
@@ -344,22 +350,6 @@ Calculate the effective marker cardinality for each microsatellite marker using 
 
 ```{r}
 N = 10^6
-set.seed(1765765)
-# Check function meets expectation 
-check <- function(n_in){
-  draw1 = sample(x = n_in, replace = T, size = N)
-  draw2 = sample(x = n_in, replace = T, size = N)
-  x_same_num = mean(draw1 == draw2)
-  x_same_cal = 1/n_in
-  n_out_num = 1/x_same_num
-  return(c(n_in = n_in, x_same_cal = x_same_cal, x_same_num = x_same_num, n_out_num = n_out_num))  
-}
-X = sapply(c(2, 2:10), check)
-plot(x = X[2,], y = X[3,], 
-     ylab = 'Prob same by calculation', xlab = 'Prob same numerically')
-abline(a = 0, b = 1)
-
-# Re-analyse
 Effective_Allele_size = list()
 for(ms in MSs_all){
   n_obs_alleles = length(table(MS_pooled[Ind_Primary,ms]))
@@ -367,13 +357,9 @@ for(ms in MSs_all){
   draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
   x = mean(draw1 == draw2)
   n = 1/x
-  writeLines(sprintf('The effective marker cardinality for %s with %s observed alleles is %s', ms, n_obs_alleles, round(n,2)))
+  writeLines(sprintf('The effective cardinality for %s with %s observed alleles is %s', ms, n_obs_alleles, round(n,2)))
   Effective_Allele_size[[ms]] = round(n,1)
 }
-
-# # Check roughly the same
-# check(Effective_Allele_size[[ms]])
-
 # The mean and range in our data set
 writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s', 
                    round(mean(unlist(Effective_Allele_size)),2), 
@@ -388,9 +374,6 @@ writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s
 These are the mean posterior allele frequencies (dots) and 95\% credible intervals (bars) given pooled enrollment data and $\omega=$ `D_weight_Prior`.  
 
 ```{r AlleleFrequencies, echo=F}
-# Changed s.t. frequences rather than percentages plotted
-# No need for colour
-
 if(CREATE_PLOTS){
   par(mfrow=c(3,3), las=1, bty='n', cex.axis=1.2, family = 'serif')
   for(ms in MSs_all){ # As bars
@@ -565,9 +548,9 @@ Thetas_BPD = thetas_9MS[grep('BPD', thetas_9MS$Episode_Identifier),]
 Time_agnostic_p = as.list(formals(post_prob_CLI)$p)
 ```
 
-```{r}
+```{r, echo=FALSE}
 # Highlight some specific examples (useful for slides when presenting work)
-Hightlight_BPD_examples = T 
+Hightlight_BPD_examples = F
 if(Hightlight_BPD_examples){
   example_inds = grepl('BPD_644_', Thetas_BPD$Episode_Identifier) | 
     grepl('BPD_598_', Thetas_BPD$Episode_Identifier) | 
@@ -585,7 +568,7 @@ if(Hightlight_BPD_examples){
 
 Plotted by radical cure versus no radical cure, as that is the most informative distinction here.
 
-```{r Supplementary_TimeEffect_onPosterior, fig.width=7, fig.height=7}
+```{r Supplementary_TimeEffect_onPosterior, fig.width=7, fig.height=7, echo=FALSE}
 if(CREATE_PLOTS){
   par(mfrow=c(2,2),las=1, bty='n',family='serif')
   
@@ -598,7 +581,6 @@ if(CREATE_PLOTS){
        col = drug_cols2[thetas_9MS$drug], 
        main = expression(log[10]~('posterior probability of relapse')),pch=20)
   lines(-10:0,-10:0)
-  legend('bottomright', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
   
   # Annotate by examples
   if(Hightlight_BPD_examples){
@@ -607,7 +589,8 @@ if(CREATE_PLOTS){
            pch=1, cex = 1.5, col='black')
     text(x = log10(thetas_9MS_Tagnostic$L[Tagnostic_example_inds]), 
          y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
-         labels = example_ids, pos = 2, cex = 0.7)}
+         labels = example_ids, pos = 2, cex = 0.7)
+  }
   
   plot(x = log10(thetas_9MS_Tagnostic$I), 
        y = log10(thetas_9MS$I), 
@@ -617,6 +600,8 @@ if(CREATE_PLOTS){
        col = drug_cols2[thetas_9MS$drug], 
        main = expression(log[10]~('posterior probability of reinfection')),pch=20)
   lines(-20:0,-20:0)
+  legend('topleft', legend = c('No PMQ', 'PMQ+'), 
+         col = drug_cols2[2:3], pch = 20, bty = 'o', bg = 'white')
   
   # Prior versus full posterior
   plot(x = log10(Time_Estimates_1$Relapse_mean_theta),
@@ -627,16 +612,18 @@ if(CREATE_PLOTS){
        col= drug_cols2[thetas_9MS$drug],
        main = expression(log[10]~('posterior probability of relapse')),pch=20)
   lines(-10:10,-10:10)
-  legend('bottomright', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+  #legend('bottomright', legend = c('No PMQ', 'PMQ+'), 
+  #       col = drug_cols2[2:3], pch = 20, bty = 'n')
   
   # Annotate by examples
-  points(x = log10(Time_Estimates_1$Relapse_mean_theta[Time1_example_inds]), 
+  if(Hightlight_BPD_examples){
+    points(x = log10(Time_Estimates_1$Relapse_mean_theta[Time1_example_inds]), 
+           y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
+           pch=1, cex = 1.5, col='black')
+    text(x = log10(Time_Estimates_1$Relapse_mean_theta[Time1_example_inds]), 
          y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
-         pch=1, cex = 1.5, col='black')
-  text(x = log10(Time_Estimates_1$Relapse_mean_theta[Time1_example_inds]), 
-       y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
-       labels = example_ids, pos = 2, cex = 0.7)
-  
+         labels = example_ids, pos = 2, cex = 0.7)
+  }
   plot(log10(Time_Estimates_1$ReInfection_mean_theta),
        log10(thetas_9MS$I),
        xlab = 'Time-to-event prior', 
@@ -651,7 +638,7 @@ if(CREATE_PLOTS){
 
 Probability of states, ordered from most to least likely:
 
-```{r, fig.height=12}
+```{r, fig.height=12, echo=FALSE}
 if(CREATE_PLOTS){
   par(mfrow=c(3,2),las=1, bty='n',family = 'serif')
   for(state in states){
@@ -699,7 +686,7 @@ if(CREATE_PLOTS){
 # BPD Final plot
 
 
-```{r BPD_efficacy, fig.width=10}
+```{r BPD_efficacy, fig.width=10,echo=FALSE}
 if(CREATE_PLOTS){
   par(mfrow=c(1,2),las=1, bty='n', family = 'serif')
   ordered = sort.int(Thetas_BPD$L, decreasing = TRUE, index.return = TRUE)
@@ -970,7 +957,7 @@ MS_pooled_summary$Plotting_col_Values =
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = 1:3))
 ```
 
-```{r CoatneyStylePLot}
+```{r CoatneyStylePLot, echo=FALSE}
 # Only the recurrences for which we can compute estimates of recurrence state
 MS_final = filter(MS_pooled_summary, !is.na(L_mean))
 MS_final = arrange(MS_final, desc(Drug), desc(FU), desc(TotalEpisodes))
@@ -1039,7 +1026,7 @@ writeLines(sprintf('The Coatney style plot is showing %s recurrences in %s indiv
                    nrow(MS_final), length(ids)))
 ```
 
-```{r CompleteDataPlot, fig.height=7, fig.width=7}
+```{r CompleteDataPlot, fig.height=7, fig.width=7, echo=FALSE}
 if(CREATE_PLOTS){
   
   par(las=1, mfcol = c(2,1), mar=c(4,4,1,1), bty='n', family = 'serif')
@@ -1114,8 +1101,8 @@ if(CREATE_PLOTS){
   
 }
 ```
-Individuals who appear to relapse very late (more than 300 days after last episode):
 
+Individuals who appear to relapse very late (more than 300 days after last episode):
 ```{r}
 MS_pooled = reformat_MSdata(MS_pooled)
 IDs_late_relapse = MS_final[which(MS_final$timeSinceLastEpisode>300 & MS_final$L_lower>.9),'ID']
@@ -1123,52 +1110,100 @@ IDs_late_relapse = MS_final[which(MS_final$timeSinceLastEpisode>300 & MS_final$L
 writeLines(sprintf('The episode ids of interest are: %s',
                    MS_final[which(MS_final$timeSinceLastEpisode>300 & MS_final$L_lower>.9),
                             'Episode_Identifier']))
-
-# This isn't working on my Mac
-# That's odd... its working on mine (maybe a path problem?)
-# ColorPlot_MSdata(MSdata = MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 print(MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 ```
 
 
-The summaries of the final dataset:
-```{r}
+The summaries of the final dataset. Results for all those genotyped who did not receive primaquine (artesunate or chloroquine monotherapy):
+```{r, echo=FALSE}
 table(MS_final$Treatment[!duplicated(MS_final$ID)]) 
-# James, this sums to 159 - surely should sum to 164? Have we lost 5 people somewhere? 
-# Yes: gotten rid of the 5 people who don't have recurrent episodes
 
-ind_CQ = MS_final$Drug==2
-writeLines(sprintf('In no-primaquine individuals, the weighted average of relapses is %s (%s-%s)',
-                   round(100*sum(MS_final$L_mean[ind_CQ])/sum(ind_CQ),1),
-                   round(100*sum(MS_final$L_lower[ind_CQ])/sum(ind_CQ),1),
-                   round(100*sum(MS_final$L_upper[ind_CQ])/sum(ind_CQ),1)))
+ind_noPMQ = MS_final$Treatment=='AS' | MS_final$Treatment=='CHQ'
+writeLines(sprintf('In no-primaquine individuals, the weighted average of relapse is %s (%s-%s), for %s recurrences',
+                   round(100*sum(MS_final$L_mean[ind_noPMQ])/sum(ind_noPMQ),1),
+                   round(100*sum(MS_final$L_lower[ind_noPMQ])/sum(ind_noPMQ),1),
+                   round(100*sum(MS_final$L_upper[ind_noPMQ])/sum(ind_noPMQ),1),
+                   sum(ind_noPMQ)))
 
-writeLines(sprintf('In no-primaquine individuals, the weighted average of recrudescences is %s (%s-%s)',
-                   round(100*sum(MS_final$C_mean[ind_CQ],na.rm=T)/sum(ind_CQ),1),
-                   round(100*sum(MS_final$C_lower[ind_CQ],na.rm=T)/sum(ind_CQ),1),
-                   round(100*sum(MS_final$C_upper[ind_CQ],na.rm=T)/sum(ind_CQ),1)))
+writeLines(sprintf('In no-primaquine individuals, the weighted average of recrudescences is %s (%s-%s), for %s recurrences',
+                   round(100*sum(MS_final$C_mean[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
+                   round(100*sum(MS_final$C_lower[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
+                   round(100*sum(MS_final$C_upper[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
+                   sum(ind_noPMQ)))
 
-writeLines(sprintf('In no-primaquine individuals, the weighted average of reinfections is %s (%s-%s)',
-                   round(100*sum(MS_final$I_mean[ind_CQ],na.rm=T)/sum(ind_CQ),1),
-                   round(100*sum(MS_final$I_lower[ind_CQ],na.rm=T)/sum(ind_CQ),1),
-                   round(100*sum(MS_final$I_upper[ind_CQ],na.rm=T)/sum(ind_CQ),1)))
+writeLines(sprintf('In no-primaquine individuals, the weighted average of reinfections is %s (%s-%s), for %s recurrences',
+                   round(100*sum(MS_final$I_mean[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
+                   round(100*sum(MS_final$I_lower[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
+                   round(100*sum(MS_final$I_upper[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
+                   sum(ind_noPMQ)))
 
+```
 
-ind_PMQ = MS_final$Drug==3
-writeLines(sprintf('In primaquine treated individuals, the weighted average of relapses is %s (%s-%s)',
+Results for all those genotyped who did receive primaquine (VHX and BPD studies combined):
+```{r, echo=FALSE}
+ind_PMQ = MS_final$Treatment=='PMQ'
+writeLines(sprintf('In primaquine treated individuals, the weighted average of relapses is %s (%s-%s), for %s recurrences',
                    round(100*sum(MS_final$L_mean[ind_PMQ])/sum(ind_PMQ),1),
                    round(100*sum(MS_final$L_lower[ind_PMQ])/sum(ind_PMQ),1),
-                   round(100*sum(MS_final$L_upper[ind_PMQ])/sum(ind_PMQ),1)))
+                   round(100*sum(MS_final$L_upper[ind_PMQ])/sum(ind_PMQ),1),
+                   sum(ind_PMQ)))
 
-writeLines(sprintf('In primaquine treated individuals, the weighted average of recrudescences is %s (%s-%s)',
+writeLines(sprintf('In primaquine treated individuals, the weighted average of recrudescences is %s (%s-%s), for %s recurrences',
                    round(100*sum(MS_final$C_mean[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
                    round(100*sum(MS_final$C_lower[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
-                   round(100*sum(MS_final$C_upper[ind_PMQ],na.rm=T)/sum(ind_PMQ),1)))
+                   round(100*sum(MS_final$C_upper[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
+                   sum(ind_PMQ)))
 
-writeLines(sprintf('In primaquine treated individuals, the weighted average of reinfections is %s (%s-%s)',
+writeLines(sprintf('In primaquine treated individuals, the weighted average of reinfections is %s (%s-%s), for %s recurrences',
                    round(100*sum(MS_final$I_mean[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
                    round(100*sum(MS_final$I_lower[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
-                   round(100*sum(MS_final$I_upper[ind_PMQ],na.rm=T)/sum(ind_PMQ),1)))
+                   round(100*sum(MS_final$I_upper[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
+                   sum(ind_PMQ)))
+```
+
+Results for all those genotyped who did receive primaquine, only in the VHX study (unknown denominator)
+```{r, echo=FALSE}
+ind_PMQ_VHX = intersect(which(MS_final$Treatment=='PMQ'), grep('VHX',MS_final$ID))
+writeLines(sprintf('In primaquine treated individuals (VHX), the weighted average of relapses is %s (%s-%s), for %s recurrences',
+                   round(100*sum(MS_final$L_mean[ind_PMQ_VHX])/length(ind_PMQ_VHX),1),
+                   round(100*sum(MS_final$L_lower[ind_PMQ_VHX])/length(ind_PMQ_VHX),1),
+                   round(100*sum(MS_final$L_upper[ind_PMQ_VHX])/length(ind_PMQ_VHX),1),
+                   length(ind_PMQ_VHX)))
+
+writeLines(sprintf('In primaquine treated individuals (VHX), the weighted average of recrudescences is %s (%s-%s), for %s recurrences',
+                   round(100*sum(MS_final$C_mean[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
+                   round(100*sum(MS_final$C_lower[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
+                   round(100*sum(MS_final$C_upper[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
+                   length(ind_PMQ_VHX)))
+
+writeLines(sprintf('In primaquine treated individuals (VHX), the weighted average of reinfections is %s (%s-%s), for %s recurrences',
+                   round(100*sum(MS_final$I_mean[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
+                   round(100*sum(MS_final$I_lower[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
+                   round(100*sum(MS_final$I_upper[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
+                   length(ind_PMQ_VHX)))
+
+```
+
+Results for all those genotyped who did receive primaquine, only in the BPD study (known denominator)
+```{r, echo=FALSE}
+ind_PMQ_BPD = intersect(which(MS_final$Treatment=='PMQ'), grep('BPD',MS_final$ID))
+writeLines(sprintf('In primaquine treated individuals (BPD), the weighted average of relapses is %s (%s-%s), for %s recurrences',
+                   round(100*sum(MS_final$L_mean[ind_PMQ_BPD])/length(ind_PMQ_BPD),1),
+                   round(100*sum(MS_final$L_lower[ind_PMQ_BPD])/length(ind_PMQ_BPD),1),
+                   round(100*sum(MS_final$L_upper[ind_PMQ_BPD])/length(ind_PMQ_BPD),1),
+                   length(ind_PMQ_BPD)))
+
+writeLines(sprintf('In primaquine treated individuals (BPD), the weighted average of recrudescences is %s (%s-%s), for %s recurrences',
+                   round(100*sum(MS_final$C_mean[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
+                   round(100*sum(MS_final$C_lower[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
+                   round(100*sum(MS_final$C_upper[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
+                   length(ind_PMQ_BPD)))
+
+writeLines(sprintf('In primaquine treated individuals (BPD), the weighted average of reinfections is %s (%s-%s), for %s recurrences',
+                   round(100*sum(MS_final$I_mean[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
+                   round(100*sum(MS_final$I_lower[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
+                   round(100*sum(MS_final$I_upper[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
+                   length(ind_PMQ_BPD)))
 
 ```
 
@@ -1207,7 +1242,7 @@ if(RUN_MODELS_FALSE_POSITIVE){
 ```
 
 
-```{r}
+```{r, echo=FALSE}
 writeLines(sprintf('The false-positive discovery rate of the genetic model is estimated as %s percent. 
                    \nThis is based on %s pairwise comparisons',
                    round(100*sum( Inflated_Results$L > Epsilon_upper )/nrow(Inflated_Results),2),
@@ -1219,12 +1254,6 @@ writeLines(sprintf('The false-positive discovery rate of the genetic model is es
 Almost all episodes in BPD were typed. Therefore we can estimate the true efficacy comparing with historical controls (VHX).
 
 ```{r}
-#BPD_data = Combined_Time_Data[grep('BPD', Combined_Time_Data$patientid),]
-# hist(table(BPD_data$patientid),breaks = seq(0.5,3.5,by=1),main='',
-#      xlab = '', xaxt='n')
-# axis(1, at = 1:3, labels = c('Enrollment\nonly','1\nrecurrence','2\nrecurrences'),
-#      tick = FALSE)
-
 Combined_Time_Data$Episode_Identifier = apply(Combined_Time_Data,1,
                                               function(x){
                                                 paste(x['patientid'],as.integer(x['episode']),
@@ -1419,110 +1448,109 @@ writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%
 
 
 This won't go into this paper but looking out of interest:
-  
-  Does 2D6 correlate with carboxy ?
-  
-  ```{r}
-  TwoD6_dat = read.csv('../RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
-  TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],
-  as.integer(x['Patient.ID']),
-  sep = '_'))
-  TwoD6_dat$Phenotype = mapvalues(TwoD6_dat$X2D6.Phenotype, 
-  from = c('PM','IM', 'EM'), to = 1:3)
-  Combined_Time_Data$Phenotype = Combined_Time_Data$ASscore = NA
-  for(i in 1:nrow(Combined_Time_Data)){
+Does 2D6 correlate with carboxy ?
+
+```{r}
+TwoD6_dat = read.csv('../RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
+TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],
+                                                     as.integer(x['Patient.ID']),
+                                                     sep = '_'))
+TwoD6_dat$Phenotype = mapvalues(TwoD6_dat$X2D6.Phenotype, 
+                                from = c('PM','IM', 'EM'), to = 1:3)
+Combined_Time_Data$Phenotype = Combined_Time_Data$ASscore = NA
+for(i in 1:nrow(Combined_Time_Data)){
   id = Combined_Time_Data$patientid[i]
   if(sum(TwoD6_dat$ID==id)>0){
-  Combined_Time_Data$ASscore[i] = TwoD6_dat$AS.score[TwoD6_dat$ID==id]
-  Combined_Time_Data$Phenotype[i] = TwoD6_dat$Phenotype[TwoD6_dat$ID==id]
+    Combined_Time_Data$ASscore[i] = TwoD6_dat$AS.score[TwoD6_dat$ID==id]
+    Combined_Time_Data$Phenotype[i] = TwoD6_dat$Phenotype[TwoD6_dat$ID==id]
   }
-  }
-  
-  mod_2D6 = lmer(log10_carboxyPMQ ~ ASscore + NumberDaysPMQ + (1 | patientid), 
-  data = Combined_Time_Data)
-  summary(mod_2D6)
-  plot(Combined_Time_Data$ASscore, Combined_Time_Data$log10_carboxyPMQ, pch=20)
-  lines(xs, predict(mod_2D6, data.frame(ASscore=xs,NumberDaysPMQ=7,patientid='new'),allow.new.levels=T),lwd=3)
-  ```
-  
-  
-  ```{r}
-  Combined_2D6data = filter(Combined_Time_Data, !is.na(ASscore), !Censored)
-  for(id in unique(Combined_2D6data$patientid)){
-  ind = Combined_2D6data$patientid==id
-  Combined_2D6data$Failure_YN[ind] = max(Combined_2D6data$Failure_YN[ind])
-  }
-  Combined_2D6data = Combined_2D6data[!duplicated(Combined_2D6data$patientid),]
-  mod_Failure = glm(Failure_YN ~ ASscore, 
-  data = Combined_2D6data, family = 'binomial')
-  summary(mod_Failure)
-  ```
-  
-  
-  # Extra Analyses
-  
-  ## Looking at the effect of inbreeding coefficient
-  
-  Our model has a parameter $\alpha$ which defines the level of inbreeding within the population.
-  Taylor is developing methods for the estimation of $\alpha$ from genetic data (in preparation).
-  
-  We look at the sensitivity of the results (all the above is with $\alpha=0$) for a reasonable upper bound of $\alpha=0.175$.
-  
-  We rerun the analysis on the single run isolates (low computational complexity):
-  
-  ```{r}
-  alphaUpper = 0.175
-  if(RUN_MODELS_SINGLE_SIMPLE){
-  #===============================================
-  # Run (with time-to-event)
-  #===============================================
-  # Approx 100 secs per full model run
-  tic()
-  thetas_9MS_alphaUpper = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
-  p = p, cores = 6, verbose = F, alpha = alphaUpper) 
-  thetas_9MS_alphaUpper$Episode_Identifier = rownames(thetas_9MS_alphaUpper)
-  save(thetas_9MS_alphaUpper, file = '../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
-  toc()
-  } else {
-  load('../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
-  }
-  ```
-  
-  ```{r}
-  par(las=1, bty='n', mfrow=c(2,2))
-  plot(log10(thetas_9MS$L), log10(thetas_9MS_alphaUpper$L),
-  ylab = 'Relapse: inbred',
-  xlab = 'Relapse: no inbreeding',
-  col= drug_cols2[thetas_9MS$drug],pch=20)
-  lines(c(-10,10),c(-10,10),lty=2)
-  
-  plot(log10(thetas_9MS$L), log10(thetas_9MS$L)-log10(thetas_9MS_alphaUpper$L),
-  ylab = 'Difference in Log Relapse Probabilities',
-  xlab = 'Relapse Probability: no inbreeding',
-  col= drug_cols2[thetas_9MS$drug],pch=20)
-  abline(h=0,lty=2)
-  legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
-  
-  ###****** Reinfection : comparison *****#####
-  par(las=1, bty='n')
-  plot(log10(thetas_9MS$I), log10(thetas_9MS_alphaUpper$I),
-  ylab = 'Reinfection: inbred',
-  xlab = 'Reinfection: no inbreeding',
-  col= drug_cols2[thetas_9MS$drug],pch=20)
-  lines(c(-10,10),c(-10,10),lty=2)
-  
-  plot(log10(thetas_9MS$I), log10(thetas_9MS$I)-log10(thetas_9MS_alphaUpper$I),
-  ylab = 'Difference in Log Reinfection Probabilities',
-  xlab = 'Reinfection: no inbreeding',
-  col= drug_cols2[thetas_9MS$drug],pch=20)
-  legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
-  
-  abline(h=0,lty=2)
-  ```
-  
-  Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
-  This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
-  
-  For the non-primaquine group, it is just tempering the very low probabilities of reinfection seen for some episodes.
-  
-  In conclusion, this isn't changing the results significantly and would imply a greater primaquine efficacy that reported in the paper.
+}
+
+mod_2D6 = lmer(log10_carboxyPMQ ~ ASscore + NumberDaysPMQ + (1 | patientid), 
+               data = Combined_Time_Data)
+summary(mod_2D6)
+plot(Combined_Time_Data$ASscore, Combined_Time_Data$log10_carboxyPMQ, pch=20)
+lines(xs, predict(mod_2D6, data.frame(ASscore=xs,NumberDaysPMQ=7,patientid='new'),allow.new.levels=T),lwd=3)
+```
+
+
+```{r}
+Combined_2D6data = filter(Combined_Time_Data, !is.na(ASscore), !Censored)
+for(id in unique(Combined_2D6data$patientid)){
+ind = Combined_2D6data$patientid==id
+Combined_2D6data$Failure_YN[ind] = max(Combined_2D6data$Failure_YN[ind])
+}
+Combined_2D6data = Combined_2D6data[!duplicated(Combined_2D6data$patientid),]
+mod_Failure = glm(Failure_YN ~ ASscore, 
+data = Combined_2D6data, family = 'binomial')
+summary(mod_Failure)
+```
+
+
+# Extra Analyses
+
+## Looking at the effect of inbreeding coefficient
+
+Our model has a parameter $\alpha$ which defines the level of inbreeding within the population.
+Taylor is developing methods for the estimation of $\alpha$ from genetic data (in preparation).
+
+We look at the sensitivity of the results (all the above is with $\alpha=0$) for a reasonable upper bound of $\alpha=0.175$.
+
+We rerun the analysis on the single run isolates (low computational complexity):
+
+```{r}
+alphaUpper = 0.175
+if(RUN_MODELS_SINGLE_SIMPLE){
+#===============================================
+# Run (with time-to-event)
+#===============================================
+# Approx 100 secs per full model run
+tic()
+thetas_9MS_alphaUpper = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
+p = p, cores = 6, verbose = F, alpha = alphaUpper) 
+thetas_9MS_alphaUpper$Episode_Identifier = rownames(thetas_9MS_alphaUpper)
+save(thetas_9MS_alphaUpper, file = '../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
+toc()
+} else {
+load('../RData/GeneticModel/thetas_9MS_alphaUpper.RData')
+}
+```
+
+```{r}
+par(las=1, bty='n', mfrow=c(2,2))
+plot(log10(thetas_9MS$L), log10(thetas_9MS_alphaUpper$L),
+ylab = 'Relapse: inbred',
+xlab = 'Relapse: no inbreeding',
+col= drug_cols2[thetas_9MS$drug],pch=20)
+lines(c(-10,10),c(-10,10),lty=2)
+
+plot(log10(thetas_9MS$L), log10(thetas_9MS$L)-log10(thetas_9MS_alphaUpper$L),
+ylab = 'Difference in Log Relapse Probabilities',
+xlab = 'Relapse Probability: no inbreeding',
+col= drug_cols2[thetas_9MS$drug],pch=20)
+abline(h=0,lty=2)
+legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+
+###****** Reinfection : comparison *****#####
+par(las=1, bty='n')
+plot(log10(thetas_9MS$I), log10(thetas_9MS_alphaUpper$I),
+ylab = 'Reinfection: inbred',
+xlab = 'Reinfection: no inbreeding',
+col= drug_cols2[thetas_9MS$drug],pch=20)
+lines(c(-10,10),c(-10,10),lty=2)
+
+plot(log10(thetas_9MS$I), log10(thetas_9MS$I)-log10(thetas_9MS_alphaUpper$I),
+ylab = 'Difference in Log Reinfection Probabilities',
+xlab = 'Reinfection: no inbreeding',
+col= drug_cols2[thetas_9MS$drug],pch=20)
+legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
+
+abline(h=0,lty=2)
+```
+
+Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
+This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
+
+For the non-primaquine group, it is just tempering the very low probabilities of reinfection seen for some episodes.
+
+In conclusion, this isn't changing the results significantly and would imply a greater primaquine efficacy that reported in the paper.

@@ -4,7 +4,6 @@ output:
   html_document:
     df_print: paged
     keep_md: yes
-  pdf_document: default
 ---
 
 To-do: change plot N_alleles to N_alleles_Choices
@@ -17,7 +16,7 @@ To-do: change plot N_alleles to N_alleles_Choices
 Determines whether to run the full suite of simulations (takes a long time to run).
 
 ```r
-RUN_MODELS = T
+RUN_MODELS = F
 PLOT_RESULTS = T
 ```
 
@@ -38,7 +37,7 @@ Outline of simulation is as follows:
 
 ```r
 # Setup simulation study parameters
-N_alleles_Choices = c(13,4,28) # Marker cardinality (set to match mean and range our panel)
+N_alleles_Choices = c(4,13,28) # Marker cardinality (set to match mean and range our panel)
 K_indivs = 1000 # Number of indiviuduals
 Ms = seq(3,12, by = 3) # Number of markers
 K_poly_markers = 3 # Number of polyallelic markers 
