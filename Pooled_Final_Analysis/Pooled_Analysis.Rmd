@@ -798,7 +798,7 @@ We blow up the pooled analysis into all pairs within individuals:
 ```{r, include=FALSE}
 MS_inflate = reformat_MSdata(filter(MS_pooled, ID %in% IDs_remaining), MSs = MSs_all)
 MS_inflated = Inflate_into_pairs(MS_data = MS_inflate)
-writeLines(sprintf('Number of pairwise probabilities of recurrence states between episodes: %s',length(unique(MS_inflated$Episode_Identifier))))
+writeLines(sprintf('Number of pairwise probabilities of recurrence states between episodes: %s',length(unique(MS_inflated$ID))))
 ```
 
 
