@@ -82,13 +82,20 @@ Combined_Time_Data <- as.data.frame(Combined_Time_Data)
 Epsilon_upper = 0.7
 Epsilon_lower = 0.3
 transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
-
 ```
 
 
 Summary of the data and the whole of the VHX data set versus the subset typed (in terms of number of episodes):
 
 ```{r, echo=FALSE}
+censored_ind = Combined_Time_Data$Censored == 1 # index censored rows in Combined_Time_Data to prevent over counting rows
+uncensored_patientids = Combined_Time_Data[!censored_ind, 'patientid'] # vector of patientids excluding censored rows (inc. duplicates)
+All_VHX_epi_count = table(uncensored_patientids[grepl('VHX_',uncensored_patientids)]) # Number of episodes per person VHX
+All_BPD_epi_count = table(uncensored_patientids[grepl('BPD_',uncensored_patientids)]) # Number of episodes per person VHX
+
+writeLines(sprintf('Number of individuals in VHX and BPD trials: %s and %s, respectively',
+                  length(All_VHX_epi_count), length(All_BPD_epi_count)))
+
 writeLines(sprintf('Number of individuals with at least one episode typed: %s',
                    length(unique(MS_pooled$ID))))
 writeLines(sprintf('Number of episodes typed: %s',
@@ -106,8 +113,11 @@ table(MS_pooled$Treatment[!duplicated(MS_pooled$ID) &
 writeLines(sprintf('\nFrom BPD trial there are %s individuals with total of %s episodes typed (enrollment: %s; recurrent %s)',
                    length(unique(MS_pooled$ID[grep('BPD',MS_pooled$ID)])),
                    length(unique(MS_pooled$Episode_Identifier[grep('BPD',MS_pooled$ID)])), 
-                   length(unique(MS_pooled[grepl('BPD',MS_pooled$ID) & MS_pooled$Episode == 1, 'Episode_Identifier'])), 
-                   length(unique(MS_pooled[grepl('BPD',MS_pooled$ID) & MS_pooled$Episode > 1, 'Episode_Identifier']))))
+                   length(unique(MS_pooled[grepl('BPD',MS_pooled$ID) & MS_pooled$Episode == 1,
+                                           'Episode_Identifier'])), 
+                   length(unique(MS_pooled[grepl('BPD',MS_pooled$ID) & MS_pooled$Episode > 1,
+                                           'Episode_Identifier']))))
+
 writeLines(sprintf('From VHX trial there are %s individuals with total of %s episodes typed (enrollment: %s; recurrent %s)',
                    length(unique(MS_pooled$ID[grep('VHX',MS_pooled$ID)])),
                    length(unique(MS_pooled$Episode_Identifier[grep('VHX',MS_pooled$ID)])),
@@ -115,16 +125,11 @@ writeLines(sprintf('From VHX trial there are %s individuals with total of %s epi
                    length(unique(MS_pooled[grepl('VHX',MS_pooled$ID) & MS_pooled$Episode > 1, 'Episode_Identifier']))))
 ```
 
-
 ```{r}
 #=================================================================
 # Were all episodes typed if a person was selected for genotyping? 
 #=================================================================
 MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] # Collapse rows due to COI > 2
-censored_ind = Combined_Time_Data$Censored == 1 # index censored rows in Combined_Time_Data to prevent over counting rows
-uncensored_patientids = Combined_Time_Data[!censored_ind, 'patientid'] # vector of patientids excluding censored rows (inc. duplicates)
-All_VHX_epi_count = table(uncensored_patientids[grepl('VHX_',uncensored_patientids)]) # Number of episodes per person VHX
-All_BPD_epi_count = table(uncensored_patientids[grepl('BPD_',uncensored_patientids)]) # Number of episodes per person VHX
 
 # No. of typed episodes per person with one or more typed episodes in VHX and BPD
 no_of_typed_epi_per_person_typed_VHX = table(MS_pooled_summary$ID[grepl('VHX',MS_pooled_summary$ID)])  
@@ -134,9 +139,6 @@ no_of_typed_epi_per_person_typed_BPD = table(MS_pooled_summary$ID[grepl('BPD',MS
 no_of_epi_per_person_typed_VHX = All_VHX_epi_count[names(All_VHX_epi_count) %in% names(no_of_typed_epi_per_person_typed_VHX)]
 no_of_epi_per_person_typed_BPD = All_BPD_epi_count[names(All_BPD_epi_count) %in% names(no_of_typed_epi_per_person_typed_BPD)]
 
-
-length(All_VHX_epi_count)
-length(All_BPD_epi_count)
 #-------------------------
 # VHX data set summary: breif because genotyping VHX was not exhaustive
 #-------------------------
@@ -183,9 +185,7 @@ X5 = lapply(ind_missing_typed_epi, function(x){
 
 X6 = lapply(1:length(X5), function(i){setdiff(X4[[i]], X5[[i]])}) # Not typed episodes
 X7 = sum(sapply(X6, function(x)sum(x>1))) # Not typed recurrence
-```
 
-```{r, echo=FALSE}
 writeLines(paste(sprintf('BPD: of %s of the people who recurred: %s person/people with %s recurrence/s was not selected for genotyping.',
                          length(unique(indivs_who_recurred)), 
                          length(unique(indivs_who_were_not_typed)), 
@@ -193,8 +193,10 @@ writeLines(paste(sprintf('BPD: of %s of the people who recurred: %s person/peopl
                  sprintf('Of %s of %s BPD individual/s selected for genotyping: %s to %s of their episodes were not typed (%s episodes summing over the %s individuals).', X1,X0,X2[1],X2[2],X3,X1), 
                  sprintf('Of the %s episodes not typed %s were recurrences.',X3, X7),
                  sprintf('In total there were %s recurrences: %s untyped.', sum(recurrences), recurrences[indivs_who_were_not_typed] + X7)))
+```
 
-# For plots
+```{r, echo=FALSE}
+# Plot of episodes versus total numbers of episodes per person selected for genotyping
 par(mfrow = c(1,2), family = 'serif', pty = 's') 
 plot(x = as.numeric(no_of_epi_per_person_typed_VHX), y = as.numeric(no_of_typed_epi_per_person_typed_VHX), 
      xlab = 'Number of episodes per person', ylab = 'Number of typed episodes per person', main = 'VHX',
@@ -346,7 +348,7 @@ Fs_Combined = sapply(Alpha_Posteriors, function(x){x/sum(x)})
 ```{r}
 #==================================================================
 # Save a data set of monoclonal data and allele frequencies for
-# relatedness estimation 
+# relatedness estimation
 #==================================================================
 monoclonal_names = rownames(COIs)[COIs$MOI == 1]
 monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
@@ -422,7 +424,7 @@ The approach is Bayesian and consists of the following:
 The following iterates through each individual and computes the probability of relatedness states.
 
 ```{r}
-# # We also remove MS data for which there are no recurrent data
+# First we remove MS data for which there are no recurrent data
 N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
 MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
 # recreate pooled summary dataset
@@ -495,7 +497,8 @@ if(RUN_MODELS_SINGLE_SIMPLE){
 ```{r, include=FALSE}
 if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
   #===============================================
-  # Run full Bayesian with sampling at random from time prior (treats time posterior as discrete uniform prior)
+  # Run full Bayesian with sampling at random from time prior 
+  # (treats time posterior as discrete uniform prior)
   # takes about 1.1 hour on 6 cores
   # The outer loop is not parallelised - suboptimal coding
   #===============================================
@@ -546,7 +549,6 @@ thetas_9MS_Tagnostic = arrange(thetas_9MS_Tagnostic, Episode_Identifier)
 thetas_9MS$drug = Time_Estimates_1$arm_num # Add drug
 thetas_9MS_Tagnostic$drug = Time_Estimates_1$arm_num # Add drug
 
-
 # Extract BPD only for BPD only plots
 BPD_data = Thetas_full_post[grep('BPD',rownames(Thetas_full_post)),]
 Thetas_BPD = thetas_9MS[grep('BPD', thetas_9MS$Episode_Identifier),]
@@ -559,10 +561,7 @@ Time_agnostic_p = as.list(formals(post_prob_CLI)$p)
 # Highlight some specific examples (useful for slides when presenting work)
 Hightlight_BPD_examples = F
 if(Hightlight_BPD_examples){
-  example_inds = grepl('BPD_644_', Thetas_BPD$Episode_Identifier) | 
-    grepl('BPD_598_', Thetas_BPD$Episode_Identifier) | 
-    grepl('BPD_562_', Thetas_BPD$Episode_Identifier) |
-    grepl('BPD_53_', Thetas_BPD$Episode_Identifier) 
+  example_inds = grepl('BPD_644_', Thetas_BPD$Episode_Identifier) 
   example_ids = Thetas_BPD$Episode_Identifier[example_inds]
   example_inds_times = MS_pooled_summary$timeSinceLastEpisode[MS_pooled_summary$Episode_Identifier %in% example_ids]
   Tagnostic_example_inds = thetas_9MS_Tagnostic$Episode_Identifier %in% example_ids
@@ -578,7 +577,6 @@ Plotted by radical cure versus no radical cure, as that is the most informative 
 ```{r Supplementary_TimeEffect_onPosterior, fig.width=7, fig.height=7, echo=FALSE}
 if(CREATE_PLOTS){
   par(mfrow=c(2,2),las=1, bty='n',family='serif')
-  
   
   # Time agnostic versus full posterior 
   plot(x = thetas_9MS_Tagnostic$L, 
@@ -630,22 +628,6 @@ if(CREATE_PLOTS){
   legend('topleft', legend = c('No PMQ', 'PMQ+'), inset = 0.05, 
          col = drug_cols2[2:3], pch = 20, bty = 'o', bg = 'white')
   
-  # polygon(x = c(range(thetas_9MS_Tagnostic$I, na.rm = T),
-  #               rev(range(thetas_9MS_Tagnostic$I, na.rm = T))),
-  #         y = c(Epsilon_lower,
-  #               Epsilon_lower,
-  #               Epsilon_upper,
-  #               Epsilon_upper),
-  #         col = transparent_pink_band, border = NA)
-  # 
-  # polygon(y = c(range(thetas_9MS$I, na.rm = T),
-  #               rev(range(thetas_9MS$I, na.rm = T))),
-  #         x = c(Epsilon_lower,
-  #               Epsilon_lower,
-  #               Epsilon_upper,
-  #               Epsilon_upper),
-  #         col = transparent_pink_band, border = NA)
-  
   # Prior versus full posterior
   plot(x = Time_Estimates_1$Relapse_mean_theta,
        y = thetas_9MS$L,
@@ -691,24 +673,6 @@ if(CREATE_PLOTS){
        col= drug_cols2[thetas_9MS$drug], 
        main = 'Probability of reinfection', pch=20)
   abline(a = 0, b = 1)
-  
-  # polygon(x = c(range(Time_Estimates_1$ReInfection_mean_theta, na.rm = T),
-  #               rev(range(Time_Estimates_1$ReInfection_mean_theta, na.rm = T))),
-  #         y = c(Epsilon_lower,
-  #               Epsilon_lower,
-  #               Epsilon_upper,
-  #               Epsilon_upper),
-  #         col = transparent_pink_band, border = NA)
-  # 
-  # polygon(y = c(range(thetas_9MS$I, na.rm = T),
-  #               rev(range(thetas_9MS$I, na.rm = T))),
-  #         x = c(Epsilon_lower,
-  #               Epsilon_lower,
-  #               Epsilon_upper,
-  #               Epsilon_upper),
-  #         col = transparent_pink_band, border = NA)
-  
-  
 }
 ```
 
@@ -744,8 +708,7 @@ if(CREATE_PLOTS){
                                                               col = drug_cols2[thetas_9MS$drug[ordered$ix[i]]])
     }
     
-    
-    # Plot Genetic with time-agnostic prior
+    # Plot genetic with time-agnostic prior
     plot(ordered_Tagn$x, 
          panel.first = grid(), 
          pch=20, cex=.8,
@@ -760,7 +723,6 @@ if(CREATE_PLOTS){
 
 
 # BPD Final plot
-
 
 ```{r BPD_efficacy, fig.width=10,echo=FALSE}
 if(CREATE_PLOTS){
@@ -781,8 +743,11 @@ if(CREATE_PLOTS){
                                       col=drug_cols2[Thetas_BPD$drug[ordered$ix[i]]])
   }
   
-  writeLines(sprintf('The mean percentage of recurrences which are estimated to be relapses is %s%%',
-                     round(100*sum(Thetas_BPD$L + Thetas_BPD$C)/nrow(Thetas_BPD))))
+  writeLines(sprintf('The weighted average of recurrences which are estimated to be failures is %s%%',
+                     round(100*sum(Thetas_BPD$L + Thetas_BPD$C)/nrow(Thetas_BPD),2)))
+  writeLines(sprintf('The weighted average of recurrences which are estimated to be relapses is %s%%',
+                     round(100*sum(Thetas_BPD$L)/nrow(Thetas_BPD),2)))
+  writeLines(sprintf('Number of BPD recurrences analysed: %s', nrow(Thetas_BPD)))
   
   
   plot(NULL,
@@ -825,6 +790,7 @@ We remove the IDs that can be straightforwardly calculated:
 ind_calculated = which(MS_pooled_summary$Episode_Identifier %in% thetas_9MS$Episode_Identifier)
 IDs_calculated = unique(MS_pooled_summary$ID[ind_calculated])
 IDs_remaining = unique(MS_pooled_summary$ID[! MS_pooled_summary$ID %in% IDs_calculated])
+writeLines(sprintf('individuals with more than two recurrences: %s',length(IDs_remaining)))
 ```
 
 We blow up the pooled analysis into all pairs within individuals:
@@ -832,6 +798,7 @@ We blow up the pooled analysis into all pairs within individuals:
 ```{r, include=FALSE}
 MS_inflate = reformat_MSdata(filter(MS_pooled, ID %in% IDs_remaining), MSs = MSs_all)
 MS_inflated = Inflate_into_pairs(MS_data = MS_inflate)
+writeLines(sprintf('Number of pairwise probabilities of recurrence states between episodes: %s',length(unique(MS_inflated$Episode_Identifier))))
 ```
 
 
@@ -1030,6 +997,24 @@ MS_pooled_summary$Plotting_pch_Values =
 MS_pooled_summary$Plotting_col_Values = 
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = 1:3))
 ```
+```{r}
+# How many too complex to generate estimate for? 
+ind_recur = MS_pooled_summary$Episode > 1 # Filter out enrollment
+ind_complex_recur = is.na(MS_pooled_summary$L_mean[ind_recur])
+no_complex_recur = sum(ind_complex_recur) # Recurrences with NAs
+
+# How many of the complex infections result in the loss of an individual
+no_indiv_removed = sum(N_episodes_typed[MS_pooled_summary$ID[ind_recur][ind_complex_recur]] <= 2) 
+# Final number of people with recurrences analysed total and by trial
+indiv_recur_analysed = length(unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur])) 
+BPD_indiv_recur_analysed = sum(grepl('BPD', unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur])))
+VHX_indiv_recur_analysed = sum(grepl('VHX', unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur]))) 
+
+writeLines(sprintf('Of %s recurrences analysed, %s were too complex to estimate recurrence state probabilities, resulting in probability estimates for a total of %s recurrences from %s individuals (%s BPD and %s VHX)',
+                   sum(ind_recur), no_complex_recur,  sum(!ind_complex_recur), 
+                   indiv_recur_analysed, BPD_indiv_recur_analysed, VHX_indiv_recur_analysed))
+```
+
 
 ```{r CoatneyStylePLot, echo=FALSE}
 # Only the recurrences for which we can compute estimates of recurrence state
@@ -1189,7 +1174,7 @@ print(MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 
 The summaries of the final dataset. Results for all those genotyped who did not receive primaquine (artesunate or chloroquine monotherapy):
 ```{r, echo=FALSE}
-table(MS_final$Treatment[!duplicated(MS_final$ID)]) 
+table(MS_final$Treatment[!duplicated(MS_final$ID)]) # 208 individuals by treatment
 
 ind_noPMQ = MS_final$Treatment=='AS' | MS_final$Treatment=='CHQ'
 writeLines(sprintf('In no-primaquine individuals, the weighted average of relapse is %s (%s-%s), for %s recurrences',
@@ -1234,7 +1219,7 @@ writeLines(sprintf('In primaquine treated individuals, the weighted average of r
                    sum(ind_PMQ)))
 ```
 
-Results for all those genotyped who did receive primaquine, only in the VHX study (unknown denominator)
+Results for all those genotyped who did receive primaquine in the VHX study (unknown denominator)
 ```{r, echo=FALSE}
 ind_PMQ_VHX = intersect(which(MS_final$Treatment=='PMQ'), grep('VHX',MS_final$ID))
 writeLines(sprintf('In primaquine treated individuals (VHX), the weighted average of relapses is %s (%s-%s), for %s recurrences',
@@ -1520,8 +1505,7 @@ writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%
 ```
 
 
-This won't go into this paper but looking out of interest:
-Does 2D6 correlate with carboxy ?
+Not in manuscript, but looking out of interest: does 2D6 correlate with carboxy ?
 
 ```{r}
 TwoD6_dat = read.csv('~/Dropbox/RecurrentVivax/RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
@@ -1591,7 +1575,9 @@ if(RUN_MODELS_SINGLE_SIMPLE){
 
 ```{r}
 par(las=1, bty='n', mfrow=c(2,2))
-plot(log10(thetas_9MS$L), log10(thetas_9MS_alphaUpper$L),
+plot(thetas_9MS$L, 
+     thetas_9MS_alphaUpper$L,
+     log = 'xy',
      ylab = 'Relapse: inbred',
      xlab = 'Relapse: no inbreeding',
      col= drug_cols2[thetas_9MS$drug],pch=20)
@@ -1606,7 +1592,8 @@ legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20,
 
 ###****** Reinfection : comparison *****#####
 par(las=1, bty='n')
-plot(log10(thetas_9MS$I), log10(thetas_9MS_alphaUpper$I),
+plot(thetas_9MS$I, thetas_9MS_alphaUpper$I,
+     log = 'xy',
      ylab = 'Reinfection: inbred',
      xlab = 'Reinfection: no inbreeding',
      col= drug_cols2[thetas_9MS$drug],pch=20)

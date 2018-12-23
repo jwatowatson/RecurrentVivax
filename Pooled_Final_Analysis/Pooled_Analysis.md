@@ -19,6 +19,10 @@ Summary of the data and the whole of the VHX data set versus the subset typed (i
 
 
 ```
+## Number of individuals in VHX and BPD trials: 644 and 655, respectively
+```
+
+```
 ## Number of individuals with at least one episode typed: 217
 ```
 
@@ -62,16 +66,11 @@ Summary of the data and the whole of the VHX data set versus the subset typed (i
 ```
 
 
-
 ```r
 #=================================================================
 # Were all episodes typed if a person was selected for genotyping? 
 #=================================================================
 MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] # Collapse rows due to COI > 2
-censored_ind = Combined_Time_Data$Censored == 1 # index censored rows in Combined_Time_Data to prevent over counting rows
-uncensored_patientids = Combined_Time_Data[!censored_ind, 'patientid'] # vector of patientids excluding censored rows (inc. duplicates)
-All_VHX_epi_count = table(uncensored_patientids[grepl('VHX_',uncensored_patientids)]) # Number of episodes per person VHX
-All_BPD_epi_count = table(uncensored_patientids[grepl('BPD_',uncensored_patientids)]) # Number of episodes per person VHX
 
 # No. of typed episodes per person with one or more typed episodes in VHX and BPD
 no_of_typed_epi_per_person_typed_VHX = table(MS_pooled_summary$ID[grepl('VHX',MS_pooled_summary$ID)])  
@@ -81,23 +80,6 @@ no_of_typed_epi_per_person_typed_BPD = table(MS_pooled_summary$ID[grepl('BPD',MS
 no_of_epi_per_person_typed_VHX = All_VHX_epi_count[names(All_VHX_epi_count) %in% names(no_of_typed_epi_per_person_typed_VHX)]
 no_of_epi_per_person_typed_BPD = All_BPD_epi_count[names(All_BPD_epi_count) %in% names(no_of_typed_epi_per_person_typed_BPD)]
 
-
-length(All_VHX_epi_count)
-```
-
-```
-## [1] 644
-```
-
-```r
-length(All_BPD_epi_count)
-```
-
-```
-## [1] 655
-```
-
-```r
 #-------------------------
 # VHX data set summary: breif because genotyping VHX was not exhaustive
 #-------------------------
@@ -149,8 +131,15 @@ X5 = lapply(ind_missing_typed_epi, function(x){
 
 X6 = lapply(1:length(X5), function(i){setdiff(X4[[i]], X5[[i]])}) # Not typed episodes
 X7 = sum(sapply(X6, function(x)sum(x>1))) # Not typed recurrence
-```
 
+writeLines(paste(sprintf('BPD: of %s of the people who recurred: %s person/people with %s recurrence/s was not selected for genotyping.',
+                         length(unique(indivs_who_recurred)), 
+                         length(unique(indivs_who_were_not_typed)), 
+                         recurrences[indivs_who_were_not_typed]), 
+                 sprintf('Of %s of %s BPD individual/s selected for genotyping: %s to %s of their episodes were not typed (%s episodes summing over the %s individuals).', X1,X0,X2[1],X2[2],X3,X1), 
+                 sprintf('Of the %s episodes not typed %s were recurrences.',X3, X7),
+                 sprintf('In total there were %s recurrences: %s untyped.', sum(recurrences), recurrences[indivs_who_were_not_typed] + X7)))
+```
 
 ```
 ## BPD: of 81 of the people who recurred: 1 person/people with 1 recurrence/s was not selected for genotyping. Of 4 of 80 BPD individual/s selected for genotyping: 1 to 1 of their episodes were not typed (4 episodes summing over the 4 individuals). Of the 4 episodes not typed 3 were recurrences. In total there were 92 recurrences: 4 untyped.
@@ -265,7 +254,7 @@ We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 
 ```r
 #==================================================================
 # Save a data set of monoclonal data and allele frequencies for
-# relatedness estimation 
+# relatedness estimation
 #==================================================================
 monoclonal_names = rownames(COIs)[COIs$MOI == 1]
 monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
@@ -290,14 +279,14 @@ for(ms in MSs_all){
 ```
 
 ```
-## The effective cardinality for PV.3.502 with 13 observed alleles is 7.02
-## The effective cardinality for PV.3.27 with 33 observed alleles is 13.69
-## The effective cardinality for PV.ms8 with 46 observed alleles is 28.08
-## The effective cardinality for PV.1.501 with 17 observed alleles is 12.94
-## The effective cardinality for PV.ms1 with 7 observed alleles is 4.33
-## The effective cardinality for PV.ms5 with 24 observed alleles is 11.91
-## The effective cardinality for PV.ms6 with 25 observed alleles is 11.94
-## The effective cardinality for PV.ms7 with 14 observed alleles is 6.92
+## The effective cardinality for PV.3.502 with 13 observed alleles is 7.04
+## The effective cardinality for PV.3.27 with 33 observed alleles is 13.81
+## The effective cardinality for PV.ms8 with 46 observed alleles is 28.25
+## The effective cardinality for PV.1.501 with 17 observed alleles is 12.91
+## The effective cardinality for PV.ms1 with 7 observed alleles is 4.32
+## The effective cardinality for PV.ms5 with 24 observed alleles is 11.96
+## The effective cardinality for PV.ms6 with 25 observed alleles is 11.91
+## The effective cardinality for PV.ms7 with 14 observed alleles is 6.91
 ## The effective cardinality for PV.ms16 with 39 observed alleles is 20.01
 ```
 
@@ -310,7 +299,7 @@ writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s
 ```
 
 ```
-## The mean effective marker cardinality is 12.97, range: 4.3 to 28.1
+## The mean effective marker cardinality is 13.01, range: 4.3 to 28.3
 ```
 
 
@@ -334,7 +323,7 @@ The following iterates through each individual and computes the probability of r
 
 
 ```r
-# # We also remove MS data for which there are no recurrent data
+# First we remove MS data for which there are no recurrent data
 N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
 MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
 # recreate pooled summary dataset
@@ -416,7 +405,6 @@ thetas_9MS_Tagnostic = arrange(thetas_9MS_Tagnostic, Episode_Identifier)
 thetas_9MS$drug = Time_Estimates_1$arm_num # Add drug
 thetas_9MS_Tagnostic$drug = Time_Estimates_1$arm_num # Add drug
 
-
 # Extract BPD only for BPD only plots
 BPD_data = Thetas_full_post[grep('BPD',rownames(Thetas_full_post)),]
 Thetas_BPD = thetas_9MS[grep('BPD', thetas_9MS$Episode_Identifier),]
@@ -441,9 +429,10 @@ Probability of states, ordered from most to least likely:
 # BPD Final plot
 
 
-
 ```
-## The mean percentage of recurrences which are estimated to be relapses is 16%
+## The weighted average of recurrences which are estimated to be failures is 15.92%
+## The weighted average of recurrences which are estimated to be relapses is 15.78%
+## Number of BPD recurrences analysed: 87
 ```
 
 ![](Pooled_Analysis_files/figure-html/BPD_efficacy-1.png)<!-- -->
@@ -459,6 +448,11 @@ We remove the IDs that can be straightforwardly calculated:
 ind_calculated = which(MS_pooled_summary$Episode_Identifier %in% thetas_9MS$Episode_Identifier)
 IDs_calculated = unique(MS_pooled_summary$ID[ind_calculated])
 IDs_remaining = unique(MS_pooled_summary$ID[! MS_pooled_summary$ID %in% IDs_calculated])
+writeLines(sprintf('individuals with more than two recurrences: %s',length(IDs_remaining)))
+```
+
+```
+## individuals with more than two recurrences: 54
 ```
 
 We blow up the pooled analysis into all pairs within individuals:
@@ -601,6 +595,29 @@ MS_pooled_summary$Plotting_col_Values =
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = 1:3))
 ```
 
+```r
+# How many too complex to generate estimate for? 
+ind_recur = MS_pooled_summary$Episode > 1 # Filter out enrollment
+ind_complex_recur = is.na(MS_pooled_summary$L_mean[ind_recur])
+no_complex_recur = sum(ind_complex_recur) # Recurrences with NAs
+
+# How many of the complex infections result in the loss of an individual
+no_indiv_removed = sum(N_episodes_typed[MS_pooled_summary$ID[ind_recur][ind_complex_recur]] <= 2) 
+# Final number of people with recurrences analysed total and by trial
+indiv_recur_analysed = length(unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur])) 
+BPD_indiv_recur_analysed = sum(grepl('BPD', unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur])))
+VHX_indiv_recur_analysed = sum(grepl('VHX', unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur]))) 
+
+writeLines(sprintf('Of %s recurrences analysed, %s were too complex to estimate recurrence state probabilities, resulting in probability estimates for a total of %s recurrences from %s individuals (%s BPD and %s VHX)',
+                   sum(ind_recur), no_complex_recur,  sum(!ind_complex_recur), 
+                   indiv_recur_analysed, BPD_indiv_recur_analysed, VHX_indiv_recur_analysed))
+```
+
+```
+## Of 493 recurrences analysed, 7 were too complex to estimate recurrence state probabilities, resulting in probability estimates for a total of 486 recurrences from 208 individuals (77 BPD and 131 VHX)
+```
+
+
 ![](Pooled_Analysis_files/figure-html/CoatneyStylePLot-1.png)<!-- -->
 
 ```
@@ -691,7 +708,7 @@ Results for all those genotyped who did receive primaquine (VHX and BPD studies 
 ## In primaquine treated individuals, the weighted average of reinfections is 85.7 (83.3-87.5), for 121 recurrences
 ```
 
-Results for all those genotyped who did receive primaquine, only in the VHX study (unknown denominator)
+Results for all those genotyped who did receive primaquine in the VHX study (unknown denominator)
 
 ```
 ## In primaquine treated individuals (VHX), the weighted average of relapses is 10.4 (8.5-12.7), for 34 recurrences
@@ -942,7 +959,7 @@ hist(Combined_Time_Data$log10_carboxyPMQ[Combined_Time_Data$NumberDaysPMQ==14],
 abline(v = mu_hat_14 - sd_hat_14*3)
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-31-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-32-1.png)<!-- -->
 
 ```r
 outliers7 = Combined_Time_Data$NumberDaysPMQ==7 & Combined_Time_Data$log10_carboxyPMQ<mu_hat_7 - sd_hat_7*3
@@ -1056,8 +1073,7 @@ writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%
 ```
 
 
-This won't go into this paper but looking out of interest:
-Does 2D6 correlate with carboxy ?
+Not in manuscript, but looking out of interest: does 2D6 correlate with carboxy ?
 
 
 ```r
@@ -1115,7 +1131,7 @@ plot(Combined_Time_Data$ASscore, Combined_Time_Data$log10_carboxyPMQ, pch=20)
 lines(xs, predict(mod_2D6, data.frame(ASscore=xs,NumberDaysPMQ=7,patientid='new'),allow.new.levels=T),lwd=3)
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-33-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-34-1.png)<!-- -->
 
 
 
@@ -1191,7 +1207,9 @@ if(RUN_MODELS_SINGLE_SIMPLE){
 
 ```r
 par(las=1, bty='n', mfrow=c(2,2))
-plot(log10(thetas_9MS$L), log10(thetas_9MS_alphaUpper$L),
+plot(thetas_9MS$L, 
+     thetas_9MS_alphaUpper$L,
+     log = 'xy',
      ylab = 'Relapse: inbred',
      xlab = 'Relapse: no inbreeding',
      col= drug_cols2[thetas_9MS$drug],pch=20)
@@ -1206,7 +1224,8 @@ legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20,
 
 ###****** Reinfection : comparison *****#####
 par(las=1, bty='n')
-plot(log10(thetas_9MS$I), log10(thetas_9MS_alphaUpper$I),
+plot(thetas_9MS$I, thetas_9MS_alphaUpper$I,
+     log = 'xy',
      ylab = 'Reinfection: inbred',
      xlab = 'Reinfection: no inbreeding',
      col= drug_cols2[thetas_9MS$drug],pch=20)
@@ -1221,7 +1240,7 @@ legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20,
 abline(h=0,lty=2)
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-36-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-37-1.png)<!-- -->
 
 Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
 This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
