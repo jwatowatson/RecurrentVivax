@@ -581,7 +581,7 @@ if(CREATE_PLOTS){
   # Time agnostic versus full posterior 
   plot(x = thetas_9MS_Tagnostic$L, 
        y = thetas_9MS$L, 
-       log = 'xy', 
+       log = 'xy', las = 2, 
        xlab = 'Genetic given time-agnostic prior', 
        ylab = 'Genetic given time-to-event based prior',
        panel.first = grid(),
@@ -620,7 +620,7 @@ if(CREATE_PLOTS){
        y = thetas_9MS$I, 
        xlab = 'Genetic given time-agnostic prior', 
        ylab = 'Genetic given time-to-event based prior',
-       log = 'xy', 
+       log = 'xy', las = 2, 
        panel.first = grid(),
        col = drug_cols2[thetas_9MS$drug], 
        main = 'Probability of reinfection',pch=20)
@@ -632,8 +632,8 @@ if(CREATE_PLOTS){
   plot(x = Time_Estimates_1$Relapse_mean_theta,
        y = thetas_9MS$L,
        xlab = 'Time-to-event (genetic time-to-event based prior)', 
-       ylab = 'Genetic given time-to-event-based prior',
-       log = 'xy', 
+       ylab = 'Genetic given time-to-event based prior',
+       log = 'xy', las = 2, 
        panel.first = grid(),
        col= drug_cols2[thetas_9MS$drug],
        main = 'Probability of relapse',pch=20)
@@ -666,14 +666,35 @@ if(CREATE_PLOTS){
   }
   plot(x = Time_Estimates_1$ReInfection_mean_theta,
        y = thetas_9MS$I,
-       log = 'xy', 
+       log = 'xy', las = 2, 
        xlab = 'Time-to-event (genetic time-to-event based prior)', 
-       ylab = 'Genetic given time-to-event-based prior',
+       ylab = 'Genetic given time-to-event based prior',
        panel.first = grid(), 
        col= drug_cols2[thetas_9MS$drug], 
        main = 'Probability of reinfection', pch=20)
   abline(a = 0, b = 1)
 }
+
+# Summary of changes 
+ind = thetas_9MS$drug == "CHQ" | thetas_9MS$drug == "AS"
+no_pmq = sum(ind)
+pmq = sum(!ind)
+
+# No PMQ
+writeLines(sprintf('Based on time-to-event alone, %s of %s No PMQ classified as relapse', 
+           sum(Time_Estimates_1$Relapse_mean_theta[ind] > Epsilon_upper, na.rm = T), no_pmq))
+writeLines(sprintf('Based on genetic alone, %s of %s No PMQ classified as relapse', 
+                   sum(thetas_9MS_Tagnostic$L[ind] > Epsilon_upper, na.rm = T), no_pmq))
+writeLines(sprintf('Based on all available data, %s of %s No PMQ classified as relapse', 
+                   sum(thetas_9MS$L[ind] > Epsilon_upper, na.rm = T), no_pmq))
+
+# PMQ+
+writeLines(sprintf('Based on time-to-event alone, %s of %s PMQ+ classified as relapse', 
+                   sum(Time_Estimates_1$Relapse_mean_theta[!ind] > Epsilon_upper, na.rm = T), pmq))
+writeLines(sprintf('Based on genetic alone, %s of %s PMQ+ classified as relapse', 
+                   sum(thetas_9MS_Tagnostic$L[!ind] > Epsilon_upper, na.rm = T), pmq))
+writeLines(sprintf('Based on all available data, %s of %s PMQ+ classified as relapse', 
+                   sum(thetas_9MS$L[!ind] > Epsilon_upper, na.rm = T), pmq))
 ```
 
 Probability of states, ordered from most to least likely:
