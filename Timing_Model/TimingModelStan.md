@@ -1360,7 +1360,7 @@ mean_labels_ReLap2= apply(labels2[,ind_plotting,3,drop=T], 2, mean)
 mean_labels_ReLap = mean_labels_ReLap1 + mean_labels_ReLap2
 plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap),
      col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1], xaxt='n',
-     pch = 20,
+     pch = 20, 
      cex=1,panel.first = grid(),
      ylab='',yaxt='n',
      xlab='', xlim=c(0,360))
@@ -1377,6 +1377,25 @@ lines(Ts, log10(prob_labels_raw_CQ[2,]+prob_labels_raw_CQ[3,]), col=drug_cols3[2
 lines(Ts, log10(prob_labels_raw_CQPMQ[2,]+prob_labels_raw_CQPMQ[3,]), col=drug_cols3[3], lwd=2, lty=2)
 
 
+#****************************** Recrudescence ****************************
+mean_labels_ReCrud = apply(labels2[,ind_plotting,4,drop=T], 2, mean)
+plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReCrud),
+     col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1], xaxt='n',
+     pch = 20,
+     cex=1,panel.first = grid(),
+     ylab='',yaxt='n',
+     xlab='', xlim=c(0,360), ylim= c(min(log10(mean_labels_ReCrud)),0))
+mtext(text='B: Recrudescence', side = 3, adj = 0, line=0.5)
+mtext(text = 'Months from last episode',side = 1,line=3,cex=.9)
+mtext(text = 'Probability',side = 2,line=3.5,cex=.8,las=3)
+axis(1, at = seq(0,12,by=2)*30, labels = seq(0,12,by=2))
+axis(side=2, at = c(-7,-5,-3,-1,0), c(expression(10^-7, 10^-5, 10^-3, 10^-1),1))
+
+lines(Ts, log10(prob_labels_raw_AS[4,]), col=drug_cols3[1], lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_CQ[4,]), col=drug_cols3[2], lwd=2, lty=2)
+lines(Ts, log10(prob_labels_raw_CQPMQ[4,]), col=drug_cols3[3], lwd=2, lty=2)
+
+
 #****************************** Reinfection ******************************
 mean_labels_Reinfection = apply(labels2[,ind_plotting,1,drop=T], 2, mean)
 plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfection),
@@ -1387,7 +1406,7 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfecti
      xlab='', xlim=c(0,360))
 mtext(text = 'Probability',side = 2, las=3,line=3.5,cex=.8)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.9)
-mtext(text='B: Reinfection', side = 3, adj = 0, line=0.5)
+mtext(text='C: Reinfection', side = 3, adj = 0, line=0.5)
 axis(1, at = seq(0, 360, by=60), labels = seq(0, 360, by=60)/30)
 axis(side=2, at = c(-3,-2,-1,0), c(expression(10^-3, 10^-2, 10^-1),1))
 axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
@@ -1396,30 +1415,12 @@ axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
 legend('bottomright',legend = c('Artesunate',
                                 'Chloroquine',
                                 'Primaquine+'),
-       col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white',lty=NA, cex=1.35)
+       col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white',
+       family('serif'), inset = 0.01, lty=NA, cex=1.35)
 
 lines(Ts, log10(prob_labels_raw_AS[1,]), col=drug_cols3[1], lwd=2, lty=2)
 lines(Ts, log10(prob_labels_raw_CQ[1,]), col=drug_cols3[2], lwd=2, lty=2)
 lines(Ts, log10(prob_labels_raw_CQPMQ[1,]), col=drug_cols3[3], lwd=2, lty=2)
-
-
-#****************************** Recrudescence ****************************
-mean_labels_ReCrud = apply(labels2[,ind_plotting,4,drop=T], 2, mean)
-plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReCrud),
-     col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1], xaxt='n',
-     pch = 20,
-     cex=1,panel.first = grid(),
-     ylab='',yaxt='n',
-     xlab='', xlim=c(0,360), ylim= c(min(log10(mean_labels_ReCrud)),0))
-mtext(text='C: Recrudescence', side = 3, adj = 0, line=0.5)
-mtext(text = 'Months from last episode',side = 1,line=3,cex=.9)
-mtext(text = 'Probability',side = 2,line=3.5,cex=.8,las=3)
-axis(1, at = seq(0,12,by=2)*30, labels = seq(0,12,by=2))
-axis(side=2, at = c(-7,-5,-3,-1,0), c(expression(10^-7, 10^-5, 10^-3, 10^-1),1))
-
-lines(Ts, log10(prob_labels_raw_AS[4,]), col=drug_cols3[1], lwd=2, lty=2)
-lines(Ts, log10(prob_labels_raw_CQ[4,]), col=drug_cols3[2], lwd=2, lty=2)
-lines(Ts, log10(prob_labels_raw_CQPMQ[4,]), col=drug_cols3[3], lwd=2, lty=2)
 
 
 #******************** Plot of overall probability conditional on time to event ***********************
@@ -1453,7 +1454,8 @@ legend('right',legend = c('Relapse',
                           'Recrudescence',
                           'Reinfection'),
        col='black',pch = NA, bty='o',
-       lwd=1,bg='white',lty=LinesTypes, cex=.6,family('serif') )
+       lwd=1,bg='white',lty=LinesTypes, cex=.6,family('serif'),
+       inset = 0.01)
 ```
 
 ![](TimingModelStan_files/figure-html/Model2FinalPlot-1.png)<!-- -->
@@ -1590,7 +1592,7 @@ df = data.frame(time=Combined_Time_Data$Time_to_event[ind],
                 uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
                   log10(Combined_Time_Data$Relapse_025_theta[ind]))
 plot(df$time,df$uncertainty,  xaxt='n',
-     ylab = 'Uncertainty (log units)', panel.first = grid(),
+     ylab = expression('Log'[10]*' uncertainty'), panel.first = grid(),
      col = drug_cols2[as.integer(Combined_Time_Data$arm_num[ind] == 'CHQ/PMQ') + 2],
      pch=20, xlab='', main = 'No PMQ')
 axis(1, at = seq(0,360, by = 60), labels = seq(0,360,by=60)/30)
@@ -1622,7 +1624,7 @@ df = data.frame(time=Combined_Time_Data$Time_to_event[ind],
                 uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
                   log10(Combined_Time_Data$Relapse_025_theta[ind]))
 plot(df$time, df$uncertainty,  
-     ylab = 'Uncertainty (log units)', panel.first = grid(),
+     ylab = expression('Log'[10]*' uncertainty'), panel.first = grid(),
      col = drug_cols2[3], xaxt='n',
      pch=20, xlab='', main = 'PMQ+')
 axis(1, at = seq(0,360, by = 60), labels = seq(0,360,by=60)/30)
