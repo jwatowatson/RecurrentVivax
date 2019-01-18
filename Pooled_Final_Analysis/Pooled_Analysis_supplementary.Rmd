@@ -46,7 +46,7 @@ RUN_MODELS_SINGLE_SIMPLE = F           # can do on laptop (5 minutes)
 # runs the model for 100 random draws from the Time model posterior on those that can be directly computed
 RUN_MODELS_FULL_POSTERIOR_SIMPLE = F    # can do on laptop (2 hours)
 # runs the model for 100 random draws from the Time model posterior on those that cannot be directly computed
-RUN_MODELS_FULL_POSTERIOR_INFLATED = T  # cluster is better (10 hours)
+RUN_MODELS_FULL_POSTERIOR_INFLATED = F  # cluster is better (10 hours)
 # Does the false positive discovery estimation
 RUN_MODELS_FALSE_POSITIVE = F           # only cluster (1 day with 42 cores)
 # generates plots
@@ -132,18 +132,36 @@ Fs_Combined = sapply(Alpha_Posteriors, function(x){x/sum(x)})
 ```
 
 ```{r, include=FALSE}
-if(RUN_MODELS_SINGLE_SIMPLE){
+if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
   #===============================================
-  # Run (without time-to-event)
+  # Run full Bayesian with sampling at random from time prior 
+  # (treats time posterior as discrete uniform prior)
+  # takes about 1.1 hour on 6 cores
+  # The outer loop is not parallelised - suboptimal coding
   #===============================================
+  
+  Ksamples = 100
   tic()
-  thetas_9MS_Tagnostic = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
-                                       cores = 42, verbose = F)
-  thetas_9MS_Tagnostic$Episode_Identifier = rownames(thetas_9MS_Tagnostic)
-  save(thetas_9MS_Tagnostic, file = '../RData/GeneticModel/thetas_9MS_Tagnostic.RData')
+  Thetas_full_post_TAgnostic = foreach(ss = 1:Ksamples, .combine = cbind) %do% {
+    
+    # draw a random distribution over the allele frequencies from posterior
+    Fs_random = lapply(Alpha_Posteriors, rdirichlet, n=1)
+    # I'm not sure if this is needed - how are these called deep inside?
+    for(i in 1:length(Fs_random)){
+      names(Fs_random[[i]]) = 1:length(Fs_random[[i]])
+    }
+    
+    # run the model
+    thetas_9MS = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_random, 
+                               cores = 7, verbose = F) 
+    thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
+    thetas_9MS
+  }
+  
+  save(Thetas_full_post_TAgnostic, file = '../RData/GeneticModel/Full_Posterior_Model_samples_TAgnostic.RData')
   toc()
 } else {
-  load('../RData/GeneticModel/thetas_9MS_Tagnostic.RData')
+  load(file = '../RData/GeneticModel/Full_Posterior_Model_samples_TAgnostic.RData')
 }
 ```
 
