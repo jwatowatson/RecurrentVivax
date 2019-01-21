@@ -1,6 +1,11 @@
 ---
 title: "Pooled Analysis - supplementary"
-output: html_document
+author: "Aimee Taylor and James Watson"
+output:
+  html_document:
+    df_print: paged
+    keep_md: yes
+  pdf_document: default
 ---
 
 # Preamble
