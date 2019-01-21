@@ -68,8 +68,8 @@ states = c(relapse = 'L', reinfection = 'I', recrudescence = 'C')
 # https://stackoverflow.com/questions/39041115/fixing-a-multiple-warning-unknown-column
 
 ## Threshold values for classification
-Epsilon_upper = 0.7
-Epsilon_lower = 0.3
+Epsilon_upper = 0.8
+Epsilon_lower = 0.2
 transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
 ```
 
@@ -278,7 +278,7 @@ Plotted by radical cure versus no radical cure, as that is the most informative 
 We remove the IDs that can be straightforwardly calculated:
 
 ```{r}
-ind_calculated = which(MS_pooled_summary$Episode_Identifier %in% thetas_9MS_Tagnostic$Episode_Identifier)
+ind_calculated = which(MS_pooled_summary$Episode_Identifier %in% Thetas_full_post_TAgnostic$Episode_Identifier)
 IDs_calculated = unique(MS_pooled_summary$ID[ind_calculated])
 IDs_remaining = unique(MS_pooled_summary$ID[! MS_pooled_summary$ID %in% IDs_calculated])
 writeLines(sprintf('individuals with more than two recurrences: %s',length(IDs_remaining)))
@@ -380,43 +380,43 @@ Results_Inflated_TAgnostic$Second_EpNumber = MS_inflated_summary$Second_EpNumber
 
 
 # Iterate through the ones we can calculate in one go
-episodes_full_model = unique(Thetas_full_post$Episode_Identifier)
-cols_remove = grep('Episode_Identifier', colnames(Thetas_full_post))
-Thetas_full_post = Thetas_full_post[, -cols_remove]
+episodes_full_model = unique(Thetas_full_post_TAgnostic$Episode_Identifier)
+cols_remove = grep('Episode_Identifier', colnames(Thetas_full_post_TAgnostic))
+Thetas_full_post_TAgnostic = Thetas_full_post_TAgnostic[, -cols_remove]
 for(ep in episodes_full_model){
   ind1 = (MS_pooled_summary$Episode_Identifier==ep)
-  ind2 = rownames(Thetas_full_post)==ep
+  ind2 = rownames(Thetas_full_post_TAgnostic)==ep
   
   ## Summaries for relapse
-  MS_pooled_summary$L_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
+  MS_pooled_summary$L_upper[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('L',colnames(Thetas_full_post_TAgnostic))]),
                                              probs=0.9, na.rm = T)
-  MS_pooled_summary$L_lower[ind1] = quantile(unlist(Thetas_full_post[ind2,
-                                                                     grep('L',colnames(Thetas_full_post))]),
+  MS_pooled_summary$L_lower[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,
+                                                                     grep('L',colnames(Thetas_full_post_TAgnostic))]),
                                              probs=0.1, na.rm = T)
-  MS_pooled_summary$L_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
+  MS_pooled_summary$L_mean[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('L',colnames(Thetas_full_post_TAgnostic))]),
                                             probs=0.5, na.rm = T)
   
   ## Summaries for recrudescence
-  MS_pooled_summary$C_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('C',colnames(Thetas_full_post))]),
+  MS_pooled_summary$C_upper[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('C',colnames(Thetas_full_post_TAgnostic))]),
                                              probs=0.9, na.rm = T)
-  MS_pooled_summary$C_lower[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('C',colnames(Thetas_full_post))]),
+  MS_pooled_summary$C_lower[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('C',colnames(Thetas_full_post_TAgnostic))]),
                                              probs=0.1, na.rm = T)
-  MS_pooled_summary$C_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('C',colnames(Thetas_full_post))]),
+  MS_pooled_summary$C_mean[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('C',colnames(Thetas_full_post_TAgnostic))]),
                                             probs=0.5, na.rm = T)
   
   ## Summaries for reinfection
-  MS_pooled_summary$I_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('I',colnames(Thetas_full_post))]),
+  MS_pooled_summary$I_upper[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('I',colnames(Thetas_full_post_TAgnostic))]),
                                              probs=0.9, na.rm = T)
-  MS_pooled_summary$I_lower[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('I',colnames(Thetas_full_post))]),
+  MS_pooled_summary$I_lower[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('I',colnames(Thetas_full_post_TAgnostic))]),
                                              probs=0.1, na.rm = T)
-  MS_pooled_summary$I_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('I',colnames(Thetas_full_post))]),
+  MS_pooled_summary$I_mean[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('I',colnames(Thetas_full_post_TAgnostic))]),
                                             probs=0.5, na.rm = T)
   
   # Just going to classify on relapse versus reinfection
   if(!is.na(MS_pooled_summary$L_upper[ind1])){
-    if(MS_pooled_summary$L_upper[ind1] < Epsilon_lower){
+    if(MS_pooled_summary$L_upper[ind1]+MS_pooled_summary$C_upper[ind1] < Epsilon_lower){
       MS_pooled_summary$L_or_C_state[ind1] = 'I'
-    } else if(MS_pooled_summary$L_lower[ind1] > Epsilon_upper){
+    } else if(MS_pooled_summary$L_lower[ind1]+MS_pooled_summary$C_lower[ind1] > Epsilon_upper){
       MS_pooled_summary$L_or_C_state[ind1] = 'L'
     } else {
       MS_pooled_summary$L_or_C_state[ind1] = 'Uncertain'
@@ -452,9 +452,9 @@ for(i in 1:length(IDs_remaining)){
         writeLines(sprintf('Problem with ID %s',id))
         stop()
       }
-      if(MS_pooled_summary$L_upper[ind1] < Epsilon_lower){
+      if(MS_pooled_summary$L_upper[ind1]+MS_pooled_summary$C_upper[ind1] < Epsilon_lower){
         MS_pooled_summary$L_or_C_state[ind1] = 'I'
-      } else if(MS_pooled_summary$L_lower[ind1] > Epsilon_upper){
+      } else if(MS_pooled_summary$L_lower[ind1]+MS_pooled_summary$C_lower[ind1] > Epsilon_upper){
         MS_pooled_summary$L_or_C_state[ind1] = 'L'
       } else {
         MS_pooled_summary$L_or_C_state[ind1] = 'Uncertain'
@@ -477,3 +477,84 @@ MS_pooled_summary$Plotting_pch_Values =
 MS_pooled_summary$Plotting_col_Values = 
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = 1:3))
 ```
+
+
+Coatney plot (genetic data informed only)
+```{r CoatneyStylePLot, echo=FALSE}
+# Only the recurrences for which we can compute estimates of recurrence state
+MS_final = filter(MS_pooled_summary, !is.na(L_mean))
+MS_final = arrange(MS_final, desc(Drug), desc(FU), desc(TotalEpisodes))
+ids = unique(MS_final$ID)
+
+if(CREATE_PLOTS){
+  ## Time series data colored by genetic STATE: classification
+  mycols_states_bg = c('#FFFFFF',Dark2[4],'#000000') # colors for states - need uncertain ones as well
+  mycols_states_fg = c(Dark2[8],Dark2[4],'#000000') # colors for states - need uncertain ones as well
+  mycols_drugs = brewer.pal(n=3, name = 'Set1')
+  par(las=1, bty='n', cex.axis=.3, mar=c(4,0,1,1), family = 'serif')
+  plot(NULL, ylab = '', xlab = '',
+       xlim = c(0,370), 
+       ylim = c(1,length(ids)),
+       xaxt='n', yaxt='n')
+  mtext(text = 'Months from start of study', side = 1, line=2.5, cex=1)
+  axis(1, at = seq(0,370, by=60), labels = seq(0,370, by=60)/30, cex.axis=1)
+  
+  for(i in 1:length(ids)){
+    
+    id = ids[i]
+    ind = which(MS_final$ID==id)
+    
+    # Add the follow up time line
+    lines(c(0,MS_final$FU[ind[1]]), 
+          c(i,i), lty=1, 
+          lwd=.5, col=drug_cols2[MS_final$Drug[ind[1]]])
+    
+    # For highlighting long-latency
+    # Add the follow up time line
+    if(id == 'VHX_235' | id == 'BPD_27'){
+      lines(c(0,MS_final$FU[ind[1]]), 
+            c(i,i), lty = 'dashed', 
+            lwd=.5, col= 'black')
+      
+      cols = mycols_states_fg[MS_final$Plotting_col_Values[ind]]
+      points(MS_final$timeSinceEnrolment[ind], 
+             rep(i,length(ind)), 
+             pch=1,cex = 1.5, 
+             col='black')
+    }
+    
+    # Add points after highlight lines
+    points(MS_final$timeSinceEnrolment[ind], rep(i,length(ind)), 
+           pch=MS_final$Plotting_pch_Values[ind], 
+           bg=mycols_states_bg[MS_final$Plotting_col_Values[ind]],
+           col=mycols_states_fg[MS_final$Plotting_col_Values[ind]], 
+           cex=.6)
+    
+    
+    
+  }
+  lines(x = c(0,0), y = c(0,length(ids)),lwd=3)
+  
+  legend('topright', col = c(mycols_states_fg[c(3,2,1)]), 
+         pch = c(17,15,1), cex = 1, bty = 'n', y.intersp = 0.75, title = 'Classification',
+         legend = c('Relapse or Recrudescence','Uncertain','Reinfection'))
+  
+  legend('top', col = drug_cols2[2:3], 
+         cex = 1, bty = 'n', y.intersp = 0.75, 
+         lty = 1, lwd = 1,
+         legend = c('No PMQ', 'PMQ+'))
+}
+
+writeLines(sprintf('The Coatney style plot is showing %s recurrences in %s individuals',
+                   nrow(MS_final), length(ids)))
+```
+
+Break down the results depending on whether PMQ was received or not:
+```{r}
+writeLines(sprintf('There are %s recurrences after PMQ+. The breakdown as %% of classification is as follows:', sum(MS_final$Treatment=='PMQ')))
+round(100*table(MS_final$L_or_C_state[MS_final$Treatment=='PMQ'])/sum(MS_final$Treatment=='PMQ'))
+
+writeLines(sprintf('\nThere are %s recurrences after no PMQ. The breakdown as %% of classification is as follows:', sum(MS_final$Treatment!='PMQ')))
+round(100*table(MS_final$L_or_C_state[MS_final$Treatment!='PMQ'])/sum(MS_final$Treatment!='PMQ'))
+```
+
