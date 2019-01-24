@@ -37,7 +37,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
   #==========================================================================
   # Retrieve population prior and recurrent eps identifiers
   #==========================================================================
-  p_pop = sapply(c('C','L','I'), function(x)as.list(formals(post_prob_CLI)$p)[[x]])
+  p_pop = sapply(c('C','L','I'), function(x) as.list(formals(post_prob_CLI)$p)[[x]])
   recurrent_eps = unique(MSdata$Episode_Identifier[MSdata$Episode>1]) # Based on genetic data
   
   #==========================================================================
@@ -50,7 +50,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
     
   } else {
     p_pop_ind = FALSE
-    
+    p = arrange(p, Episode_Identifier)
     # make sure p contains the correct columns
     if(any(!c('Episode_Identifier','C','L','I') %in% names(p))){
       stop('p needs to include the following columns: Episode_Identifier,C,L,I')
@@ -294,7 +294,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
                            Max_Haplotypes,KK))
       }
       Vt_Hnt_inds = combinations(nrow(Hnt), r = cn[inf], v = 1:nrow(Hnt))       
-      # Summarise data for compatiblility check below 
+      # Summarise data for compatibility check below 
       Y = apply(ynt, 2, function(x){sort(unique(x[!is.na(x)]))}) 
       # Check each combination to see if compatible with ynt 
       # (this is a bit like an ABC step with epsilon = 0)

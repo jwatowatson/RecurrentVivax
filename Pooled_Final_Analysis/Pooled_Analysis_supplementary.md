@@ -14,7 +14,7 @@ Load R packages, functions and data.
 
 
 
-## R Markdown
+## Data processing
 
 
 ```r
@@ -73,15 +73,12 @@ We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 
 ```
 
 
-
-## Going from time-to-event prior to posterior
-
-Plotted by radical cure versus no radical cure, as that is the most informative distinction here.
+## Run model on easy individuals
 
 
 
 
-# Extra computations for VHX: too complex episodes
+# Extra computations for VHX: complex individuals
 
 
 We remove the IDs that can be straightforwardly calculated:
@@ -111,9 +108,9 @@ Construct adjacency graphs and compute probabilities of relapse and reinfection.
 
 ```r
 MS_pooled_summary$L_or_C_state = MS_pooled_summary$TotalEpisodes = NA
-MS_pooled_summary$L_lower = MS_pooled_summary$L_upper = MS_pooled_summary$L_mean = NA
-MS_pooled_summary$C_lower = MS_pooled_summary$C_upper = MS_pooled_summary$C_mean = NA
-MS_pooled_summary$I_lower = MS_pooled_summary$I_upper = MS_pooled_summary$I_mean = NA
+MS_pooled_summary$L_lower = MS_pooled_summary$L_upper = MS_pooled_summary$L_median = NA
+MS_pooled_summary$C_lower = MS_pooled_summary$C_upper = MS_pooled_summary$C_median = NA
+MS_pooled_summary$I_lower = MS_pooled_summary$I_upper = MS_pooled_summary$I_median = NA
 # Arrange by complexity
 # Get single rows per episode (throw away the extra MOI information)
 MS_inflated_summary = MS_inflated[!duplicated(MS_inflated$Episode_Identifier) & 
@@ -134,9 +131,20 @@ for(i in 1:nrow(MS_inflated_summary)){
 ```
 
 ```r
-Results_Inflated_TAgnostic$ID_True = MS_inflated_summary$ID_True
-Results_Inflated_TAgnostic$First_EpNumber = MS_inflated_summary$First_EpNumber
-Results_Inflated_TAgnostic$Second_EpNumber = MS_inflated_summary$Second_EpNumber
+Results_Inflated_TAgnostic$ID_True = NA
+Results_Inflated_TAgnostic$First_EpNumber = NA
+Results_Inflated_TAgnostic$Second_EpNumber = NA
+# The ordering has changed so need to be careful about naming
+for(i in 1:nrow(Results_Inflated_TAgnostic)){
+  ind_MS_inflated = which(MS_inflated_summary$Episode_Identifier==Results_Inflated_TAgnostic$Episode_Identifier[i])
+  Results_Inflated_TAgnostic$ID_True[i] = 
+    MS_inflated_summary$ID_True[ind_MS_inflated]
+  Results_Inflated_TAgnostic$First_EpNumber[i] =
+    MS_inflated_summary$First_EpNumber[ind_MS_inflated]
+  Results_Inflated_TAgnostic$Second_EpNumber[i] =
+    MS_inflated_summary$Second_EpNumber[ind_MS_inflated]
+}
+
 
 
 # Iterate through the ones we can calculate in one go
@@ -148,29 +156,31 @@ for(ep in episodes_full_model){
   ind2 = rownames(Thetas_full_post_TAgnostic)==ep
   
   ## Summaries for relapse
-  MS_pooled_summary$L_upper[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('L',colnames(Thetas_full_post_TAgnostic))]),
-                                             probs=0.9, na.rm = T)
-  MS_pooled_summary$L_lower[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,
-                                                                     grep('L',colnames(Thetas_full_post_TAgnostic))]),
-                                             probs=0.1, na.rm = T)
-  MS_pooled_summary$L_mean[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('L',colnames(Thetas_full_post_TAgnostic))]),
-                                            probs=0.5, na.rm = T)
+  L_cols = grep('L',colnames(Thetas_full_post_TAgnostic))
+  MS_pooled_summary$L_upper[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,L_cols]),
+                                             probs=upperCI, na.rm = T)
+  MS_pooled_summary$L_lower[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,L_cols]),
+                                             probs=lowerCI, na.rm = T)
+  MS_pooled_summary$L_median[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,L_cols]),
+                                              probs=0.5, na.rm = T)
   
   ## Summaries for recrudescence
-  MS_pooled_summary$C_upper[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('C',colnames(Thetas_full_post_TAgnostic))]),
-                                             probs=0.9, na.rm = T)
-  MS_pooled_summary$C_lower[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('C',colnames(Thetas_full_post_TAgnostic))]),
-                                             probs=0.1, na.rm = T)
-  MS_pooled_summary$C_mean[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('C',colnames(Thetas_full_post_TAgnostic))]),
-                                            probs=0.5, na.rm = T)
+  C_cols = grep('C',colnames(Thetas_full_post_TAgnostic))
+  MS_pooled_summary$C_upper[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,C_cols]),
+                                             probs=upperCI, na.rm = T)
+  MS_pooled_summary$C_lower[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,C_cols]),
+                                             probs=lowerCI, na.rm = T)
+  MS_pooled_summary$C_median[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,C_cols]),
+                                              probs=0.5, na.rm = T)
   
   ## Summaries for reinfection
-  MS_pooled_summary$I_upper[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('I',colnames(Thetas_full_post_TAgnostic))]),
-                                             probs=0.9, na.rm = T)
-  MS_pooled_summary$I_lower[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('I',colnames(Thetas_full_post_TAgnostic))]),
-                                             probs=0.1, na.rm = T)
-  MS_pooled_summary$I_mean[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2, grep('I',colnames(Thetas_full_post_TAgnostic))]),
-                                            probs=0.5, na.rm = T)
+  I_cols = grep('I',colnames(Thetas_full_post_TAgnostic))
+  MS_pooled_summary$I_upper[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,I_cols]),
+                                             probs=upperCI, na.rm = T)
+  MS_pooled_summary$I_lower[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,I_cols]),
+                                             probs=lowerCI, na.rm = T)
+  MS_pooled_summary$I_median[ind1] = quantile(unlist(Thetas_full_post_TAgnostic[ind2,I_cols]),
+                                              probs=0.5, na.rm = T)
   
   # Just going to classify on relapse versus reinfection
   if(!is.na(MS_pooled_summary$L_upper[ind1])){
@@ -185,29 +195,37 @@ for(ep in episodes_full_model){
     MS_pooled_summary$L_or_C_state[ind1] = NA
   }
 }
-####***************####################
+####******** Complex cases *******####################
 # Now iterate through the complex ones
 for(i in 1:length(IDs_remaining)){
   id = IDs_remaining[i]
   Doubles_Thetas = filter(Results_Inflated_TAgnostic, ID_True==id)
   
   for(ep in unique(Doubles_Thetas$Second_EpNumber)){
+    # indices on the MS_pooled_summary
     ind1 = which(MS_pooled_summary$ID==id & MS_pooled_summary$Episode==ep)
+    # indices on DOubles thetas: looking for relapse evidence
     ind2 = which(Doubles_Thetas$Second_EpNumber == ep)
+    # index for recrudescence evidence
+    ind3 = which(Doubles_Thetas$Second_EpNumber == ep &
+                   Doubles_Thetas$First_EpNumber == (ep-1))
     
-    MS_pooled_summary$L_lower[ind1] = mean(Doubles_Thetas$L_min[ind2],na.rm=T)
-    MS_pooled_summary$L_upper[ind1] = mean(Doubles_Thetas$L_max[ind2],na.rm=T)
-    MS_pooled_summary$L_mean[ind1] = mean(Doubles_Thetas$L_mean[ind2],na.rm=T)
-    
-    MS_pooled_summary$C_lower[ind1] = mean(Doubles_Thetas$C_min[ind2],na.rm=T)
-    MS_pooled_summary$C_upper[ind1] = mean(Doubles_Thetas$C_max[ind2],na.rm=T)
-    MS_pooled_summary$C_mean[ind1] = mean(Doubles_Thetas$C_mean[ind2],na.rm=T)
-    
-    MS_pooled_summary$I_lower[ind1] = mean(Doubles_Thetas$I_min[ind2],na.rm=T)
-    MS_pooled_summary$I_upper[ind1] = mean(Doubles_Thetas$I_max[ind2],na.rm=T)
-    MS_pooled_summary$I_mean[ind1] = mean(Doubles_Thetas$I_mean[ind2],na.rm=T)
-    
-    if(!is.na(MS_pooled_summary$L_upper[ind1])){
+    best_match_relapse = which.max(Doubles_Thetas$L_median[ind2])
+    if(length(best_match_relapse)>0){
+      MS_pooled_summary$L_lower[ind1] = Doubles_Thetas$L_min[ind2[best_match_relapse]]
+      MS_pooled_summary$L_upper[ind1] = Doubles_Thetas$L_max[ind2[best_match_relapse]]
+      MS_pooled_summary$L_median[ind1] = Doubles_Thetas$L_median[ind2[best_match_relapse]]
+      
+      if(length(ind3)>0){
+        MS_pooled_summary$C_lower[ind1] = Doubles_Thetas$C_min[ind3]
+        MS_pooled_summary$C_upper[ind1] = Doubles_Thetas$C_max[ind3]
+        MS_pooled_summary$C_median[ind1] = Doubles_Thetas$C_median[ind3]
+      }
+      MS_pooled_summary$I_lower[ind1] = Doubles_Thetas$I_min[ind2[best_match_relapse]]
+      MS_pooled_summary$I_upper[ind1] = Doubles_Thetas$I_max[ind2[best_match_relapse]]
+      MS_pooled_summary$I_median[ind1] = Doubles_Thetas$I_median[ind2[best_match_relapse]]
+    }
+    if(!is.na(MS_pooled_summary$C_median[ind1])){
       if(MS_pooled_summary$L_upper[ind1] < MS_pooled_summary$L_lower[ind1]){
         writeLines(sprintf('Problem with ID %s',id))
         stop()
@@ -231,7 +249,6 @@ for(id in MS_pooled_summary$ID){
     Combined_Time_Data$arm_num[Combined_Time_Data$patientid==id][1] == 'CHQ/PMQ') + 2
   MS_pooled_summary$FU[ind] = Combined_Time_Data$FU_time[Combined_Time_Data$patientid==id][1]
 }
-
 MS_pooled_summary$Plotting_pch_Values = 
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = c(17,15,1)))
 MS_pooled_summary$Plotting_col_Values = 
@@ -243,21 +260,13 @@ Coatney plot (genetic data informed only)
 ![](Pooled_Analysis_supplementary_files/figure-html/CoatneyStylePLot-1.png)<!-- -->
 
 ```
-## The Coatney style plot is showing 487 recurrences in 209 individuals
+## The Coatney style plot is showing 488 recurrences in 209 individuals
 ```
 
 Break down the results depending on whether PMQ was received or not:
 
-```r
-writeLines(sprintf('There are %s recurrences after PMQ+. The breakdown as %% of classification is as follows:', sum(MS_final$Treatment=='PMQ')))
-```
-
 ```
 ## There are 121 recurrences after PMQ+. The breakdown as % of classification is as follows:
-```
-
-```r
-round(100*table(MS_final$L_or_C_state[MS_final$Treatment=='PMQ'])/sum(MS_final$Treatment=='PMQ'))
 ```
 
 ```
@@ -266,17 +275,9 @@ round(100*table(MS_final$L_or_C_state[MS_final$Treatment=='PMQ'])/sum(MS_final$T
 ##        31        12        57
 ```
 
-```r
-writeLines(sprintf('\nThere are %s recurrences after no PMQ. The breakdown as %% of classification is as follows:', sum(MS_final$Treatment!='PMQ')))
-```
-
 ```
 ## 
 ## There are 366 recurrences after no PMQ. The breakdown as % of classification is as follows:
-```
-
-```r
-round(100*table(MS_final$L_or_C_state[MS_final$Treatment!='PMQ'])/sum(MS_final$Treatment!='PMQ'))
 ```
 
 ```

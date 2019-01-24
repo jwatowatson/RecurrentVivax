@@ -39,7 +39,6 @@ load('../RData/TimingModel/Combined_Time_Event.RData')
 source("../Genetic_Model/Data_functions.R")
 source('../Genetic_Model/iGraph_functions.R')
 source("../Genetic_Model/post_prob_CLI.R") 
-source("../Genetic_Model/post_prob_CLI_sequential.R") 
 source("../Genetic_Model/test_Rn_compatible.R") 
 source("../Genetic_Model/Data_Inflation_Functions.R")
 #source('../Plotting_MS_data/PlottingFunction.R')
@@ -1314,9 +1313,9 @@ if(RUN_MODELS_FALSE_POSITIVE){
   toc()
   save(Inflated_Results, file = 'Inflated_Results.bigRData')
 } else {
-  load('~/Dropbox/RecurrentVivax/Pooled_Final_Analysis/Inflated_Results.bigRData')
+  load('Inflated_Results.bigRData')
   Inflated_Results = Inflated_Results[!is.na(Inflated_Results$L),]
-  load('~/Dropbox/RecurrentVivax/Pooled_Final_Analysis/APC_MSdata.bigRData')
+  load('APC_MSdata.bigRData')
 }
 ```
 
