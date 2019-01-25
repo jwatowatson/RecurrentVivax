@@ -221,10 +221,6 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
   P_matrix$I[ind_one_half] = 0.5
   P_matrix = P_matrix[unique_recurrences, ]
   
-  # ind = grep('TIDVHX_225%', P_matrix$Episode_Identifier)
-  # ind2 = grep('TIDVHX_225%', MS_inflated$ID)
-  # MS_inflated=MS_inflated[ind2,]
-  # P_matrix=P_matrix[ind,]
   tic()
   Res_total_TAgnostic=foreach(ss = 1:Ksamples, .combine = cbind) %do% {
     
