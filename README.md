@@ -9,15 +9,15 @@ https://www.biorxiv.org/content/early/2018/12/25/505594
 
 * *Genetic_Model* has the model code implementing our identity by descent approach to the estimation of relapse, recrudescence and reinfection in *P. vivax* recurrences, based on highly polymorphic microsatellite data. 
 
-* *Timing_Model* has the model code (in *stan*) implementing our time-to-event approach to the estimation of relapse, recrudescence and reinfection in *P. vivax* recurrences, based on follow-up data post clinic level symptomatic *P. vivax* episodes. The model is fit to pooled data from two large studies on the Thailand-Myanmar border (total *n=1299* individuals, over 1000 patient years of follow-up).
+* *Timing_Model* has the model code (in *stan*) implementing our time-to-event approach to the estimation of relapse, recrudescence and reinfection in *P. vivax* recurrences, based on follow-up data post clinic level symptomatic *P. vivax* episodes. The RMarkdown script *TimingModelStan.Rmd* fits the models to pooled data from two large studies on the Thailand-Myanmar border (total *n=1299* individuals, over 1000 patient years of follow-up).
 
-* *Pooled_Final_Analysis* combines the two models fitting the same data from the two large studies on the Thailand-Myanmar border (total *n=1299* individuals). In particular it implements the following:
-    1. Full Bayesian analysis of all recurrences, and where available, estimates using the genetic data are based on prior probbailities from the time-to-event model
+* *Pooled_Final_Analysis* provides an RMarkdown script *Pooled_Analysis.Rmd* which combines the genetic model fits and then timing model fits on the same data from the two large studies on the Thailand-Myanmar border (total *n=1299* individuals). In particular it implements the following:
+    1. Full Bayesian analysis of all recurrences, and where available, estimates using the genetic data are based on prior probabilities from the time-to-event model
     2. Estimation of false-positive rate using genetic data alone by comparing isolates from different individuals
     3. Estimation of failure rate after supervised high-dose primaquine in the epidemiological context of the Thai-Myanmar border
-    4. Prediction of failure from carboxy-primaquine (inactive, slowly eliminated metabolite) trough concentrations
+    4. Prediction of primaquine failure from carboxy-primaquine (inactive, slowly eliminated metabolite) trough concentrations
 
-* *Simulation_Study* estimates the number of microsatellites needed to reliably calculate recurrence probabilities in paired infections under certain assumptions of complexity of infection. 
+* *Simulation_Study* estimates the number of microsatellites needed to reliably calculate recurrence probabilities in paired infections under certain assumptions of complexity of infection. This is in the RMarkdown script *SimulationStudy.Rmd*.
 
 All data are stored in *RData* and a microsatellite data plotting tool is given in *Plotting_MS_Data*.
 
@@ -32,13 +32,16 @@ The R version used to develop this code is: R version 3.4.3 (2017-11-30) -- "Kit
 To run the timing model code, *rstan* is needed. For installation instructions please see: https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started
 The rstan version we are currently using is: rstan Version 2.18.1, GitRev: 2e1f913d3ca3
 
-Some other non-standard packages that will be automatically installed upon running the Markdown scripts (if missing) are:
-* *stringr*
-* *boot*
-* *RColorBrewer*
-* *gdata*
-* *gtools*
-* *tictoc*
+Some other non-standard packages that will be automatically installed by the *CheckRPackages.R* script upon running the Markdown scripts (if missing) are:
+* *igraph* (neat manipulation of graphs and computation of graph properties)
+* *loo* (leave one out for stan models)
+* *stringr* (character manipulation and pattern matching)
+* *boot* (bootstrapping)
+* *RColorBrewer* (get nice color palettes)
+* *gdata* (some nice data manipulation functions)
+* *gtools* (for calculations in log space)
+* *tictoc* (timing of runs)
+* *doParallel* (multicore computation) 
 
 Some model runs can be fairly computationally expensive (around 1-2 days using 6 cores on a desktop computer).
 
@@ -49,4 +52,10 @@ All three RMarkdown scripts can be run in a few minutes on a standard desktop co
 https://www.dropbox.com/sh/naslrxkyxqnvo0t/AADgAaLBta53Hc8_pX3AAzKha?dl=0
 
 These are all the output results that are too large to be added to a github repository. The computation time to create these files by setting *RUN_MODELS___* variables to TRUE totals about 2-4 days on a standard desktop computer. 
+
+The output of the RMarkdown scripts is as follows:
+
+* Plots of results and data as given in our paper
+* Text detailing the data structures and summary statistics
+* Model output when run with the *RUN_MODELS___* variables set to TRUE.
 
