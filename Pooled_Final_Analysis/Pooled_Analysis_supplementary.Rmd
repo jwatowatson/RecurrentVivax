@@ -422,6 +422,7 @@ MS_pooled_summary$Plotting_col_Values =
 
 
 Coatney plot (genetic data informed only)
+
 ```{r CoatneyStylePLot, echo=FALSE}
 # Only the recurrences for which we can compute estimates of recurrence state
 MS_final = filter(MS_pooled_summary, !is.na(L_median))
