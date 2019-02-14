@@ -27,12 +27,12 @@ If you see any bugs or have any questions, the authors can be contacted at jwato
 ## Installation and running guide
 
 All software is written in R. For an installation guide please see https://cran.r-project.org/doc/manuals/R-admin.html
-The R version used to develop this code is: R version 3.4.3 (2017-11-30) -- "Kite-Eating Tree"
+The R versions used to develop this code were: R version 3.4.3 (2017-11-30) and R version 3.5.0 (2018-04-23)
 
 To run the timing model code, *rstan* is needed. For installation instructions please see: https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started
 The rstan version we are currently using is: rstan Version 2.18.1, GitRev: 2e1f913d3ca3
 
-Some other non-standard packages that will be automatically installed by the *CheckRPackages.R* script upon running the Markdown scripts (if missing) are:
+Before running the analyses script please run *Install_and_load_required_packages.R*, which will load (and install if not installed already) all necessary packages. This should take a few minutes at most. Some of the non-base packages that will be loaded are as follows. A full list with version numbers can be found in session_info_txt 
 * *igraph* (neat manipulation of graphs and computation of graph properties)
 * *loo* (leave one out for stan models)
 * *stringr* (character manipulation and pattern matching)
@@ -43,19 +43,27 @@ Some other non-standard packages that will be automatically installed by the *Ch
 * *tictoc* (timing of runs)
 * *doParallel* (multicore computation) 
 
-Some model runs can be fairly computationally expensive (around 1-2 days using 6 cores on a desktop computer).
 
-## Reproducible output
+## Demo and fully reproducible output 
 
-All three RMarkdown scripts can be run in a few minutes on a standard desktop computer by setting all *RUN_MODELS___* variables to FALSE (default), if the following data are downloaded and put into directory RData/LargeFiles/ :
+Please be aware that it takes a several days to regenerate the entire study from scratch. Some model runs are fairly computationally expensive (around 1-2 days using 6 cores on a desktop computer). We have thus made available intermediate RData, enabling results to be regenerated in a matter of minutes (see below). 
+
+To regenerate results using intermediate RData (demo): download and put into directory RData/LargeFiles/ :
 
 https://www.dropbox.com/sh/naslrxkyxqnvo0t/AADgAaLBta53Hc8_pX3AAzKha?dl=0
 
 These are all the output results that are too large to be added to a github repository. The computation time to create these files by setting *RUN_MODELS___* variables to TRUE totals about 2-4 days on a standard desktop computer. 
 
+All RMarkdown scripts can then be run in less than 10 minutes on a standard desktop computer by setting all *RUN_MODELS___* variables to FALSE (default), 
 The output of the RMarkdown scripts is as follows:
 
 * Plots of results and data as given in our paper
 * Text detailing the data structures and summary statistics
 * Model output when run with the *RUN_MODELS___* variables set to TRUE.
+
+To regenerate everything from scratch, including all intermediate files, set *RUN_MODELS___* variables to TRUE in all RMarkdown scripts, then run TimingModelStan.Rmd followed by the other RMarkdown scripts in no specific order. The output is as described above. 
+
+
+
+
 
