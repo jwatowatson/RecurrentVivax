@@ -2,10 +2,10 @@
 title: "Pooled Analysis"
 author: "Aimee Taylor and James Watson"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
     keep_md: yes
-  pdf_document: default
 ---
 
 # Preamble
@@ -22,9 +22,11 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
                       fig.pos = 'H', 
                       dev = 'png', dpi = 300)
 
-source('../CheckRPackages.R')
+rm(list = ls())
+load('../RData/RPackages_List.RData')
+new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
+if(length(new.pkg) > 0){stop('Please run the script Install_required_packages.R before returning to this script. Thanks.')}
 
-require(plyr)
 require(dplyr)      # filter, arrange, etc
 require(gtools)     # For permutations
 require(tictoc)     # For bdiag()
@@ -32,7 +34,7 @@ require(doParallel) # For post_prob_R
 require(Matrix)
 require(matrixStats) # for logSumExp
 require(igraph)     # For igraph
-require(RColorBrewer)
+require(RColorBrewer) # Nice colours
 require(knitr)      # for kable()
 require(lme4)       # mixed effects linear model
 
