@@ -1,4 +1,4 @@
-# This iterates through the list of necessary and packages and installs them if missing
+# This iterates through the list of necessary packages, loads and installs them if missing
 
 ipak = function(pkg){
   new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
@@ -9,4 +9,4 @@ ipak = function(pkg){
 
 load('../RData/RPackages_List.RData')
 ipak(pkgs)
-sessionInfo() # See packages loaded
+devtools::session_info() # See packages loaded
