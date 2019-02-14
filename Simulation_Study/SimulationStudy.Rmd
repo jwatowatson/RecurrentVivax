@@ -1,12 +1,11 @@
 ---
 title: "Simulation study to test vivax relatedness model"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
     keep_md: yes
 ---
-
-To-do: change plot N_alleles to N_alleles_Choices
 
 ```{r, echo=FALSE, include=F}
 knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
@@ -15,14 +14,15 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
                       fig.pos = 'H', 
                       dev = 'png', dpi = 300)
 
-require(dplyr)
-require(Matrix)
-require(gtools)
-require(tictoc)
-require(doParallel)
-require(igraph)
-require(matrixStats)
-require(RColorBrewer)
+rm(list = ls())
+load('../RData/RPackages_List.RData')
+new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
+if(length(new.pkg) > 0){ # Install using .R script
+  stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
+     sapply(pkgs, require, character.only = TRUE) # Load all packages
+  }
+
+tic()
 ```
 
 ```{r, echo=FALSE}
@@ -202,5 +202,7 @@ if(PLOT_RESULTS){
     }
   }
 }
+
+toc()
 ```
 
