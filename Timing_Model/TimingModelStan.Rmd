@@ -1,7 +1,8 @@
 ---
 title: "Time-to-event model of vivax recurrence"
-author: James Watson & Aimee Taylor
+author: "James Watson & Aimee Taylor"
 output:
+  pdf_document: default
   html_document:
     fig_caption: yes
     keep_md: yes
@@ -12,6 +13,16 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
                       fig.width = 7, fig.height = 7,
                       fig.pos = 'H', 
                       dev = 'png', dpi = 300)
+
+rm(list = ls())
+load('../RData/RPackages_List.RData')
+new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
+if(length(new.pkg) > 0){ # Install using .R script
+  stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
+     sapply(pkgs, require, character.only = TRUE) # Load all packages
+  }
+
+tic()
 ```
 
 # Preliminaries
@@ -19,15 +30,6 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
 Load R packages.
 
 ```{r, echo=FALSE}
-source('../CheckRPackages.R')
-
-library(plyr)
-library(dplyr)
-library(rstan)
-library(boot)
-library(RColorBrewer)
-require(gdata)
-
 # Note that recompilation is necessary on different platforms
 RECOMPILE_MODELS = F
 # Running the full stan models can take several days
@@ -1491,3 +1493,7 @@ writeLines(paste('Reinfections are approximately ',
                  '% of recurrences after CQ+PMQ'))
 ```
 
+
+```{r}
+toc()
+```
