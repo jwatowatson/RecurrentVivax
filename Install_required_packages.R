@@ -8,4 +8,5 @@ ipak = function(pkg){
 }
 
 load('../RData/RPackages_List.RData')
-ipak(all_R_packages_needed)
+ipak(pkgs)
+sessionInfo() # See packages loaded
