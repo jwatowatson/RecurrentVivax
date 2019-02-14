@@ -25,19 +25,12 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
 rm(list = ls())
 load('../RData/RPackages_List.RData')
 new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
-if(length(new.pkg) > 0){stop('Please run the script Install_required_packages.R before returning to this script. Thanks.')}
+if(length(new.pkg) > 0){ # Install using .R script
+  stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
+     sapply(pkgs, require, character.only = TRUE) # Load all packages
+  }
 
-require(dplyr)      # filter, arrange, etc
-require(gtools)     # For permutations
-require(tictoc)     # For bdiag()
-require(doParallel) # For post_prob_R
-require(Matrix)
-require(matrixStats) # for logSumExp
-require(igraph)     # For igraph
-require(RColorBrewer) # Nice colours
-require(knitr)      # for kable()
-require(lme4)       # mixed effects linear model
-
+tic()
 load('../RData/TimingModel/MOD2_theta_estimates.RData')
 load('../RData/TimingModel/MOD2_Posterior_samples.RData')
 load('../RData/TimingModel/Combined_Time_Event.RData')
@@ -47,7 +40,6 @@ source('../Genetic_Model/iGraph_functions.R')
 source("../Genetic_Model/post_prob_CLI.R") 
 source("../Genetic_Model/test_Rn_compatible.R") 
 source("../Genetic_Model/Data_Inflation_Functions.R")
-#source('../Plotting_MS_data/PlottingFunction.R')
 
 # The pooled MS data from BPD and VHX
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
@@ -66,27 +58,22 @@ RUN_MODELS_FALSE_POSITIVE = F           # only cluster (1 day with 42 cores)
 # generates plots
 CREATE_PLOTS = T
 
-# Colour scheme
-# Previous Set1 not colourblind friendly: display.brewer.all(colorblindFriendly = T)
-Dark2 = brewer.pal(8, 'Dark2')
-
-# This needs moving to time analysis: 
-drug_cols3 = array(Dark2[c(4,6,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ'))) 
-drug_cols2 = array(Dark2[c(2,2,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
-drug_cols_light2 = sapply(drug_cols2, adjustcolor, alpha.f = 0.5)
-
 # Vector of states
 states = c(relapse = 'L', reinfection = 'I', recrudescence = 'C')
 
-# James, there are some odd bugs something to do with !duplicated() and the tibble...
+# Convert to data.frame since there are some odd bugs associate with tibble...
 # https://stackoverflow.com/questions/39041115/fixing-a-multiple-warning-unknown-column
-# Also, Thetas_full_post has redundant column names, this is a quick solution
 Combined_Time_Data = as.data.frame(Combined_Time_Data)
 
 ## Threshold value for classification
-## Threshold values for classification
 Epsilon_upper = 0.7
 Epsilon_lower = 0.3
+
+# Colour scheme
+# For colourblind friendly: display.brewer.all(colorblindFriendly = T)
+Dark2 = brewer.pal(8, 'Dark2')
+drug_cols2 = array(Dark2[c(2,2,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
+drug_cols_light2 = sapply(drug_cols2, adjustcolor, alpha.f = 0.5)
 transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
 ```
 
@@ -1641,6 +1628,7 @@ plot(log10(thetas_9MS$I), log10(thetas_9MS$I)-log10(thetas_9MS_alphaUpper$I),
 legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20, bty = 'n')
 
 abline(h=0,lty=2)
+toc()
 ```
 
 Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
