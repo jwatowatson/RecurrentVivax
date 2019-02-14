@@ -19,6 +19,8 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
 Load R packages.
 
 ```{r, echo=FALSE}
+source('../CheckRPackages.R')
+
 library(plyr)
 library(dplyr)
 library(rstan)
@@ -141,7 +143,7 @@ Combined_Time_Data = filter(Combined_Time_Data, !(Censored > -1 & Time_to_event 
 #Combined_Time_Data = filter(Combined_Time_Data, Censored == -1)
 
 # This is so that stan can compute the seasonality factor (can't handle missing values)
-Combined_Time_Data$WeekTime[is.na(Combined_Time_Data$WeekTime)]=0
+# Combined_Time_Data$WeekTime[is.na(Combined_Time_Data$WeekTime)]=0
 
 # deal with non-integer ids
 Combined_Time_Data$patientid = factor(Combined_Time_Data$patientid)
@@ -320,29 +322,29 @@ if(RUN_MODELS){
   #                    data = c(Time_data_1, Prior_params_M1),
   #                    iter = IT, warmup = WarmUp,
   #                    chains=Chains, thin = thin)
-  # save(mod0_Fit, file = 'OutputResults/StanModels_mod0.RData')
+  # save(mod0_Fit, file = '../RData/LargeFiles/StanModels_mod0.RData')
   # 
   mod1_Fit = sampling(Timing_Model1,
                       data = c(Time_data_1, Prior_params_M1),
                       iter = IT, warmup = WarmUp,
                       chains=Chains, thin = thin)
-  save(mod1_Fit, file = 'OutputResults/StanModels_mod1.RData')
+  save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
   
   mod2_Fit = sampling(Timing_Model2,
                       data = c(Time_data_2, Prior_params_M2),
                       iter = IT, warmup = WarmUp,
                       chains=Chains, thin = thin)
-  save(mod2_Fit, file = 'OutputResults/StanModels_mod2.RData')
+  save(mod2_Fit, file = '../RData/LargeFiles/StanModels_mod2.RData')
   
   # mod3_Fit = sampling(Timing_Model3,
   #                     data = c(Time_data_3, Prior_params_M3),
   #                     iter = IT, warmup = WarmUp,
   #                     chains=Chains, thin = thin)
-  # save(mod3_Fit, file = 'OutputResults/StanModels_mod3.RData')
+  # save(mod3_Fit, file = '../RData/LargeFiles/StanModels_mod3.RData')
 }
 # load('OutputResults/StanModels_mod1.RData')
-load('OutputResults/StanModels_mod1.RData')
-load('OutputResults/StanModels_mod2.RData')
+load('../RData/LargeFiles/StanModels_mod1.RData')
+load('../RData/LargeFiles/StanModels_mod2.RData')
 ```
 
 # Plot output
@@ -663,7 +665,7 @@ log_lik2 = extract_log_lik(mod2_Fit)
 #waic3 = waic(log_lik3)
 loo_2 = loo(log_lik2)
 loo_1 = loo(log_lik1)
-print(compare(loo_1,loo_2))
+loo::compare(loo_1,loo_2)
 ```
 
 The simpler model (model 1) has higher predictive accuracy.
@@ -1299,7 +1301,7 @@ Post_samples_matrix = data.frame(cbind(t(labels[random_ind, ,4,drop=T]),
 colnames(Post_samples_matrix) = c(sapply(c('C','L','I'), rep, K_samples))
 Post_samples_matrix$Episode_Identifier = apply(Combined_Time_Data, 1, 
                                                function(x) {
-                                                 paste(x['patientid'], as.integer(x['episode'])+1, 
+                                                 paste(x['patientid'], as.integer(x['episode']), 
                                                        sep = '_')} )
 save(Post_samples_matrix, file = '../RData/TimingModel/MOD2_Posterior_samples.RData')
 ```

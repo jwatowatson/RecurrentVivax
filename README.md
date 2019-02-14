@@ -1,5 +1,7 @@
 # RecurrentVivax
 
+## Overview of software 
+
 This repository has all the necessary code and data to reproduce results from **Estimating the probable cause of recurrence in Plasmodium vivax malaria: relapse, reinfection or recrudescence?** Taylor *et al*, 2018.
 
 The full paper (preprint for the moment) can be found at: 
@@ -22,4 +24,29 @@ All data are stored in *RData* and a microsatellite data plotting tool is given 
 Enjoy reading through the model code and model implementation! 
 If you see any bugs or have any questions, the authors can be contacted at jwatowatson@gmail.com and aimee.r.taylor.85@gmail.com.
   
-  
+## Installation and running guide
+
+All software is written in R. For an installation guide please see https://cran.r-project.org/doc/manuals/R-admin.html
+The R version used to develop this code is: R version 3.4.3 (2017-11-30) -- "Kite-Eating Tree"
+
+To run the timing model code, *rstan* is needed. For installation instructions please see: https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started
+The rstan version we are currently using is: rstan Version 2.18.1, GitRev: 2e1f913d3ca3
+
+Some other non-standard packages that will be automatically installed upon running the Markdown scripts (if missing) are:
+* *stringr*
+* *boot*
+* *RColorBrewer*
+* *gdata*
+* *gtools*
+* *tictoc*
+
+Some model runs can be fairly computationally expensive (around 1-2 days using 6 cores on a desktop computer).
+
+## Reproducible output
+
+All three RMarkdown scripts can be run in a few minutes on a standard desktop computer by setting all *RUN_MODELS___* variables to FALSE (default), if the following data are downloaded and put into directory RData/LargeFiles/ :
+
+https://www.dropbox.com/sh/naslrxkyxqnvo0t/AADgAaLBta53Hc8_pX3AAzKha?dl=0
+
+These are all the output results that are too large to be added to a github repository. The computation time to create these files by setting *RUN_MODELS___* variables to TRUE totals about 2-4 days on a standard desktop computer. 
+

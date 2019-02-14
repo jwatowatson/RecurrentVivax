@@ -21,7 +21,7 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
                       fig.width = 7, fig.height = 7,
                       fig.pos = 'H', 
                       dev = 'png', dpi = 300)
-
+source('../CheckRPackages.R')
 require(plyr)
 require(dplyr) # For filter
 require(gtools) # For permutations
@@ -240,7 +240,8 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
                                   cores = 7)
     Res_TAgnostic
   }
-  save(Res_total_TAgnostic, file = 'FullPosterior_INF_TAgnostic.bigRData') # save for safety
+  save(Res_total_TAgnostic, 
+       file = '../RData/LargeFiles/FullPosterior_INF_TAgnostic.bigRData') # save for safety
   toc()
   # Summarise the results, all CIs are 90%
   # Save this summary

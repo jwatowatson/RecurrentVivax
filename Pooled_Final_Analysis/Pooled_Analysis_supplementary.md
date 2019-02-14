@@ -272,17 +272,18 @@ Break down the results depending on whether PMQ was received or not:
 ```
 ## 
 ##         I         L Uncertain 
-##        31        12        57
+##         2        11        88
 ```
 
 ```
 ## 
-## There are 366 recurrences after no PMQ. The breakdown as % of classification is as follows:
+## There are 367 recurrences after no PMQ. The breakdown as % of classification is as follows:
 ```
 
 ```
 ## 
 ##         I         L Uncertain 
-##         3        57        40
+##         0        75        24
 ```
+
 

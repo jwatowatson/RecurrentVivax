@@ -279,15 +279,15 @@ for(ms in MSs_all){
 ```
 
 ```
-## The effective cardinality for PV.3.502 with 13 observed alleles is 7.04
-## The effective cardinality for PV.3.27 with 33 observed alleles is 13.81
-## The effective cardinality for PV.ms8 with 46 observed alleles is 28.25
-## The effective cardinality for PV.1.501 with 17 observed alleles is 12.91
+## The effective cardinality for PV.3.502 with 13 observed alleles is 6.98
+## The effective cardinality for PV.3.27 with 33 observed alleles is 13.82
+## The effective cardinality for PV.ms8 with 46 observed alleles is 28.27
+## The effective cardinality for PV.1.501 with 17 observed alleles is 13.01
 ## The effective cardinality for PV.ms1 with 7 observed alleles is 4.32
-## The effective cardinality for PV.ms5 with 24 observed alleles is 11.96
-## The effective cardinality for PV.ms6 with 25 observed alleles is 11.91
-## The effective cardinality for PV.ms7 with 14 observed alleles is 6.91
-## The effective cardinality for PV.ms16 with 39 observed alleles is 20.01
+## The effective cardinality for PV.ms5 with 24 observed alleles is 11.91
+## The effective cardinality for PV.ms6 with 25 observed alleles is 11.87
+## The effective cardinality for PV.ms7 with 14 observed alleles is 6.93
+## The effective cardinality for PV.ms16 with 39 observed alleles is 19.98
 ```
 
 ```r
@@ -421,6 +421,30 @@ Plotted by radical cure versus no radical cure, as that is the most informative 
 
 ![](Pooled_Analysis_files/figure-html/Supplementary_TimeEffect_onPosterior-1.png)<!-- -->
 
+```
+## Based on time-to-event alone, 66 of 66 No PMQ classified as relapse
+```
+
+```
+## Based on genetic alone, 23 of 66 No PMQ classified as relapse
+```
+
+```
+## Based on all available data, 61 of 66 No PMQ classified as relapse
+```
+
+```
+## Based on time-to-event alone, 0 of 120 PMQ+ classified as relapse
+```
+
+```
+## Based on genetic alone, 13 of 120 PMQ+ classified as relapse
+```
+
+```
+## Based on all available data, 12 of 120 PMQ+ classified as relapse
+```
+
 Probability of states, ordered from most to least likely:
 
 ![](Pooled_Analysis_files/figure-html/unnamed-chunk-17-1.png)<!-- -->
@@ -468,9 +492,9 @@ Construct adjacency graphs and compute probabilities of relapse and reinfection.
 
 ```r
 MS_pooled_summary$L_or_C_state = MS_pooled_summary$TotalEpisodes = NA
-MS_pooled_summary$L_lower = MS_pooled_summary$L_upper = MS_pooled_summary$L_mean = NA
-MS_pooled_summary$C_lower = MS_pooled_summary$C_upper = MS_pooled_summary$C_mean = NA
-MS_pooled_summary$I_lower = MS_pooled_summary$I_upper = MS_pooled_summary$I_mean = NA
+MS_pooled_summary$L_lower = MS_pooled_summary$L_upper = MS_pooled_summary$L_median = NA
+MS_pooled_summary$C_lower = MS_pooled_summary$C_upper = MS_pooled_summary$C_median = NA
+MS_pooled_summary$I_lower = MS_pooled_summary$I_upper = MS_pooled_summary$I_median = NA
 # Arrange by complexity
 # Get single rows per episode (throw away the extra MOI information)
 MS_inflated_summary = MS_inflated[!duplicated(MS_inflated$Episode_Identifier) & 
@@ -491,9 +515,20 @@ for(i in 1:nrow(MS_inflated_summary)){
 ```
 
 ```r
-Results_Inflated$ID_True = MS_inflated_summary$ID_True
-Results_Inflated$First_EpNumber = MS_inflated_summary$First_EpNumber
-Results_Inflated$Second_EpNumber = MS_inflated_summary$Second_EpNumber
+Results_Inflated$ID_True = NA
+Results_Inflated$First_EpNumber = NA
+Results_Inflated$Second_EpNumber = NA
+# The ordering has changed so need to be careful about naming
+for(i in 1:nrow(Results_Inflated)){
+  ind_MS_inflated = which(MS_inflated_summary$Episode_Identifier==Results_Inflated$Episode_Identifier[i])
+  Results_Inflated$ID_True[i] = 
+    MS_inflated_summary$ID_True[ind_MS_inflated]
+  Results_Inflated$First_EpNumber[i] =
+    MS_inflated_summary$First_EpNumber[ind_MS_inflated]
+  Results_Inflated$Second_EpNumber[i] =
+    MS_inflated_summary$Second_EpNumber[ind_MS_inflated]
+}
+
 
 
 # Iterate through the ones we can calculate in one go
@@ -505,35 +540,37 @@ for(ep in episodes_full_model){
   ind2 = rownames(Thetas_full_post)==ep
   
   ## Summaries for relapse
-  MS_pooled_summary$L_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
-                                             probs=0.9, na.rm = T)
-  MS_pooled_summary$L_lower[ind1] = quantile(unlist(Thetas_full_post[ind2,
-                                                                     grep('L',colnames(Thetas_full_post))]),
-                                             probs=0.1, na.rm = T)
-  MS_pooled_summary$L_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('L',colnames(Thetas_full_post))]),
-                                            probs=0.5, na.rm = T)
+  L_cols = grep('L',colnames(Thetas_full_post))
+  MS_pooled_summary$L_upper[ind1] = quantile(unlist(Thetas_full_post[ind2,L_cols]),
+                                             probs=upperCI, na.rm = T)
+  MS_pooled_summary$L_lower[ind1] = quantile(unlist(Thetas_full_post[ind2,L_cols]),
+                                             probs=lowerCI, na.rm = T)
+  MS_pooled_summary$L_median[ind1] = quantile(unlist(Thetas_full_post[ind2,L_cols]),
+                                              probs=0.5, na.rm = T)
   
   ## Summaries for recrudescence
-  MS_pooled_summary$C_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('C',colnames(Thetas_full_post))]),
-                                             probs=0.9, na.rm = T)
-  MS_pooled_summary$C_lower[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('C',colnames(Thetas_full_post))]),
-                                             probs=0.1, na.rm = T)
-  MS_pooled_summary$C_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('C',colnames(Thetas_full_post))]),
-                                            probs=0.5, na.rm = T)
+  C_cols = grep('C',colnames(Thetas_full_post))
+  MS_pooled_summary$C_upper[ind1] = quantile(unlist(Thetas_full_post[ind2,C_cols]),
+                                             probs=upperCI, na.rm = T)
+  MS_pooled_summary$C_lower[ind1] = quantile(unlist(Thetas_full_post[ind2,C_cols]),
+                                             probs=lowerCI, na.rm = T)
+  MS_pooled_summary$C_median[ind1] = quantile(unlist(Thetas_full_post[ind2,C_cols]),
+                                              probs=0.5, na.rm = T)
   
   ## Summaries for reinfection
-  MS_pooled_summary$I_upper[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('I',colnames(Thetas_full_post))]),
-                                             probs=0.9, na.rm = T)
-  MS_pooled_summary$I_lower[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('I',colnames(Thetas_full_post))]),
-                                             probs=0.1, na.rm = T)
-  MS_pooled_summary$I_mean[ind1] = quantile(unlist(Thetas_full_post[ind2, grep('I',colnames(Thetas_full_post))]),
-                                            probs=0.5, na.rm = T)
+  I_cols = grep('I',colnames(Thetas_full_post))
+  MS_pooled_summary$I_upper[ind1] = quantile(unlist(Thetas_full_post[ind2,I_cols]),
+                                             probs=upperCI, na.rm = T)
+  MS_pooled_summary$I_lower[ind1] = quantile(unlist(Thetas_full_post[ind2,I_cols]),
+                                             probs=lowerCI, na.rm = T)
+  MS_pooled_summary$I_median[ind1] = quantile(unlist(Thetas_full_post[ind2,I_cols]),
+                                              probs=0.5, na.rm = T)
   
   # Just going to classify on relapse versus reinfection
   if(!is.na(MS_pooled_summary$L_upper[ind1])){
-    if(MS_pooled_summary$L_upper[ind1] < Epsilon_lower){
+    if(MS_pooled_summary$L_upper[ind1]+MS_pooled_summary$C_upper[ind1] < Epsilon_lower){
       MS_pooled_summary$L_or_C_state[ind1] = 'I'
-    } else if(MS_pooled_summary$L_lower[ind1] > Epsilon_upper){
+    } else if(MS_pooled_summary$L_lower[ind1]+MS_pooled_summary$C_lower[ind1] > Epsilon_upper){
       MS_pooled_summary$L_or_C_state[ind1] = 'L'
     } else {
       MS_pooled_summary$L_or_C_state[ind1] = 'Uncertain'
@@ -542,36 +579,58 @@ for(ep in episodes_full_model){
     MS_pooled_summary$L_or_C_state[ind1] = NA
   }
 }
-####***************####################
+####******** Complex cases *******####################
 # Now iterate through the complex ones
 for(i in 1:length(IDs_remaining)){
   id = IDs_remaining[i]
   Doubles_Thetas = filter(Results_Inflated, ID_True==id)
   
   for(ep in unique(Doubles_Thetas$Second_EpNumber)){
+    # indices on the MS_pooled_summary
     ind1 = which(MS_pooled_summary$ID==id & MS_pooled_summary$Episode==ep)
+    # indices on DOubles thetas: looking for relapse evidence
     ind2 = which(Doubles_Thetas$Second_EpNumber == ep)
+    # index for recrudescence evidence
+    ind3 = which(Doubles_Thetas$Second_EpNumber == ep &
+                   Doubles_Thetas$First_EpNumber == (ep-1))
     
-    MS_pooled_summary$L_lower[ind1] = mean(Doubles_Thetas$L_min[ind2],na.rm=T)
-    MS_pooled_summary$L_upper[ind1] = mean(Doubles_Thetas$L_max[ind2],na.rm=T)
-    MS_pooled_summary$L_mean[ind1] = mean(Doubles_Thetas$L_mean[ind2],na.rm=T)
-    
-    MS_pooled_summary$C_lower[ind1] = mean(Doubles_Thetas$C_min[ind2],na.rm=T)
-    MS_pooled_summary$C_upper[ind1] = mean(Doubles_Thetas$C_max[ind2],na.rm=T)
-    MS_pooled_summary$C_mean[ind1] = mean(Doubles_Thetas$C_mean[ind2],na.rm=T)
-    
-    MS_pooled_summary$I_lower[ind1] = mean(Doubles_Thetas$I_min[ind2],na.rm=T)
-    MS_pooled_summary$I_upper[ind1] = mean(Doubles_Thetas$I_max[ind2],na.rm=T)
-    MS_pooled_summary$I_mean[ind1] = mean(Doubles_Thetas$I_mean[ind2],na.rm=T)
-    
-    if(!is.na(MS_pooled_summary$L_upper[ind1])){
+    best_match_relapse = which.max(Doubles_Thetas$L_median[ind2])
+    if(length(best_match_relapse)>0){
+      # Relapse probability
+      MS_pooled_summary$L_lower[ind1] = Doubles_Thetas$L_min[ind2[best_match_relapse]]
+      MS_pooled_summary$L_upper[ind1] = Doubles_Thetas$L_max[ind2[best_match_relapse]]
+      MS_pooled_summary$L_median[ind1] = Doubles_Thetas$L_median[ind2[best_match_relapse]]
+      
+      # Reinfection probability
+      MS_pooled_summary$I_lower[ind1] = Doubles_Thetas$I_min[ind2[best_match_relapse]]
+      MS_pooled_summary$I_upper[ind1] = Doubles_Thetas$I_max[ind2[best_match_relapse]]
+      MS_pooled_summary$I_median[ind1] = Doubles_Thetas$I_median[ind2[best_match_relapse]]
+      
+      # Recrudescence probability
+      if(length(ind3)>0){ 
+        # we can compute using previous episode
+        MS_pooled_summary$C_lower[ind1] = Doubles_Thetas$C_min[ind3]
+        MS_pooled_summary$C_upper[ind1] = Doubles_Thetas$C_max[ind3]
+        MS_pooled_summary$C_median[ind1] = Doubles_Thetas$C_median[ind3]
+      }  
+      if(is.na(MS_pooled_summary$C_median[ind1])){
+        MS_pooled_summary$C_lower[ind1] =
+          1-MS_pooled_summary$L_lower[ind1]+MS_pooled_summary$I_lower[ind1]
+        MS_pooled_summary$C_upper[ind1] = 
+          1-MS_pooled_summary$L_upper[ind1]+MS_pooled_summary$I_upper[ind1]
+        MS_pooled_summary$C_median[ind1] = 
+          1-MS_pooled_summary$L_median[ind1]+MS_pooled_summary$I_median[ind1]
+      }
+      
+    }
+    if(!is.na(MS_pooled_summary$C_median[ind1])){
       if(MS_pooled_summary$L_upper[ind1] < MS_pooled_summary$L_lower[ind1]){
         writeLines(sprintf('Problem with ID %s',id))
         stop()
       }
-      if(MS_pooled_summary$L_upper[ind1] < Epsilon_lower){
+      if(MS_pooled_summary$L_upper[ind1]+MS_pooled_summary$C_upper[ind1] < Epsilon_lower){
         MS_pooled_summary$L_or_C_state[ind1] = 'I'
-      } else if(MS_pooled_summary$L_lower[ind1] > Epsilon_upper){
+      } else if(MS_pooled_summary$L_lower[ind1]+MS_pooled_summary$C_lower[ind1] > Epsilon_upper){
         MS_pooled_summary$L_or_C_state[ind1] = 'L'
       } else {
         MS_pooled_summary$L_or_C_state[ind1] = 'Uncertain'
@@ -588,7 +647,6 @@ for(id in MS_pooled_summary$ID){
     Combined_Time_Data$arm_num[Combined_Time_Data$patientid==id][1] == 'CHQ/PMQ') + 2
   MS_pooled_summary$FU[ind] = Combined_Time_Data$FU_time[Combined_Time_Data$patientid==id][1]
 }
-
 MS_pooled_summary$Plotting_pch_Values = 
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = c(17,15,1)))
 MS_pooled_summary$Plotting_col_Values = 
@@ -598,7 +656,7 @@ MS_pooled_summary$Plotting_col_Values =
 ```r
 # How many too complex to generate estimate for? 
 ind_recur = MS_pooled_summary$Episode > 1 # Filter out enrollment
-ind_complex_recur = is.na(MS_pooled_summary$L_mean[ind_recur])
+ind_complex_recur = is.na(MS_pooled_summary$L_median[ind_recur])
 no_complex_recur = sum(ind_complex_recur) # Recurrences with NAs
 
 # How many of the complex infections result in the loss of an individual
@@ -614,14 +672,14 @@ writeLines(sprintf('Of %s recurrences analysed, %s were too complex to estimate 
 ```
 
 ```
-## Of 493 recurrences analysed, 7 were too complex to estimate recurrence state probabilities, resulting in probability estimates for a total of 486 recurrences from 208 individuals (77 BPD and 131 VHX)
+## Of 493 recurrences analysed, 6 were too complex to estimate recurrence state probabilities, resulting in probability estimates for a total of 487 recurrences from 208 individuals (77 BPD and 131 VHX)
 ```
 
 
 ![](Pooled_Analysis_files/figure-html/CoatneyStylePLot-1.png)<!-- -->
 
 ```
-## The Coatney style plot is showing 486 recurrences in 208 individuals
+## The Coatney style plot is showing 487 recurrences in 208 individuals
 ```
 
 ![](Pooled_Analysis_files/figure-html/CompleteDataPlot-1.png)<!-- -->
@@ -683,57 +741,57 @@ The summaries of the final dataset. Results for all those genotyped who did not 
 ```
 
 ```
-## In no-primaquine individuals, the weighted average of relapse is 99.3 (96.8-99.9), for 365 recurrences
+## In no-primaquine individuals, the weighted average of relapse is 0 (97-99.3), for 366 recurrences
 ```
 
 ```
-## In no-primaquine individuals, the weighted average of recrudescences is 0.3 (0.1-0.6), for 365 recurrences
+## In no-primaquine individuals, the weighted average of recrudescences is 0 (1.4-2.2), for 366 recurrences
 ```
 
 ```
-## In no-primaquine individuals, the weighted average of reinfections is 0.4 (0-2.6), for 365 recurrences
+## In no-primaquine individuals, the weighted average of reinfections is 0 (0.1-2), for 366 recurrences
 ```
 
 Results for all those genotyped who did receive primaquine (VHX and BPD studies combined):
 
 ```
-## In primaquine treated individuals, the weighted average of relapses is 14.3 (12.3-16.7), for 121 recurrences
+## In primaquine treated individuals, the weighted average of relapses is 0 (11.7-17.7), for 121 recurrences
 ```
 
 ```
-## In primaquine treated individuals, the weighted average of recrudescences is 0 (0-0.3), for 121 recurrences
+## In primaquine treated individuals, the weighted average of recrudescences is 0 (0-0.4), for 121 recurrences
 ```
 
 ```
-## In primaquine treated individuals, the weighted average of reinfections is 85.7 (83.3-87.5), for 121 recurrences
+## In primaquine treated individuals, the weighted average of reinfections is 0 (82.3-88), for 121 recurrences
 ```
 
 Results for all those genotyped who did receive primaquine in the VHX study (unknown denominator)
 
 ```
-## In primaquine treated individuals (VHX), the weighted average of relapses is 10.4 (8.5-12.7), for 34 recurrences
+## In primaquine treated individuals (VHX), the weighted average of relapses is 0 (8-14.1), for 34 recurrences
 ```
 
 ```
-## In primaquine treated individuals (VHX), the weighted average of recrudescences is 0 (0-0.2), for 34 recurrences
+## In primaquine treated individuals (VHX), the weighted average of recrudescences is 0 (0-0.3), for 34 recurrences
 ```
 
 ```
-## In primaquine treated individuals (VHX), the weighted average of reinfections is 89.6 (87.3-91.3), for 34 recurrences
+## In primaquine treated individuals (VHX), the weighted average of reinfections is 0 (85.9-91.7), for 34 recurrences
 ```
 
 Results for all those genotyped who did receive primaquine, only in the BPD study (known denominator)
 
 ```
-## In primaquine treated individuals (BPD), the weighted average of relapses is 15.8 (13.7-18.3), for 87 recurrences
+## In primaquine treated individuals (BPD), the weighted average of relapses is 0 (13.1-19.2), for 87 recurrences
 ```
 
 ```
-## In primaquine treated individuals (BPD), the weighted average of recrudescences is 0 (0-0.3), for 87 recurrences
+## In primaquine treated individuals (BPD), the weighted average of recrudescences is 0 (0-0.4), for 87 recurrences
 ```
 
 ```
-## In primaquine treated individuals (BPD), the weighted average of reinfections is 84.1 (81.7-86), for 87 recurrences
+## In primaquine treated individuals (BPD), the weighted average of reinfections is 0 (80.8-86.5), for 87 recurrences
 ```
 
 # False positive rate of relapse
@@ -745,15 +803,15 @@ We want to know how often our model estimates evidence of relapse across pairs o
 if(RUN_MODELS_FALSE_POSITIVE){
   # check if the massive pairwise dataset has been made, if not make it 
   # (takes a long time ~20hours)
-  if(!"APC_MSdata.bigRData"%in%list.files()){
+  if(!"APC_MSdata.bigRData"%in%list.files(path = '../RData/LargeFiles/')){
     # The pooled MS data from BPD and VHX
     load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
     tic()
     APC_MSdata = Make_All_Pairwise_Comparisons(MS_data = MS_pooled, ncores=42)
-    save(APC_MSdata, file = 'APC_MSdata.bigRData')
+    save(APC_MSdata, file = '../RData/LargeFiles/APC_MSdata.bigRData')
     toc()
   } 
-  load('APC_MSdata.bigRData')
+  load('../RData/LargeFiles/APC_MSdata.bigRData')
   print('The inflated pairwise dataset is available, now running the analysis...')
   # Run the genetic model on the pairwise data
   tic()
@@ -763,11 +821,11 @@ if(RUN_MODELS_FALSE_POSITIVE){
                                    verbose = F,
                                    cores = 42)
   toc()
-  save(Inflated_Results, file = 'Inflated_Results.bigRData')
+  save(Inflated_Results, file = '../RData/LargeFiles/Inflated_Results.bigRData')
 } else {
-  load('~/Dropbox/RecurrentVivax/Pooled_Final_Analysis/Inflated_Results.bigRData')
+  load('../RData/LargeFiles/Inflated_Results.bigRData')
   Inflated_Results = Inflated_Results[!is.na(Inflated_Results$L),]
-  load('~/Dropbox/RecurrentVivax/Pooled_Final_Analysis/APC_MSdata.bigRData')
+  load('../RData/LargeFiles/APC_MSdata.bigRData')
 }
 ```
 
@@ -798,23 +856,25 @@ Combined_Time_Data$Reinfection_Probability=
 
 Mod2_ThetaEstimates$Failure_Identifier = 
   apply(Mod2_ThetaEstimates, 1, 
-        function(x) paste(x['patientid'], as.integer(x['episode'])-1,sep='_'))
+        function(x) paste(x['patientid'], as.integer(x['episode']),sep='_'))
 
 sss=0
 for(i in 1:nrow(Combined_Time_Data)){
   ep_id = Combined_Time_Data$Episode_Identifier[i]
+  # we look one ahead
   MS_id = paste(Combined_Time_Data$patientid[i],
                 as.integer(Combined_Time_Data$episode[i])+1, sep='_')
+  
   # If in MS_final then use full probability
   if(MS_id %in% MS_final$Episode_Identifier){
     Combined_Time_Data$Reinfection_Probability[i] =
-      MS_final$I_mean[MS_final$Episode_Identifier==MS_id]
+      MS_final$I_median[MS_final$Episode_Identifier==MS_id]
     Combined_Time_Data$Reinfection_Probability_UL[i] =
       MS_final$I_upper[MS_final$Episode_Identifier==MS_id]
     Combined_Time_Data$Reinfection_Probability_LL[i] =
       MS_final$I_lower[MS_final$Episode_Identifier==MS_id]
   } else { # use the time to event model
-    ind = which(Mod2_ThetaEstimates$Failure_Identifier==ep_id)
+    ind = which(Mod2_ThetaEstimates$Failure_Identifier==MS_id)
     if(length(ind)>0){
       Combined_Time_Data$Reinfection_Probability[i] =
         Mod2_ThetaEstimates$ReInfection_mean_theta[ind]
@@ -838,7 +898,10 @@ load('../RData/PK_data/BPD_pk.RData')
 BPD_pk = filter(BPD_pk, !is.na(Episode))
 Combined_Time_Data$log10_carboxyPMQ = NA
 Combined_Time_Data$log10_PMQ = NA
-Combined_Time_Data$NumberDaysPMQ = 14
+Combined_Time_Data$NumberDaysPMQ = NA
+# The default is 14 days
+Combined_Time_Data$NumberDaysPMQ[Combined_Time_Data$Censored != 1 &
+                                   Combined_Time_Data$arm_num=='CHQ/PMQ'] = 14
 for(i in 1:nrow(Combined_Time_Data)){
   id = Combined_Time_Data$patientid[i]
   ep_i = Combined_Time_Data$episode[i]
@@ -857,7 +920,7 @@ for(i in 1:nrow(Combined_Time_Data)){
 ## [1] "BPD_34"
 ```
 
-We exclude the two recurrences seen in patient BPD_444
+We exclude the two recurrences seen in patient BPD_444 who was G6PD deficient and received the 8 weekly regimen (not daily dosing).
 
 
 ```r
@@ -865,14 +928,6 @@ We exclude the two recurrences seen in patient BPD_444
 BPD444_recurrences = Combined_Time_Data$patientid=='BPD_44' & Combined_Time_Data$episode>1
 BPD_598 = which(Combined_Time_Data$patientid=='BPD_598')
 ind_keep = !BPD444_recurrences #& !BPD_598
-require(lme4)
-```
-
-```
-## Loading required package: lme4
-```
-
-```r
 Combined_Time_Data$Failure_YN = Combined_Time_Data$Reinfection_Probability < 0.5
 mod = glmer(Failure_YN ~ log10_carboxyPMQ + NumberDaysPMQ + 
               (1 | patientid), 
@@ -968,6 +1023,13 @@ outliers14 = Combined_Time_Data$NumberDaysPMQ==14 & Combined_Time_Data$log10_car
 mod_No_Outliers = glmer(Failure_YN ~ log10_carboxyPMQ + NumberDaysPMQ + 
                           (1 | patientid), 
                         family = 'binomial', data=Combined_Time_Data[ind_keep & !outliers14 & !outliers7,])
+```
+
+```
+## fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
+```
+
+```r
 summary(mod_No_Outliers)
 ```
 
@@ -979,27 +1041,27 @@ summary(mod_No_Outliers)
 ##    Data: Combined_Time_Data[ind_keep & !outliers14 & !outliers7, ]
 ## 
 ##      AIC      BIC   logLik deviance df.resid 
-##    111.1    129.3    -51.5    103.1      706 
+##     48.5     60.5    -21.3     42.5      393 
 ## 
 ## Scaled residuals: 
 ##     Min      1Q  Median      3Q     Max 
-## -0.2424 -0.1310 -0.1126 -0.0957 12.0783 
+## -0.2931 -0.1136 -0.0856 -0.0675 17.9880 
 ## 
 ## Random effects:
-##  Groups    Name        Variance Std.Dev. 
-##  patientid (Intercept) 8.03e-14 2.834e-07
-## Number of obs: 710, groups:  patientid, 632
+##  Groups    Name        Variance  Std.Dev.
+##  patientid (Intercept) 2.102e-14 1.45e-07
+## Number of obs: 396, groups:  patientid, 352
 ## 
 ## Fixed effects:
 ##                  Estimate Std. Error z value Pr(>|z|)
-## (Intercept)        0.3447     3.5327   0.098    0.922
-## log10_carboxyPMQ  -1.0646     1.0163  -1.048    0.295
-## NumberDaysPMQ     -0.1550     0.1091  -1.421    0.155
+## (Intercept)         2.404      4.488   0.536    0.592
+## log10_carboxyPMQ   -2.760      1.832  -1.507    0.132
 ## 
 ## Correlation of Fixed Effects:
-##             (Intr) l10_PM
-## lg10_crbPMQ -0.962       
-## NumbrDysPMQ -0.724  0.524
+##             (Intr)
+## lg10_crbPMQ -0.994
+## fit warnings:
+## fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
 ```
 
 Compare results with and without outliers:
@@ -1069,108 +1131,7 @@ writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%
 ```
 
 ```
-## The primaquine failure rate in the 655 individuals is 2.59% (2.02-3.47) over the course of 522 years total follow-up.
-```
-
-
-Not in manuscript, but looking out of interest: does 2D6 correlate with carboxy ?
-
-
-```r
-TwoD6_dat = read.csv('~/Dropbox/RecurrentVivax/RData/PK_data/TwoD6&Vivax Genotyping_ASscore.csv')
-TwoD6_dat$ID = apply(TwoD6_dat, 1, function(x) paste(x['Study'],
-                                                     as.integer(x['Patient.ID']),
-                                                     sep = '_'))
-TwoD6_dat$Phenotype = mapvalues(TwoD6_dat$X2D6.Phenotype, 
-                                from = c('PM','IM', 'EM'), to = 1:3)
-Combined_Time_Data$Phenotype = Combined_Time_Data$ASscore = NA
-for(i in 1:nrow(Combined_Time_Data)){
-  id = Combined_Time_Data$patientid[i]
-  if(sum(TwoD6_dat$ID==id)>0){
-    Combined_Time_Data$ASscore[i] = TwoD6_dat$AS.score[TwoD6_dat$ID==id]
-    Combined_Time_Data$Phenotype[i] = TwoD6_dat$Phenotype[TwoD6_dat$ID==id]
-  }
-}
-
-mod_2D6 = lmer(log10_carboxyPMQ ~ ASscore + NumberDaysPMQ + (1 | patientid), 
-               data = Combined_Time_Data)
-summary(mod_2D6)
-```
-
-```
-## Linear mixed model fit by REML ['lmerMod']
-## Formula: log10_carboxyPMQ ~ ASscore + NumberDaysPMQ + (1 | patientid)
-##    Data: Combined_Time_Data
-## 
-## REML criterion at convergence: 190.6
-## 
-## Scaled residuals: 
-##     Min      1Q  Median      3Q     Max 
-## -4.6041 -0.2741  0.0758  0.3798  5.0223 
-## 
-## Random effects:
-##  Groups    Name        Variance Std.Dev.
-##  patientid (Intercept) 0.07392  0.2719  
-##  Residual              0.06576  0.2564  
-## Number of obs: 234, groups:  patientid, 154
-## 
-## Fixed effects:
-##                Estimate Std. Error t value
-## (Intercept)    3.535077   0.113075  31.263
-## ASscore       -0.085651   0.056897  -1.505
-## NumberDaysPMQ -0.059412   0.006522  -9.109
-## 
-## Correlation of Fixed Effects:
-##             (Intr) ASscor
-## ASscore     -0.697       
-## NumbrDysPMQ -0.710  0.055
-```
-
-```r
-plot(Combined_Time_Data$ASscore, Combined_Time_Data$log10_carboxyPMQ, pch=20)
-lines(xs, predict(mod_2D6, data.frame(ASscore=xs,NumberDaysPMQ=7,patientid='new'),allow.new.levels=T),lwd=3)
-```
-
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-34-1.png)<!-- -->
-
-
-
-```r
-Combined_2D6data = filter(Combined_Time_Data, !is.na(ASscore), !Censored)
-for(id in unique(Combined_2D6data$patientid)){
-  ind = Combined_2D6data$patientid==id
-  Combined_2D6data$Failure_YN[ind] = max(Combined_2D6data$Failure_YN[ind])
-}
-Combined_2D6data = Combined_2D6data[!duplicated(Combined_2D6data$patientid),]
-mod_Failure = glm(Failure_YN ~ ASscore, 
-                  data = Combined_2D6data, family = 'binomial')
-summary(mod_Failure)
-```
-
-```
-## 
-## Call:
-## glm(formula = Failure_YN ~ ASscore, family = "binomial", data = Combined_2D6data)
-## 
-## Deviance Residuals: 
-##     Min       1Q   Median       3Q      Max  
-## -0.3616  -0.2074  -0.1566  -0.1566   2.7748  
-## 
-## Coefficients:
-##             Estimate Std. Error z value Pr(>|z|)  
-## (Intercept)   -2.695      1.518  -1.776   0.0758 .
-## ASscore       -1.134      1.327  -0.854   0.3930  
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## (Dispersion parameter for binomial family taken to be 1)
-## 
-##     Null deviance: 20.065  on 111  degrees of freedom
-## Residual deviance: 19.366  on 110  degrees of freedom
-##   (2 observations deleted due to missingness)
-## AIC: 23.366
-## 
-## Number of Fisher Scoring iterations: 7
+## The primaquine failure rate in the 655 individuals is 2.59% (1.96-3.58) over the course of 522 years total follow-up.
 ```
 
 
@@ -1240,11 +1201,11 @@ legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20,
 abline(h=0,lty=2)
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-37-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-35-1.png)<!-- -->
 
 Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
 This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
 
 For the non-primaquine group, it is just tempering the very low probabilities of reinfection seen for some episodes.
 
-In conclusion, this isn't changing the results significantly and would imply a greater primaquine efficacy that reported in the paper.
+In conclusion, this isn't changing the results significantly and would imply a greater primaquine efficacy than reported in the paper.
