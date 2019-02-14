@@ -341,7 +341,7 @@ Fs_Combined = sapply(Alpha_Posteriors, function(x){x/sum(x)})
 ```{r}
 #==================================================================
 # Save a data set of monoclonal data and allele frequencies for
-# relatedness estimation
+# relatedness estimation (this was analysed elsewhere)
 #==================================================================
 monoclonal_names = rownames(COIs)[COIs$MOI == 1]
 monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
