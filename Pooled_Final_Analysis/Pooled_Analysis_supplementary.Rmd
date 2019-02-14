@@ -21,17 +21,17 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
                       fig.width = 7, fig.height = 7,
                       fig.pos = 'H', 
                       dev = 'png', dpi = 300)
-source('../CheckRPackages.R')
-require(plyr)
-require(dplyr) # For filter
-require(gtools) # For permutations
-require(tictoc) # For bdiag()
-require(doParallel) # For post_prob_R
-require(Matrix)
-require(matrixStats) # for logSumExp
-library(igraph) # For igraph
-require(RColorBrewer)
-require(knitr) # for kable()
+
+
+rm(list = ls())
+load('../RData/RPackages_List.RData')
+new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
+if(length(new.pkg) > 0){ # Install using .R script
+  stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
+     sapply(pkgs, require, character.only = TRUE) # Load all packages
+  }
+
+tic()
 load('../RData/TimingModel/Combined_Time_Event.RData')
 load('../RData/FinalRecurrenceEstimates.RData')
 source("../Genetic_Model/Data_functions.R")
@@ -433,7 +433,7 @@ if(CREATE_PLOTS){
   mycols_states_bg = c('#FFFFFF',Dark2[4],'#000000') # colors for states - need uncertain ones as well
   mycols_states_fg = c(Dark2[8],Dark2[4],'#000000') # colors for states - need uncertain ones as well
   mycols_drugs = brewer.pal(n=3, name = 'Set1')
-  par(las=1, bty='n', cex.axis=.3, mar=c(4,0,1,1), family = 'serif')
+  par(mfrow = c(1,1), las=1, bty='n', cex.axis=.3, mar=c(4,0,1,1), family = 'serif')
   plot(NULL, ylab = '', xlab = '',
        xlim = c(0,370), 
        ylim = c(1,length(ids)),
@@ -485,10 +485,12 @@ if(CREATE_PLOTS){
          lty = 1, lwd = 1,
          legend = c('No PMQ', 'PMQ+'))
 }
-
+```
+```{r}
 writeLines(sprintf('The Coatney style plot is showing %s recurrences in %s individuals',
                    nrow(MS_final), length(ids)))
 ```
+
 
 Break down the results depending on whether PMQ was received or not:
 ```{r, echo=FALSE}
@@ -497,6 +499,7 @@ round(100*table(MS_final$L_or_C_state[MS_final$Treatment=='PMQ'])/sum(MS_final$T
 
 writeLines(sprintf('\nThere are %s recurrences after no PMQ. The breakdown as %% of classification is as follows:', sum(MS_final$Treatment!='PMQ')))
 round(100*table(MS_final$L_or_C_state[MS_final$Treatment!='PMQ'])/sum(MS_final$Treatment!='PMQ'))
+toc()
 ```
 
 
