@@ -1,6 +1,8 @@
 # knitr and R markdown default cache directories
 /*_cache/
 /cache/
+**/*_cache/ # Added by aimee
+**/*_files/ # Added by aimee
 
 # Temporary files created by R markdown
 *.utf8.md
@@ -33,3 +35,5 @@ Timing_Model/.Rhistory
 **/.Rhistory
 Pooled Final Analysis/Pooled_Analysis.R
 Timing_Model/OutputResults/thetas_mod1.RData
+
+
