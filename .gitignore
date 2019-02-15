@@ -2,7 +2,6 @@
 /*_cache/
 /cache/
 **/*_cache/ # Added by aimee
-**/*_files/ # Added by aimee
 
 # Temporary files created by R markdown
 *.utf8.md
@@ -27,8 +26,6 @@ Simulation_Study/*_files/
 
 # Ignore all the DS_Stores
 **/.DS_Store
-Timing_Model/.Rhistory
-Timing_Model/.Rhistory
 Timing_Model/.Rhistory
 
 # Ignore .Rhistory 
