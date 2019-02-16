@@ -7,6 +7,6 @@ ipak = function(pkg){
   sapply(pkg, require, character.only = TRUE)
 }
 
-load('../RData/RPackages_List.RData')
+load('./RData/RPackages_List.RData')
 ipak(pkgs)
 devtools::session_info() # See packages loaded
