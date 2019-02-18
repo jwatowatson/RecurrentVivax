@@ -2,10 +2,10 @@
 title: "Pooled Analysis"
 author: "Aimee Taylor and James Watson"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
     keep_md: yes
+  pdf_document: default
 ---
 
 # Preamble

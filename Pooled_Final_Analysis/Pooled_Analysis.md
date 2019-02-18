@@ -254,7 +254,7 @@ We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 
 ```r
 #==================================================================
 # Save a data set of monoclonal data and allele frequencies for
-# relatedness estimation
+# relatedness estimation (this was analysed elsewhere)
 #==================================================================
 monoclonal_names = rownames(COIs)[COIs$MOI == 1]
 monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
@@ -279,15 +279,15 @@ for(ms in MSs_all){
 ```
 
 ```
-## The effective cardinality for PV.3.502 with 13 observed alleles is 6.98
-## The effective cardinality for PV.3.27 with 33 observed alleles is 13.82
-## The effective cardinality for PV.ms8 with 46 observed alleles is 28.27
+## The effective cardinality for PV.3.502 with 13 observed alleles is 7.02
+## The effective cardinality for PV.3.27 with 33 observed alleles is 13.75
+## The effective cardinality for PV.ms8 with 46 observed alleles is 28.51
 ## The effective cardinality for PV.1.501 with 17 observed alleles is 13.01
-## The effective cardinality for PV.ms1 with 7 observed alleles is 4.32
-## The effective cardinality for PV.ms5 with 24 observed alleles is 11.91
-## The effective cardinality for PV.ms6 with 25 observed alleles is 11.87
-## The effective cardinality for PV.ms7 with 14 observed alleles is 6.93
-## The effective cardinality for PV.ms16 with 39 observed alleles is 19.98
+## The effective cardinality for PV.ms1 with 7 observed alleles is 4.3
+## The effective cardinality for PV.ms5 with 24 observed alleles is 11.93
+## The effective cardinality for PV.ms6 with 25 observed alleles is 11.92
+## The effective cardinality for PV.ms7 with 14 observed alleles is 6.92
+## The effective cardinality for PV.ms16 with 39 observed alleles is 20.19
 ```
 
 ```r
@@ -299,7 +299,7 @@ writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s
 ```
 
 ```
-## The mean effective marker cardinality is 13.01, range: 4.3 to 28.3
+## The mean effective marker cardinality is 13.06, range: 4.3 to 28.5
 ```
 
 
@@ -741,15 +741,15 @@ The summaries of the final dataset. Results for all those genotyped who did not 
 ```
 
 ```
-## In no-primaquine individuals, the weighted average of relapse is 0 (97-99.3), for 366 recurrences
+## In no-primaquine individuals, the weighted average of relapse is 0 (96.1-99.5), for 366 recurrences
 ```
 
 ```
-## In no-primaquine individuals, the weighted average of recrudescences is 0 (1.4-2.2), for 366 recurrences
+## In no-primaquine individuals, the weighted average of recrudescences is 0 (1.2-2.5), for 366 recurrences
 ```
 
 ```
-## In no-primaquine individuals, the weighted average of reinfections is 0 (0.1-2), for 366 recurrences
+## In no-primaquine individuals, the weighted average of reinfections is 0 (0-2.7), for 366 recurrences
 ```
 
 Results for all those genotyped who did receive primaquine (VHX and BPD studies combined):
@@ -1202,6 +1202,14 @@ abline(h=0,lty=2)
 ```
 
 ![](Pooled_Analysis_files/figure-html/unnamed-chunk-35-1.png)<!-- -->
+
+```r
+toc()
+```
+
+```
+## 18.267 sec elapsed
+```
 
 Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
 This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
