@@ -19,7 +19,7 @@ https://www.biorxiv.org/content/early/2018/12/25/505594
 
 * *Simulation_Study* estimates the number of microsatellites needed to reliably calculate recurrence probabilities in paired infections under certain assumptions of complexity of infection. This is in the RMarkdown script *SimulationStudy.Rmd*.
 
-All data are stored in *RData* and a microsatellite data plotting tool is given in *Genetic_Model/Plotting_MS_Data.R*.
+All data are stored in *RData* and a microsatellite data plotting tool is given in *Genetic_Model/PlottingFunction.R*.
 
 Enjoy reading through the model code and model implementation! If you see any bugs or have any questions, the authors can be contacted at jwatowatson@gmail.com and aimee.r.taylor.85@gmail.com. For general questions regarding R, please visit https://www.r-project.org/ and various resources online. In you are unfamiliar with, access to someone with a working knowledge of R will be helpful.
   
