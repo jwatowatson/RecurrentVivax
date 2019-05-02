@@ -2,10 +2,10 @@
 title: "Pooled Analysis"
 author: "Aimee Taylor and James Watson"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
     keep_md: yes
-  pdf_document: default
 ---
 
 # Preamble
@@ -1109,10 +1109,8 @@ if(CREATE_PLOTS){
       lines(c(0,MS_final$FU[ind[1]]), 
             c(i,i), lty = 'dashed', 
             lwd=.5, col= 'black')
-      
       cols = mycols_states_fg[MS_final$Plotting_col_Values[ind]]
-      points(MS_final$timeSinceEnrolment[ind], 
-             rep(i,length(ind)), 
+      points(MS_final$timeSinceEnrolment[tail(ind,1)], i, 
              pch=1,cex = 1.5, 
              col='black')
     }
