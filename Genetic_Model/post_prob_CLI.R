@@ -291,8 +291,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
       if(KK > Max_Haplotypes) {
         Hnt = Hnt[sample(x = 1:KK,size = Max_Haplotypes,replace = F),]
         writeLines(sprintf('\nIntroduced hack solution, subsampled %s of a possible %s haplotypes',
-                           Max_Haplotypes,KK))
-      }
+                           Max_Haplotypes,KK))}
       Vt_Hnt_inds = combinations(nrow(Hnt), r = cn[inf], v = 1:nrow(Hnt))       
       # Summarise data for compatibility check below 
       Y = apply(ynt, 2, function(x){sort(unique(x[!is.na(x)]))}) 
@@ -332,7 +331,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
         labels = as.matrix(Z$Hnt[Z$Vt_Hnt_inds_comp[x[t],,drop=FALSE],,drop=FALSE]) 
         vertex_data_matrix[cumsum(c(1,cn))[t]:cumsum(cn)[t], ] = labels 
       }
-      Gabs[[label_ind]] = vertex_data_matrix 
+      Gabs[[label_ind]] = vertex_data_matrix # Characters since used to extract allele frequ. 
     }
     
     
