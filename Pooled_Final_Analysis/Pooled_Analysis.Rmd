@@ -1227,24 +1227,26 @@ print(MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 
 
 The summaries of the final dataset. Results for all those genotyped who did not receive primaquine (artesunate or chloroquine monotherapy):
-```{r, echo=FALSE}
-table(MS_final$Treatment[!duplicated(MS_final$ID)]) # 208 individuals by treatment
+```{r, echo = FALSE}
+table(MS_final$Treatment[!duplicated(MS_final$ID)]) # 208 individuals overall
+```
 
+```{r, echo=FALSE}
 ind_noPMQ = MS_final$Treatment=='AS' | MS_final$Treatment=='CHQ'
 writeLines(sprintf('In no-primaquine individuals, the weighted average of relapse is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$L_mean[ind_noPMQ])/sum(ind_noPMQ),1),
+                   round(100*sum(MS_final$L_median[ind_noPMQ])/sum(ind_noPMQ),1),
                    round(100*sum(MS_final$L_lower[ind_noPMQ])/sum(ind_noPMQ),1),
                    round(100*sum(MS_final$L_upper[ind_noPMQ])/sum(ind_noPMQ),1),
                    sum(ind_noPMQ)))
 
 writeLines(sprintf('In no-primaquine individuals, the weighted average of recrudescences is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$C_mean[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
+                   round(100*sum(MS_final$C_median[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
                    round(100*sum(MS_final$C_lower[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
                    round(100*sum(MS_final$C_upper[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
                    sum(ind_noPMQ)))
 
 writeLines(sprintf('In no-primaquine individuals, the weighted average of reinfections is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$I_mean[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
+                   round(100*sum(MS_final$I_median[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
                    round(100*sum(MS_final$I_lower[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
                    round(100*sum(MS_final$I_upper[ind_noPMQ],na.rm=T)/sum(ind_noPMQ),1),
                    sum(ind_noPMQ)))
@@ -1255,19 +1257,19 @@ Results for all those genotyped who did receive primaquine (VHX and BPD studies 
 ```{r, echo=FALSE}
 ind_PMQ = MS_final$Treatment=='PMQ'
 writeLines(sprintf('In primaquine treated individuals, the weighted average of relapses is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$L_mean[ind_PMQ])/sum(ind_PMQ),1),
+                   round(100*sum(MS_final$L_median[ind_PMQ])/sum(ind_PMQ),1),
                    round(100*sum(MS_final$L_lower[ind_PMQ])/sum(ind_PMQ),1),
                    round(100*sum(MS_final$L_upper[ind_PMQ])/sum(ind_PMQ),1),
                    sum(ind_PMQ)))
 
 writeLines(sprintf('In primaquine treated individuals, the weighted average of recrudescences is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$C_mean[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
+                   round(100*sum(MS_final$C_median[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
                    round(100*sum(MS_final$C_lower[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
                    round(100*sum(MS_final$C_upper[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
                    sum(ind_PMQ)))
 
 writeLines(sprintf('In primaquine treated individuals, the weighted average of reinfections is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$I_mean[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
+                   round(100*sum(MS_final$I_median[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
                    round(100*sum(MS_final$I_lower[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
                    round(100*sum(MS_final$I_upper[ind_PMQ],na.rm=T)/sum(ind_PMQ),1),
                    sum(ind_PMQ)))
@@ -1277,42 +1279,42 @@ Results for all those genotyped who did receive primaquine in the VHX study (unk
 ```{r, echo=FALSE}
 ind_PMQ_VHX = intersect(which(MS_final$Treatment=='PMQ'), grep('VHX',MS_final$ID))
 writeLines(sprintf('In primaquine treated individuals (VHX), the weighted average of relapses is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$L_mean[ind_PMQ_VHX])/length(ind_PMQ_VHX),1),
+                   round(100*sum(MS_final$L_median[ind_PMQ_VHX])/length(ind_PMQ_VHX),1),
                    round(100*sum(MS_final$L_lower[ind_PMQ_VHX])/length(ind_PMQ_VHX),1),
                    round(100*sum(MS_final$L_upper[ind_PMQ_VHX])/length(ind_PMQ_VHX),1),
                    length(ind_PMQ_VHX)))
 
 writeLines(sprintf('In primaquine treated individuals (VHX), the weighted average of recrudescences is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$C_mean[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
+                   round(100*sum(MS_final$C_median[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
                    round(100*sum(MS_final$C_lower[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
                    round(100*sum(MS_final$C_upper[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
                    length(ind_PMQ_VHX)))
 
 writeLines(sprintf('In primaquine treated individuals (VHX), the weighted average of reinfections is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$I_mean[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
+                   round(100*sum(MS_final$I_median[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
                    round(100*sum(MS_final$I_lower[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
                    round(100*sum(MS_final$I_upper[ind_PMQ_VHX],na.rm=T)/length(ind_PMQ_VHX),1),
                    length(ind_PMQ_VHX)))
 
 ```
 
-Results for all those genotyped who did receive primaquine, only in the BPD study (known denominator)
+Results for all those genotyped who did receive primaquine in the BPD study (known denominator)
 ```{r, echo=FALSE}
 ind_PMQ_BPD = intersect(which(MS_final$Treatment=='PMQ'), grep('BPD',MS_final$ID))
 writeLines(sprintf('In primaquine treated individuals (BPD), the weighted average of relapses is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$L_mean[ind_PMQ_BPD])/length(ind_PMQ_BPD),1),
+                   round(100*sum(MS_final$L_median[ind_PMQ_BPD])/length(ind_PMQ_BPD),1),
                    round(100*sum(MS_final$L_lower[ind_PMQ_BPD])/length(ind_PMQ_BPD),1),
                    round(100*sum(MS_final$L_upper[ind_PMQ_BPD])/length(ind_PMQ_BPD),1),
                    length(ind_PMQ_BPD)))
 
 writeLines(sprintf('In primaquine treated individuals (BPD), the weighted average of recrudescences is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$C_mean[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
+                   round(100*sum(MS_final$C_median[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
                    round(100*sum(MS_final$C_lower[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
                    round(100*sum(MS_final$C_upper[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
                    length(ind_PMQ_BPD)))
 
 writeLines(sprintf('In primaquine treated individuals (BPD), the weighted average of reinfections is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$I_mean[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
+                   round(100*sum(MS_final$I_median[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
                    round(100*sum(MS_final$I_lower[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
                    round(100*sum(MS_final$I_upper[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
                    length(ind_PMQ_BPD)))
@@ -1321,7 +1323,7 @@ writeLines(sprintf('In primaquine treated individuals (BPD), the weighted averag
 
 # False positive rate of relapse
 
-We want to know how often our model estimates evidence of relapse across pairs of episodes when the episodes are in different people (i.e. have not possibility of being a relapse)
+We want to know how often our model estimates evidence of relapse across pairs of episodes when the episodes are in different people (i.e. have no possibility of being a relapse)
 
 ```{r}
 if(RUN_MODELS_FALSE_POSITIVE){
@@ -1564,6 +1566,9 @@ writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%
 ```
 
 
+
+
+
 # Extra Analyses
 
 ## Looking at the effect of inbreeding coefficient
@@ -1630,6 +1635,7 @@ toc()
 ```
 
 Interpretation: Adding the inbreeding coefficent slightly changes some of the probabilities of relapse for some primaquine treated individuals (only green dots are being shifted).
+
 This means that inbreeding would imply that fewer of the primaquine treated episodes are relapses, implying higher efficacy of the drug.
 
 For the non-primaquine group, it is just tempering the very low probabilities of reinfection seen for some episodes.
