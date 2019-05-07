@@ -565,7 +565,7 @@ if(RUN_MODELS_FULL_POSTERIOR_BPD_TAGNOSTIC){
   CI_R = apply(Thetas[,grep('I', colnames(Thetas))],1, quantile, probs = c(0.025, 0.975), na.rm=T)
   CIs = t(rbind(CI_C, CI_L, CI_R)) 
   colnames(CIs) = paste(rep(c('C', 'L', 'I'), each = 2), colnames(CIs), sep = '')
- 
+  
   # Combine and save
   Tagnostic_BPD = cbind(Thetas_non_random, CIs)
   save(Tagnostic_BPD, file = '../RData/GeneticModel/Tagnostic_BPD.RData')
@@ -1107,6 +1107,7 @@ MS_pooled_summary$Plotting_col_Values =
 # How many too complex to generate estimate for? 
 ind_recur = MS_pooled_summary$Episode > 1 # Filter out enrollment
 ind_complex_recur = is.na(MS_pooled_summary$L_median[ind_recur])
+MS_pooled_summary$Episode_Identifier[ind_recur][ind_complex_recur]
 no_complex_recur = sum(ind_complex_recur) # Recurrences with NAs
 
 # How many of the complex infections result in the loss of an individual
@@ -1430,6 +1431,146 @@ writeLines(sprintf('The false-positive discovery rate of the genetic model is es
                    round(100*sum( Inflated_Results$L > Epsilon_upper )/nrow(Inflated_Results),2),
                    nrow(Inflated_Results)))
 ```
+
+
+# Analysis of samples selected to be genotyped at additional 6 markers 
+
+```{r}
+MS_main = MSs_all[1:3] # 1) Extract names of the core MSs
+MS_add = MSs_all[4:length(MSs_all)] # Extract names of additionally MSs
+MS_typed = MS_pooled_summary # Rename before relaplacing allele information with binary
+MS_typed[,MSs_all][!is.na(MS_typed[,MSs_all])] = 1 # Replace allele information with binary
+MS_main_count = length(MS_main) - rowSums(is.na(MS_typed[,MS_main])) # Extract number of markers typed per episode
+MS_typed_count = length(MSs_all) - rowSums(is.na(MS_typed[,MSs_all])) # Extract number of markers typed per episode
+MS_add_count = length(MS_add) - rowSums(is.na(MS_typed[,MS_add])) # Extract the number of additional markers typed per episode
+names(MS_typed_count) = names(MS_add_count) = names(MS_main_count) = MS_typed$Episode_Identifier # Name by episode
+BPD_ind = grepl('BPD_', MS_typed$ID) # Index for BPD individuals
+VHX_ind = grepl('VHX_', MS_typed$ID) # Index for VHX individuals
+```
+
+Summaries across all samples selected
+
+```{r}
+#==========================================================================
+# Summaries of additionally typed
+# Assuming 0 additional means 0 additional attempted = find out from Mallika
+#==========================================================================
+#table(MS_typed_count) # numbers of samples partioned by number of markers successfully typed
+#table(MS_add_count) # numbers of samples partioned by number of additional markers successfully typed
+#table(MS_main_count) # numbers of samples partioned by number of core markers successfully typed
+#MS_add_count[names(which(MS_main_count < 3))] # The number additional for those with 1 or more failed core - ask MALLIKA
+
+writeLines(sprintf('Number of enrolment samples genotyped at additional markers: %s of %s (%s percent, %s VHX, %s BPD)',
+                   sum(MS_typed$Episode[MS_add_count > 0] == 1),
+                   sum(MS_typed$Episode == 1), 
+                   round(100*sum(MS_typed$Episode[MS_add_count > 0] == 1)/sum(MS_typed$Episode == 1)), 
+                   sum(MS_typed$Episode[VHX_ind][MS_add_count[VHX_ind] > 0] == 1), # VHX
+                   sum(MS_typed$Episode[BPD_ind][MS_add_count[BPD_ind] > 0] == 1))) # BPD
+
+writeLines(sprintf('Number of recurrent samples genotyped at additional markers: %s of %s (%s percent, %s VHX, %s BPD)',
+                   sum(MS_typed$Episode[MS_add_count > 0] != 1),
+                   sum(MS_typed$Episode != 1), 
+                   round(100*sum(MS_typed$Episode[MS_add_count > 0] != 1)/sum(MS_typed$Episode != 1)), 
+                   sum(MS_typed$Episode[VHX_ind][MS_add_count[VHX_ind] > 0] != 1), # VHX
+                   sum(MS_typed$Episode[BPD_ind][MS_add_count[BPD_ind] > 0] != 1))) # BPD
+
+
+# table(MS_add_count[MS_add_count > 0]) # Of samples genotyped at additional: number of additional successful
+
+writeLines(sprintf('Of those genotyped at additional markers, number successfully genotyped at all six: %s of %s (%s percent, %s VHX, %s BPD)',
+                   sum(MS_add_count[MS_add_count > 0] == 6), 
+                   sum(MS_add_count > 0),
+                   round(100*sum(MS_add_count[MS_add_count > 0] == 6)/sum(MS_add_count > 0)), 
+                   sum(MS_add_count[VHX_ind][MS_add_count[VHX_ind] > 0] == 6),
+                   sum(MS_add_count[BPD_ind][MS_add_count[BPD_ind] > 0] == 6)
+                   )) 
+```
+
+Summaries over classified recurrent samples 
+
+```{r}
+# Check that the episodes missing from MS_final are only those belong to the six most complex: yes
+inds = MS_typed$Episode[which(!MS_typed$Episode_Identifier %in% MS_final$Episode_Identifier)] > 1 # Six too complex
+# MS_typed$Episode_Identifier[which(!MS_typed$Episode_Identifier %in% MS_final$Episode_Identifier)][inds] 
+# missing: "VHX_239_2" "VHX_33_2"  "VHX_39_2"  "VHX_461_2" "VHX_52_2"  "VHX_583_2"
+# too complex: "VHX_239_2" "VHX_33_2"  "VHX_39_2"  "VHX_461_2" "VHX_52_2"  "VHX_583_2"
+
+#==========================================================================
+# Classification of recurrent episodes genotyped at any markers
+#==========================================================================
+ind_classified = MS_final$Episode_Identifier %in% names(MS_typed_count)
+recur_count = MS_typed_count[MS_final$Episode_Identifier[ind_classified]]
+recur_typed_class = paste(recur_count, MS_final$L_or_C_state[ind_classified])
+# table(recur_typed_class) # Table of number additional successful and classification
+
+#==========================================================================
+# Classification of recurrent episodes genotyped at additional markers
+#==========================================================================
+names_additional = names(MS_add_count[MS_add_count > 0]) # Names of all additionally typed (inc. )
+ind_add_classified = MS_final$Episode_Identifier %in% names_additional
+recur_add_count = MS_add_count[MS_final$Episode_Identifier[ind_add_classified]]
+recur_add_typed_class = paste(recur_add_count, MS_final$L_or_C_state[ind_add_classified])
+
+BPD_ind = grepl('BPD_', MS_final$ID) # Index for BPD individuals
+VHX_ind = grepl('VHX_', MS_final$ID) # Index for VHX individuals
+
+writeLines(sprintf('Of those recurrent genotyped at additional markers: %s of %s (%s percent, %s VHX, %s BPD) classified as relapse',
+                   sum(MS_final$L_or_C_state[ind_add_classified] == 'L'), 
+                   sum(ind_add_classified),
+                   round(100*sum(MS_final$L_or_C_state[ind_add_classified] == 'L')/sum(ind_add_classified)), 
+                   sum(MS_final$L_or_C_state[VHX_ind][ind_add_classified[VHX_ind]] == 'L'),
+                   sum(MS_final$L_or_C_state[BPD_ind][ind_add_classified[BPD_ind]] == 'L'))) 
+
+table(recur_add_typed_class)
+```
+
+Plots over classified recurrent samples 
+
+```{r}
+#==========================================================================
+# Classification plots: why are some points beyon the uncertainity zone classified 
+# as uncertain
+#==========================================================================
+par(mfrow = c(2,1), family = 'serif')
+
+plot(x = recur_add_count + rnorm(length(recur_add_count), 0, 0.025), # Add jitter 
+     MS_final$L_median[ind_add_classified], 
+     panel.first = grid(), 
+     pch = MS_final$Plotting_pch_Values[ind_add_classified], 
+     bg=mycols_states_bg[MS_final$Plotting_col_Values[ind_add_classified]],
+     col=mycols_states_fg[MS_final$Plotting_col_Values[ind_add_classified]],
+     ylab = 'Relapse posterior probability', 
+     xlab = 'Number of additional markers successfully typed', 
+     xaxt = 'n') # Number additional successful vs median relapse probablity
+axis(side = 1, at = 3:6) # Add axis
+
+# Add zone of uncertainity
+polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
+              max(MS_final$timeSinceLastEpisode)+100,-10),
+        y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
+        col = transparent_pink_band, border = NA)
+
+plot(x = recur_count + rnorm(length(recur_count), 0, 0.075), # Add jitter
+     MS_final$L_median[ind_classified], 
+     panel.first = grid(), 
+     pch = MS_final$Plotting_pch_Values[ind_classified], 
+     bg=mycols_states_bg[MS_final$Plotting_col_Values[ind_classified]],
+     col=mycols_states_fg[MS_final$Plotting_col_Values[ind_classified]],
+     ylab = 'Relapse posterior probability', 
+     xlab = 'Number of markers successfully typed', 
+     xaxt = 'n') # Number additional successful vs median relapse probablity
+axis(side = 1, at = 1:9) # Add axis
+
+# Add zone of uncertainity
+polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
+              max(MS_final$timeSinceLastEpisode)+100,-10),
+        y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
+        col = transparent_pink_band, border = NA)
+```
+
+
+
+
 
 # Analysis of radical cure efficacy in BPD
 
