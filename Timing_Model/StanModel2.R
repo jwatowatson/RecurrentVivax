@@ -9,7 +9,7 @@ data {
   real<lower=0>               Durations[Neps];          // Vector of durations
   int<lower=-1,upper=1>       Censored[Neps];           // -1 is left censored; 0: observed; 1: right censored
   int<lower=0,upper=2>        Drug[Neps];               // Treatment drug corresponding to each duration
-  int<lower=0,upper=N>        ID_of_Episode[Neps];            // Index of individual groupings
+  int<lower=0,upper=N>        ID_of_Patient[Neps];            // Index of individual groupings
   int<lower=0,upper=N_noPMQ>  ID_mapped_to_noPMQ_rank[N];     // Vector mapping the the individual ID (from 1 to N) to the random effects index: logit_p
   int<lower=0,upper=N_PMQ>    ID_mapped_to_PMQ_rank[N];       // Vector mapping the the individual ID (from 1 to N) to the random effects index: logit_p_PMQ
   
@@ -133,7 +133,7 @@ model {
     real log_probs[4];
     if(Censored[i] == 0){ // this is an observed time to new infection
       if(Drug[i] == 0){ 
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);          
@@ -147,7 +147,7 @@ model {
         target += log_sum_exp(log_probs);
       } 
       if(Drug[i] == 1){ 
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Chloroquine Monotherapy
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);
@@ -161,7 +161,7 @@ model {
         target += log_sum_exp(log_probs);
       }
       if(Drug[i] == 2){ 
-        Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_PMQ_rank[ID_of_Patient[i]];
         // Chloroquine plus Primaquine
         // reInfection
         log_probs[1] = log_p_PMQ[Ind] + exponential_lpdf(Durations[i] | lambda);
@@ -177,7 +177,7 @@ model {
     } 
     if(Censored[i] == 1){ // this is a right censored time to new infection
       if(Drug[i] == 0){ 
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
@@ -192,7 +192,7 @@ model {
 
       } 
       if(Drug[i] == 1){ 
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Chloroquine monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
@@ -206,7 +206,7 @@ model {
         target += log_sum_exp(log_probs);
       } 
       if(Drug[i] == 2){ 
-        Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_PMQ_rank[ID_of_Patient[i]];
         // This is the Chloroquine monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p_PMQ[Ind] + exponential_lccdf(Durations[i] | lambda);          
@@ -234,7 +234,7 @@ generated quantities {
     vector[4] prob_labels_raw;
     if(Censored[i]==0){
       if(Drug[i] == 0){ // Artesunate monotherapy
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Reinfection
         prob_labels_raw[1] = exp(log_p[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
         // Early Relapse
@@ -245,7 +245,7 @@ generated quantities {
         prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(exponential_lpdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 1){ // Chloroquine Monotherapy
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Reinfection
         prob_labels_raw[1] = exp(log_p[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
         // Early Relapse
@@ -256,7 +256,7 @@ generated quantities {
         prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(exponential_lpdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 2){ // Chloroquine + Primaquine
-        Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_PMQ_rank[ID_of_Patient[i]];
         // Reinfection
         prob_labels_raw[1] = exp(log_p_PMQ[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
         // Early Relapse
@@ -269,7 +269,7 @@ generated quantities {
     } 
     if(Censored[i] == 1){ // this is a right censored time to new infection
       if(Drug[i] == 0){ // Artesunate monotherapy:
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Reinfection
         prob_labels_raw[1] = exp(log_p[Ind])*exp(exponential_lccdf(Durations[i] | lambda));
         // Early Relapse
@@ -280,7 +280,7 @@ generated quantities {
         prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(exponential_lccdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 1){ // Chloroquine Monotherapy
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Reinfection
         prob_labels_raw[1] = exp(log_p[Ind])*exp(exponential_lccdf(Durations[i] | lambda));
         // Early Relapse
@@ -291,7 +291,7 @@ generated quantities {
         prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(exponential_lccdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 2){ // Chloroquine + Primaquine
-        Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_PMQ_rank[ID_of_Patient[i]];
         // Reinfection
         prob_labels_raw[1] = exp(log_p_PMQ[Ind])*exp(exponential_lccdf(Durations[i] | lambda));
         // Early Relapse
@@ -316,7 +316,7 @@ generated quantities {
     int Ind;
     if(Censored[i] == 0){ // this is an observed time to new infection
       if(Drug[i] == 0){
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);          
@@ -330,7 +330,7 @@ generated quantities {
         log_lik[i] = log_sum_exp(log_probs);
       }
       if(Drug[i] == 1){
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Chloroquine Monotherapy
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);
@@ -344,7 +344,7 @@ generated quantities {
         log_lik[i] = log_sum_exp(log_probs);
       }
       if(Drug[i] == 2){
-        Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_PMQ_rank[ID_of_Patient[i]];
         // Chloroquine + Primaquine
         // reInfection
         log_probs[1] = log_p_PMQ[Ind] + exponential_lpdf(Durations[i] | lambda);
@@ -362,7 +362,7 @@ generated quantities {
     if(Censored[i] == 1){ // this is a right censored time to new infection
       // This is the unobserved case (data are right censored)
       if(Drug[i] == 0){
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
@@ -376,7 +376,7 @@ generated quantities {
         log_lik[i] = log_sum_exp(log_probs);
       }
       if(Drug[i] == 1){
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Chloroquine monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
@@ -390,7 +390,7 @@ generated quantities {
         log_lik[i] = log_sum_exp(log_probs);
       }
       if(Drug[i] == 2){
-        Ind = ID_mapped_to_PMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_PMQ_rank[ID_of_Patient[i]];
         // Chloroquine + Primaquine: 
         // reInfection
         log_probs[1] = log_p_PMQ[Ind] + exponential_lccdf(Durations[i] | lambda);          

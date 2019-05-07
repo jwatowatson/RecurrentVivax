@@ -1,0 +1,261 @@
+---
+title: "Simulation Study for Timing Model"
+author: "James Watson"
+date: "07/05/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
+                      echo = TRUE, include = TRUE, 
+                      fig.width = 7, fig.height = 7,
+                      fig.pos = 'H', 
+                      dev = c('pdf','png'), dpi = 300)
+
+load('../RData/RPackages_List.RData')
+new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
+if(length(new.pkg) > 0){ # Install using .R script
+  stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
+    sapply(pkgs, require, character.only = TRUE) # Load all packages
+  }
+```
+
+
+```{r, echo=FALSE}
+# Note that recompilation is necessary on different platforms
+RECOMPILE_MODELS = F
+# Running the full stan models can take several days
+RUN_MODELS = T
+```
+
+
+## Simulated data
+
+We explore a few scenarios of increasing complexity to check:
+
+* The model can recover correct parameters when the data generating process is correctly specified (sanity check)
+* The effect of a mis-specified data generating process. For this we look at the impact of seasonality
+
+Functions to generate data
+```{r}
+params = list(inv_lambda = 600,
+              inv_gamma = 100,
+              EarlyL = 0.7,
+              c1_CQ = 0.01,
+              c1_AS = 0.01,
+              logit_mean_p = logit(0.2),
+              logit_sd_p = (-logit(0.2)+logit(0.8))/1.96,
+              Recrud_shape = 10,
+              Recrud_scale = 15,
+              AS_shape = 10,
+              AS_scale = 21,
+              CQ_shape = 10,
+              CQ_scale = 40)
+
+generate_relapse_time = function(drug, params){
+  early_versus_late = runif(1)
+  if(early_versus_late < params$EarlyL){
+    if(drug %in% c('PMQ/CHQ', 'CHQ')){
+      next_event = round(rweibull(1, shape = params$CQ_shape, scale = params$CQ_scale))
+    } else if (drug=='AS') {
+      next_event = round(rweibull(1, shape = params$AS_shape, scale = params$AS_scale))
+    }
+  } else {
+    next_event = round(rexp(1, rate = 1/params$inv_gamma))
+  }
+  return(next_event)
+}
+
+generate_reinfection_time = function(params){
+  next_event = round(rexp(1, rate = 1/params$inv_lambda))
+  return(next_event)
+}
+
+generate_recrudescence_time = function(drug, params){
+  next_event = round(rweibull(1, shape = params$Recrud_shape, scale = params$Recrud_scale))
+  return(next_event)
+}
+
+generate_patient_data_Model1 = function(params, follow_up=360, drug, ID=1){
+  time_events = c()
+  censor_status = c()
+  total_time = 0
+  passed_EOF = FALSE # passed end of follow-up
+  # randomly generate the propensity to relapse
+  p = inv.logit(rnorm(1,mean = params$logit_mean_p,sd = params$logit_sd_p))
+  if(drug=='CHQ') { c1 = params$c1_CQ } else if(drug=='AS') { c1 = params$c1_AS}
+  
+  while(!passed_EOF){
+    if(drug == 'CHQ/PMQ'){ 
+      # primaquine: 100% efficacy, reinfection is the only option
+      next_event = generate_reinfection_time(params = params)
+    } else if (drug %in% c('CHQ','AS')){
+      if(runif(1) < p){
+        next_event = generate_reinfection_time(params)
+      } else {
+        if(runif(1) < c1){ 
+          next_event = generate_recrudescence_time(drug = drug, params = params)
+        } else {
+          next_event = generate_relapse_time(drug = drug, params = params)
+        }
+      }
+    }
+    
+    total_time = total_time + next_event
+    
+    if(total_time <= follow_up){
+      censor_status = c(censor_status, 0)
+      time_events = c(time_events, next_event)
+    } else {
+      censor_status = c(censor_status, 1)
+      passed_EOF = TRUE
+      time_events = c(time_events,follow_up - (total_time-next_event))
+    }
+  }
+  
+  results = data.frame(time_events=time_events, censor_status=censor_status,ID=ID, drug=drug)
+  return(results)
+}
+```
+
+Generate a dataset
+```{r}
+set.seed(432)
+
+drugs = c('CHQ/PMQ','CHQ','AS')
+Ns = c(800, 200, 200)
+N = sum(Ns)
+id = 1
+sim_data_mod1 = data.frame(time_events=NA, censor_status=NA,ID=NA, drug=NA)
+for(i in 1:length(drugs)){
+  drug=drugs[i]
+  for(i in 1:Ns[i]){
+    dat = generate_patient_data_Model1(params = params,follow_up = 360,drug = drug,ID=id)
+    id=id+1
+    sim_data_mod1 = rbind(sim_data_mod1,dat)
+  }
+}
+sim_data_mod1 = sim_data_mod1[-1,]
+sim_data_mod1 = filter(sim_data_mod1, !(censor_status > -1 & time_events < 5))
+
+
+N_noPMQ = sum(sim_data_mod1$drug[!duplicated(sim_data_mod1$ID)] %in% c('CHQ','AS'))
+N_PMQ = sum(sim_data_mod1$drug[!duplicated(sim_data_mod1$ID)] == 'CHQ/PMQ')
+# Turn drug into a numeric vector
+sim_data_mod1$numeric_drug = as.integer(revalue(sim_data_mod1$drug,
+                                                c('AS'='0','CHQ'='1','CHQ/PMQ'='2')))
+
+
+# Create a vector that maps the nth person to 0 (always received Primaquine) 
+# or to their rank for those who didn't receive primaquine
+noPMQ_ind = which(sim_data_mod1$drug != "CHQ/PMQ")
+N_noPMQ = length(unique(sim_data_mod1$ID[noPMQ_ind])) #number of IDs without PMQ
+ID_mapped_to_noPMQ_rank = rep(0, N)
+
+index = 1
+for(id in 1:N){
+  ind = which(sim_data_mod1$ID==id)
+  if(!2 %in% sim_data_mod1$numeric_drug[ind]){
+    ID_mapped_to_noPMQ_rank[id] = index
+    index = index + 1
+  }
+}
+```
+
+
+# Run Model1 on simulated data generated from Model 1
+
+```{r}
+if(RECOMPILE_MODELS){
+  writeLines('Compiling model 1....')
+  source('../Timing_Model/StanModel1.R')
+  save(Timing_Model1, file = '../RData/TimingModel/Timing_Model1.RData')
+} else {
+  load('../RData/TimingModel/Timing_Model1.RData')
+}
+```
+
+Prior specification
+```{r}
+# The hierachical parameters defining the prior distributions for model 1
+Prior_params_M0 = list(mu_inv_lambda = 900,
+                       sigma_inv_lambda = 100,
+                       mu_AS_shape = 3,
+                       sigma_AS_shape = 1,
+                       mu_AS_scale = 25,
+                       sigma_AS_scale = 5,
+                       mu_CQ_shape = 3,
+                       sigma_CQ_shape = 1,
+                       mu_CQ_scale = 42,
+                       sigma_CQ_scale = 5,
+                       Hyper_logit_mean_p = -3,
+                       Hyper_logit_sd_p = .25,
+                       Hyper_logit_c1_mean = -3,
+                       Hyper_logit_c1_sd = .25,
+                       Hyper_logit_exp_p = 1)
+# Model 1 has the same parameters with a few extra
+Prior_params_M1 = c(Prior_params_M0, 
+                    Early_L_logit_mean = 0,
+                    Early_L_logit_sd = .5,
+                    mu_inv_gamma = 120,
+                    sigma_inv_gamma = 20)
+```
+
+Setup options for stan and dataset in stan format
+```{r}
+Chains = 6
+options(mc.cores = Chains)
+IT = 10^5
+WarmUp = .5*IT
+thin = 400
+
+# put the data into stan format
+# For model 1 
+Simdata_Model1 =list(N         = N,
+                     #Number of individuals
+                     Neps      = as.integer(nrow(sim_data_mod1)),
+                     #Number of durations
+                     N_noPMQ   = as.integer(N_noPMQ),
+                     # Number of individuals who do not recieve PMQ
+                     N_PMQ     = as.integer(N_PMQ),
+                     # Number of individuals who do not recieve PMQ
+                     Durations = as.double(sim_data_mod1$time_events),
+                     # Time to recurrence or time to censoring
+                     Censored  = as.integer(sim_data_mod1$censor_status),
+                     # If the duration is right censored or not
+                     Drug      = sim_data_mod1$numeric_drug,
+                     # drug coded as an integer
+                     ID_of_Patient = sim_data_mod1$ID,
+                     # the ID corresponding to each time interval
+                     ID_mapped_to_noPMQ_rank = ID_mapped_to_noPMQ_rank
+                     # the index mapping PMQ individuals to their rank
+)
+```
+
+run model on simulated data
+```{r}
+if(RUN_MODELS){
+  mod1_Fit = sampling(Timing_Model1,
+                      data = c(Simdata_Model1, Prior_params_M1),
+                      iter = IT, warmup = WarmUp,
+                      chains=Chains, thin = thin)
+  save(mod1_Fit, file = '../RData/LargeFiles/StanModels_Sim1_mod1.RData')
+}
+```
+
+```{r plotModel1}
+par(las=1)
+par(mfrow=c(2,2))
+thetas_mod1 = extract(mod1_Fit)
+hist(thetas_mod1$inv_lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
+abline(v=params$inv_lambda,col='red')
+hist(thetas_mod1$inv_gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
+abline(v=params$inv_gamma,col='red')
+
+par(las=1, mfrow=c(2,2))
+
+hist(inv.logit(apply(thetas_mod1$logit_p,2,mean)), xlab = 'Probability reinfection', main = '')
+hist(inv.logit(thetas_mod1$logit_c1_AS), xlab = 'proportion recrudescence: AS', main='')
+hist(inv.logit(thetas_mod1$logit_c1_CQ), xlab = 'proportion recrudescence: AS', main='')
+hist(inv.logit(thetas_mod1$logit_EarlyL), xlab = 'proportion early Relapse', main='')
+```

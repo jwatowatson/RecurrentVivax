@@ -1187,6 +1187,26 @@ writeLines(sprintf('The Coatney style plot is showing %s recurrences in %s indiv
                    nrow(MS_final), length(ids)))
 ```
 
+We show a histogram representation of these classification outputs as suggested by reviewer:
+```{r}
+par(las=1, mfrow=c(2,1))
+hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==1 &
+                                   MS_final$Treatment != 'PMQ'],
+     main = 'No PMQ', xlab = 'Months from start of study', xaxt='n',
+     breaks = seq(0, 390, by = 14))
+axis(1, at = 30*(0:12), labels = 0:12)
+
+hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==3 &
+                                   MS_final$Treatment == 'PMQ'],
+     main = 'No PMQ', xlab = 'Months from start of study', xaxt='n',
+     breaks = seq(0, 390, by = 14))
+hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==1 &
+                                   MS_final$Treatment == 'PMQ'],
+     add = T, col = 'red')
+axis(1, at = 30*(0:12), labels = 0:12)
+```
+
+
 ```{r CompleteDataPlot, fig.height=7, fig.width=7, echo=FALSE}
 if(CREATE_PLOTS){
   

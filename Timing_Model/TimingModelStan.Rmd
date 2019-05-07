@@ -14,7 +14,6 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
                       fig.pos = 'H', 
                       dev = 'png', dpi = 300)
 
-rm(list = ls())
 load('../RData/RPackages_List.RData')
 new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
 if(length(new.pkg) > 0){ # Install using .R script
@@ -26,8 +25,6 @@ tic()
 ```
 
 # Preliminaries
-
-Load R packages.
 
 ```{r, echo=FALSE}
 # Note that recompilation is necessary on different platforms
@@ -163,7 +160,8 @@ N = as.integer(length(ids))
 Combined_Time_Data$numeric_drug = as.integer(revalue(Combined_Time_Data$arm_num,
                                                      c('AS'='0','CHQ'='1','CHQ/PMQ'='2')))
 
-# Create a vector that maps the nth person to 0 (always received Primaquine) or
+# Create a vector that maps the nth person to 0 (always received Primaquine) 
+# or to their rank for those who didn't receive primaquine
 noPMQ_ind = which(Combined_Time_Data$arm_num != "CHQ/PMQ")
 N_noPMQ = length(unique(Combined_Time_Data$ID[noPMQ_ind])) #number of IDs without PMQ
 ID_mapped_to_noPMQ_rank = rep(0, N)
@@ -262,7 +260,7 @@ Time_data_1 =list(N         = N,
                   #If the duration is right censored or not
                   Drug      = Combined_Time_Data$numeric_drug,
                   # drug coded as an integer
-                  ID_of_Episode = Combined_Time_Data$ID,
+                  ID_of_Patient = Combined_Time_Data$ID,
                   # the ID corresponding to each time interval
                   ID_mapped_to_noPMQ_rank = ID_mapped_to_noPMQ_rank
                   # the index mapping PMQ individuals to their rank
@@ -282,7 +280,7 @@ Time_data_2 =list(N         = N,
                   #If the duration is right censored or not
                   Drug      = Combined_Time_Data$numeric_drug,
                   # drug coded as an integer
-                  ID_of_Episode   = Combined_Time_Data$ID,
+                  ID_of_Patient   = Combined_Time_Data$ID,
                   # the index of the individual for each time interval
                   ID_mapped_to_noPMQ_rank = ID_mapped_to_noPMQ_rank,
                   # the index mapping no PMQ individuals to their rank
@@ -306,7 +304,7 @@ Time_data_3 =list(N         = N,
                   #Time of year in units of weeks
                   Drug      = as.integer(Combined_Time_Data$numeric_drug),
                   # drug coded as an integer
-                  ID_of_Episode   = Combined_Time_Data$ID,
+                  ID_of_Patient   = Combined_Time_Data$ID,
                   # the index of the individual for each time interval
                   ID_mapped_to_noPMQ_rank = as.integer(ID_mapped_to_noPMQ_rank),
                   # the index mapping no PMQ individuals to their rank

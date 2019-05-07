@@ -2,15 +2,15 @@ mod1 =
   '
 data {
   // Things that are data structure and strictly data items:
-  int<lower=0>                N;                        // The number of individuals
-  int<lower=0>                Neps;                     // The total number of observed durations
-  int<lower=0>                N_noPMQ;                  // The total number of individuals who did not receive PMQ for at least one episode
-  int<lower=0>                N_PMQ;                    // The total number of individuals who received PMQ for at least one episode
-  real<lower=0>               Durations[Neps];          // Vector of durations
-  int<lower=-1,upper=1>       Censored[Neps];          // -1 is left censored; 0: observed; 1: right censored
-  int<lower=0,upper=2>        Drug[Neps];               // Treatment drug corresponding to each duration
-  int<lower=0,upper=N>        ID_of_Episode[Neps];      // The ID number of each episode
-  int<lower=0,upper=N_noPMQ>  ID_mapped_to_noPMQ_rank[N];         // Vector mapping the the individual ID (from 1 to N) to the random effects index: logit_p
+  int<lower=0>                N;                          // The number of individuals
+  int<lower=0>                Neps;                       // The total number of observed durations
+  int<lower=0>                N_noPMQ;                    // The total number of individuals who did not receive PMQ for at least one episode
+  int<lower=0>                N_PMQ;                      // The total number of individuals who received PMQ for at least one episode
+  real<lower=0>               Durations[Neps];            // Vector of durations
+  int<lower=-1,upper=1>       Censored[Neps];             // -1 is left censored; 0: observed; 1: right censored
+  int<lower=0,upper=2>        Drug[Neps];                 // Treatment drug corresponding to each duration
+  int<lower=0,upper=N>        ID_of_Patient[Neps];        // The patient ID number for each episode
+  int<lower=0,upper=N_noPMQ>  ID_mapped_to_noPMQ_rank[N]; // Vector mapping the the individual ID (from 1 to N) to the random effects index: logit_p
 
   // Hyper parameters that are part of the `data` section
   real<lower=0>   mu_inv_lambda;          // Mean of the prior on time to reinfection
@@ -113,7 +113,7 @@ model {
     real log_probs[4];
     if(Censored[i] == 0){ // this is an observed time to new infection
       if(Drug[i] == 0){ 
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);          
@@ -127,7 +127,7 @@ model {
         target += log_sum_exp(log_probs);
       } 
       if(Drug[i] == 1){ 
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Chloroquine Monotherapy
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);
@@ -149,7 +149,7 @@ model {
     } 
     if(Censored[i] == 1){ // this is a right censored time to new infection
       if(Drug[i] == 0){ 
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
@@ -164,7 +164,7 @@ model {
 
       } 
       if(Drug[i] == 1){ 
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Chloroquine monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
@@ -198,7 +198,7 @@ generated quantities {
     vector[4] prob_labels_raw;
     if(Censored[i]==0){
       if(Drug[i] == 0){ // Artesunate monotherapy
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Reinfection
         prob_labels_raw[1] = exp(log_p[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
         // Early Relapse
@@ -209,7 +209,7 @@ generated quantities {
         prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
       }
       if(Drug[i] == 1){ // Chloroquine Monotherapy
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Reinfection
         prob_labels_raw[1] = exp(log_p[Ind])*exp(exponential_lpdf(Durations[i] | lambda));
         // Early Relapse
@@ -232,7 +232,7 @@ generated quantities {
     } 
     if(Censored[i] == 1){ // this is a right censored time to new infection
       if(Drug[i] == 0){ // Artesunate monotherapy:
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Reinfection
         prob_labels_raw[1] = exp(log_p[Ind])*exp(exponential_lccdf(Durations[i] | lambda));
         // Early Relapse
@@ -243,7 +243,7 @@ generated quantities {
         prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale));
       }
       if(Drug[i] == 1){ // Chloroquine Monotherapy
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Reinfection
         prob_labels_raw[1] = exp(log_p[Ind])*exp(exponential_lccdf(Durations[i] | lambda));
         // Early Relapse
@@ -278,7 +278,7 @@ generated quantities {
     int Ind;
     if(Censored[i] == 0){ // this is an observed time to new infection
       if(Drug[i] == 0){
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);          
@@ -292,7 +292,7 @@ generated quantities {
         log_lik[i] = log_sum_exp(log_probs);
       }
       if(Drug[i] == 1){
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // Chloroquine Monotherapy
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);
@@ -315,7 +315,7 @@ generated quantities {
     if(Censored[i] == 1){ // this is a right censored time to new infection
       // This is the unobserved case (data are right censored)
       if(Drug[i] == 0){
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
@@ -329,7 +329,7 @@ generated quantities {
         log_lik[i] = log_sum_exp(log_probs);
       }
       if(Drug[i] == 1){
-        Ind = ID_mapped_to_noPMQ_rank[ID_of_Episode[i]];
+        Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Chloroquine monotherapy: reLapses or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
