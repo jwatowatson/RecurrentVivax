@@ -31,7 +31,10 @@ data {
   real<lower=0>   sigma_CQ_shape;
   real<lower=0>   mu_CQ_scale;
   real<lower=0>   sigma_CQ_scale;
-
+  real<lower=0>   Hyper_recrud_shape_mean;
+  real<lower=0>   Hyper_recrud_shape_sd;
+  real<lower=0>   Hyper_recrud_scale_mean;
+  real<lower=0>   Hyper_recrud_scale_sd;
 }
 
 parameters {
@@ -84,8 +87,8 @@ model {
   logit_mean_p ~ normal(Hyper_logit_mean_p, Hyper_logit_sd_p);
   logit_sd_p ~ normal(1, 0.5);
   
-  Recrud_shape ~ normal(2, 1);
-  Recrud_scale ~ normal(10, 1);
+  Recrud_shape ~ normal(Hyper_recrud_shape_mean, Hyper_recrud_shape_sd);
+  Recrud_scale ~ normal(Hyper_recrud_scale_mean, Hyper_recrud_scale_sd);
 
   AS_shape ~ normal(mu_AS_shape,sigma_AS_shape);
   AS_scale ~ normal(mu_AS_scale,sigma_AS_scale);

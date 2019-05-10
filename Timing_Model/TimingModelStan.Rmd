@@ -208,8 +208,8 @@ Prior_params_M0 = list(mu_inv_lambda = 900,
                        sigma_CQ_shape = 1,
                        mu_CQ_scale = 42,
                        sigma_CQ_scale = 5,
-                       Hyper_logit_mean_p = -3,
-                       Hyper_logit_sd_p = .25,
+                       Hyper_logit_mean_p = 0,
+                       Hyper_logit_sd_p = 1,
                        Hyper_logit_c1_mean = -3,
                        Hyper_logit_c1_sd = .25,
                        Hyper_logit_exp_p = 1)
@@ -240,9 +240,9 @@ Combined_Time_Data = filter(Combined_Time_Data, Censored > -1)
 # Choose as many chains as available cores
 Chains = 8
 options(mc.cores = Chains)
-IT = 10^6
+IT = 10^5
 WarmUp = .5*IT
-thin = 4000
+thin = 400
 
 # put the data into stan format
 # For model 1 
