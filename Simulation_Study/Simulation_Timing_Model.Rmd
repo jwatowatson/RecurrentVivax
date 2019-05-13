@@ -38,65 +38,61 @@ We explore a few scenarios of increasing complexity to check:
 
 Functions to generate data
 ```{r}
-params = list(inv_lambda = 900,
-              inv_gamma = 50,
-              EarlyL = 0.7,
-              c1_CQ = 0.01,
-              c1_AS = 0.01,
-              logit_mean_p = logit(0.2),
-              logit_sd_p = (-logit(0.2)+logit(0.8))/1.96,
-              Recrud_shape = 10,
-              Recrud_scale = 15,
-              AS_shape = 10,
-              AS_scale = 21,
-              CQ_shape = 10,
-              CQ_scale = 40)
-
 generate_relapse_time = function(drug, params){
   early_versus_late = runif(1)
-  if(early_versus_late < params$EarlyL){
+  type=NA
+  if(early_versus_late < params$EarlyL){ # early relapse
     if(drug %in% c('PMQ/CHQ', 'CHQ')){
       next_event = round(rweibull(1, shape = params$CQ_shape, scale = params$CQ_scale))
     } else if (drug=='AS') {
       next_event = round(rweibull(1, shape = params$AS_shape, scale = params$AS_scale))
     }
+    type = 'EarlyRelapse'
   } else {
-    next_event = round(rexp(1, rate = 1/params$inv_gamma))
+    next_event = round(rexp(1, rate = params$gamma))
+    type = 'LateRelapse'
   }
-  return(next_event)
+  return(list(time=next_event,type=type))
 }
 
 generate_reinfection_time = function(params){
-  next_event = round(rexp(1, rate = 1/params$inv_lambda))
+  next_event = round(rexp(1, rate = params$lambda))
   return(next_event)
 }
 
 generate_recrudescence_time = function(drug, params){
-  next_event = round(rweibull(1, shape = params$Recrud_shape, scale = params$Recrud_scale))
+  next_event = round(rexp(1, rate = params$lambda_recrud))
   return(next_event)
 }
 
 generate_patient_data_Model1 = function(params, follow_up=360, drug, ID=1){
   time_events = c()
   censor_status = c()
+  true_event_type = c()
   total_time = 0
   passed_EOF = FALSE # passed end of follow-up
   # randomly generate the propensity to relapse
   p = inv.logit(rnorm(1,mean = params$logit_mean_p,sd = params$logit_sd_p))
   if(drug=='CHQ') { c1 = params$c1_CQ } else if(drug=='AS') { c1 = params$c1_AS}
   
+  R_event = NA
   while(!passed_EOF){
     if(drug == 'CHQ/PMQ'){ 
       # primaquine: 100% efficacy, reinfection is the only option
       next_event = generate_reinfection_time(params = params)
+      R_event = 'Reinfection'
     } else if (drug %in% c('CHQ','AS')){
       if(runif(1) < p){
         next_event = generate_reinfection_time(params)
+        R_event = 'Reinfection'
       } else {
         if(runif(1) < c1){ 
           next_event = generate_recrudescence_time(drug = drug, params = params)
+          R_event = 'Recrudescence'
         } else {
-          next_event = generate_relapse_time(drug = drug, params = params)
+          lapse = generate_relapse_time(drug = drug, params = params)
+          next_event = lapse$time
+          R_event = lapse$type
         }
       }
     }
@@ -106,35 +102,66 @@ generate_patient_data_Model1 = function(params, follow_up=360, drug, ID=1){
     if(total_time <= follow_up){
       censor_status = c(censor_status, 0)
       time_events = c(time_events, next_event)
+      true_event_type = c(true_event_type, R_event)
     } else {
       censor_status = c(censor_status, 1)
       passed_EOF = TRUE
       time_events = c(time_events,follow_up - (total_time-next_event))
+      true_event_type = c(true_event_type, R_event)
     }
   }
   
   results = data.frame(time_events=time_events, censor_status=censor_status,
-                       ID=ID, drug=drug, true_p = p)
+                       ID=ID, drug=drug, true_p = p,
+                       true_event_type = true_event_type)
   return(results)
 }
 ```
 
+
+# Data simulation for model 1
+
+Choose simulation parameters:
+```{r}
+params = list(lambda = 1/900,
+              gamma = 1/50,
+              lambda_recrud = 1/10,
+              EarlyL = 0.5,
+              c1_CQ = 0.01,
+              c1_AS = 0.01,
+              logit_mean_p = logit(0.2),
+              logit_sd_p = (-logit(0.2)+logit(0.8))/1.96,
+              AS_shape = 10,
+              AS_scale = 21,
+              CQ_shape = 10,
+              CQ_scale = 42)
+```
+
+
 Generate a dataset
 ```{r}
-set.seed(4757632)
-
+#set.seed(475732)
 drugs = c('CHQ/PMQ','CHQ','AS')
-Ns = c(800, 200, 200)
+Ns = c(1000, 300, 300)
+FUP_time = 300 # the follow-up time
+
 N = sum(Ns)
 id = 1
-sim_data_mod1 = data.frame(time_events=NA, censor_status=NA,ID=NA, drug=NA, true_p=NA)
+sim_data_mod1 = data.frame(time_events=NA, censor_status=NA,
+                           ID=NA, drug=NA, true_p=NA,true_event_type=NA)
 for(i in 1:length(drugs)){
   drug=drugs[i]
-  for(i in 1:Ns[i]){
-    dat = generate_patient_data_Model1(params = params,follow_up = 360,drug = drug,ID=id)
-    id=id+1
-    sim_data_mod1 = rbind(sim_data_mod1,dat)
+  if(Ns[i]>0){
+    for(j in 1:Ns[i]){
+      dat = generate_patient_data_Model1(params = params,
+                                         follow_up = FUP_time,
+                                         drug = drug,
+                                         ID=id)
+      id=id+1
+      sim_data_mod1 = rbind(sim_data_mod1,dat)
+    }
   }
+  
 }
 sim_data_mod1 = sim_data_mod1[-1,]
 sim_data_mod1 = filter(sim_data_mod1, !(censor_status > -1 & time_events < 5))
@@ -161,10 +188,68 @@ for(id in 1:N){
     index = index + 1
   }
 }
+
+table(sim_data_mod1$true_event_type[sim_data_mod1$censor_status==0&sim_data_mod1$numeric_drug<2])
+table(sim_data_mod1$true_event_type[sim_data_mod1$censor_status==1])
+
+
+table(sim_data_mod1$true_event_type[sim_data_mod1$numeric_drug<2])
+table(sim_data_mod1$true_event_type[sim_data_mod1$numeric_drug==2])
+```
+
+```{r}
+par(las=1, mfrow=c(2,2))
+reinfection_times = sapply(1:1000,function(x,params) generate_reinfection_time(params), 
+                           params = params)
+reinfection_times = reinfection_times[reinfection_times<FUP_time]
+
+hist(reinfection_times,main = 'Times of reinfection')
+
+recrudescence_times = sapply(1:1000,function(x,params) 
+  generate_recrudescence_time(drug = 'CHQ',params=params), 
+  params = params)
+hist(recrudescence_times,main = 'Times of recrudescence')
+
+
+early_relapsesAS = sapply(1:1000,
+                          FUN = function(x,params) {
+                            lapse = generate_relapse_time(params=params,drug = 'AS')
+                            if(lapse$type=='EarlyRelapse') return(lapse$time) else return(NA)
+                          },
+                          params = params)
+early_relapsesAS = early_relapsesAS[complete.cases(early_relapsesAS)]
+early_relapsesCQ = sapply(1:1000,
+                          FUN = function(x,params) {
+                            lapse = generate_relapse_time(params=params,drug = 'CHQ')
+                            if(lapse$type=='EarlyRelapse') return(lapse$time) else return(NA)
+                          },
+                          params = params)
+early_relapsesCQ = early_relapsesCQ[complete.cases(early_relapsesCQ)]
+
+plot(density(early_relapsesCQ), col='red',lwd=3, xlim=c(10,60))
+lines(density(early_relapsesAS), col='green',lwd=3)
+
+late_relapsesAS = sapply(1:1000,
+                         FUN = function(x,params) {
+                           lapse = generate_relapse_time(params=params,drug = 'AS')
+                           if(lapse$type=='LateRelapse') return(lapse$time) else return(NA)
+                         },
+                         params = params)
+
+late_relapsesCQ = sapply(1:1000,
+                         FUN = function(x,params) {
+                           lapse = generate_relapse_time(params=params,drug = 'CHQ')
+                           if(lapse$type=='LateRelapse') return(lapse$time) else return(NA)
+                         },
+                         params = params)
+
+hist(c(late_relapsesCQ, late_relapsesAS), xlim = c(0,FUP_time))
 ```
 
 
 # Run Model1 on simulated data generated from Model 1
+
+
 
 ```{r}
 if(RECOMPILE_MODELS){
@@ -179,31 +264,28 @@ if(RECOMPILE_MODELS){
 Prior specification
 ```{r}
 # The hierachical parameters defining the prior distributions for model 1
-Prior_params_M0 = list(mu_inv_lambda = 600,
-                       sigma_inv_lambda = 100,
-                       mu_AS_shape = 10,
-                       sigma_AS_shape = 2,
-                       mu_AS_scale = 25,
-                       sigma_AS_scale = 2,
-                       mu_CQ_shape = 10,
-                       sigma_CQ_shape = 2,
-                       mu_CQ_scale = 42,
-                       sigma_CQ_scale = 3,
-                       Hyper_logit_mean_p = 0,
+Prior_params_M0 = list(Hyper_lambda_scale = 100,
+                       Hyper_lambda_rate = 100*(1/params$lambda),
+                       Hyper_lambda_recrud_scale = 100,
+                       Hyper_lambda_recrud_rate = 100*(1/params$lambda_recrud),
+                       Hyper_AS_shape_mean = params$AS_shape,
+                       Hyper_AS_shape_sd = 1,
+                       Hyper_AS_scale_mean = params$AS_scale,
+                       Hyper_AS_scale_sd = 1,
+                       Hyper_CQ_shape_mean = params$CQ_shape,
+                       Hyper_CQ_shape_sd = 1,
+                       Hyper_CQ_scale_mean = params$CQ_scale,
+                       Hyper_CQ_scale_sd = 2,
+                       Hyper_logit_mean_p = params$logit_mean_p,
                        Hyper_logit_sd_p = 1,
-                       Hyper_logit_c1_mean = -4,
-                       Hyper_logit_c1_sd = .5,
-                       Hyper_logit_exp_p = 1,
-                       Hyper_recrud_shape_mean = 10,
-                       Hyper_recrud_shape_sd = 2,
-                       Hyper_recrud_scale_mean = 15,
-                       Hyper_recrud_scale_sd = 2)
+                       Hyper_logit_c1_mean = logit(params$c1_AS),
+                       Hyper_logit_c1_sd = .25)
 # Model 1 has the same parameters with a few extra
 Prior_params_M1 = c(Prior_params_M0, 
-                    Early_L_logit_mean = 0.8,
+                    Early_L_logit_mean = logit(params$EarlyL),
                     Early_L_logit_sd = 1,
-                    mu_inv_gamma = 100,
-                    sigma_inv_gamma = 20)
+                    Hyper_gamma_scale = 100,
+                    Hyper_gamma_rate = 100*(1/params$gamma))
 ```
 
 Setup options for stan and dataset in stan format
@@ -212,7 +294,7 @@ Chains = 1
 options(mc.cores = Chains)
 IT = 10^4
 WarmUp = .5*IT
-thin = 20
+thin = 30
 
 # put the data into stan format
 # For model 1 
@@ -237,7 +319,7 @@ Simdata_Model1 =list(N         = N,
 )
 ```
 
-run model on simulated data
+Run model on simulated data
 ```{r, include=FALSE}
 if(RUN_MODELS){
   mod1_Fit = sampling(Timing_Model1,
@@ -246,21 +328,24 @@ if(RUN_MODELS){
                       chains=Chains, thin = thin)
   save(mod1_Fit, file = '../RData/LargeFiles/StanModels_Sim1_mod1.RData')
 }
+thetas_mod1 = extract(mod1_Fit)
 ```
 
 ```{r plotModel1}
 par(las=1)
 par(mfrow=c(2,2))
-thetas_mod1 = extract(mod1_Fit)
+
 # Time to reinfection
-hist(thetas_mod1$inv_lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
+hist(1/thetas_mod1$lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
 abline(v=params$inv_lambda,col='red')
 # Time to late relapse
-hist(thetas_mod1$inv_gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
+hist(1/thetas_mod1$gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
 abline(v=params$inv_gamma,col='red')
 # Proportion early/late relapse
-hist(thetas_mod1$logit_EarlyL, main='Logit early relapse', xlab='')
+hist((thetas_mod1$logit_EarlyL), main='Logit early relapse', xlab='')
 abline(v=logit(params$EarlyL),col='red')
+
+par(mfrow=c(2,2))
 # recrudescence proportion
 hist(thetas_mod1$logit_c1_AS, main='Logit c1 AS', xlab='')
 abline(v=logit(params$c1_AS),col='red')
@@ -271,20 +356,22 @@ abline(v=(params$Recrud_shape),col='red')
 hist(thetas_mod1$Recrud_scale, main='Recrud scale', xlab='')
 abline(v=(params$Recrud_scale),col='red')
 
-# shape and scale for AS recrudescence
+par(mfrow=c(2,2))
+# shape and scale for AS early relapse
 hist(thetas_mod1$AS_shape, main='AS shape', xlab='')
 abline(v=(params$AS_shape),col='red')
 hist(thetas_mod1$AS_scale, main='AS scale', xlab='')
 abline(v=(params$AS_scale),col='red')
-
-# shape and scale for CQ recrudescence
+# shape and scale for CQ early relapse
 hist(thetas_mod1$CQ_shape, main='CQ shape', xlab='')
 abline(v=(params$CQ_shape),col='red')
 hist(thetas_mod1$CQ_scale, main='CQ scale', xlab='')
 abline(v=(params$CQ_scale),col='red')
+
+par(mfrow=c(2,2))
 # proportion reinfection
-hist(thetas_mod1$logit_mean_p, main='Logit mean p', xlab='')
-abline(v=(params$logit_mean_p),col='red')
+hist(inv.logit(thetas_mod1$logit_mean_p), main='Logit mean p', xlab='')
+abline(v=inv.logit(params$logit_mean_p),col='red')
 hist(thetas_mod1$logit_sd_p, main='Logit sd p', xlab='')
 abline(v=(params$logit_sd_p),col='red')
 # individual estimates versus true params for proportion reinfection
@@ -304,6 +391,7 @@ The following function generates data under the assumptions of model 2 - primaqu
 generate_patient_data_Model2 = function(params, follow_up=360, drug, ID=1){
   time_events = c()
   censor_status = c()
+  true_event_type = c()
   total_time = 0
   passed_EOF = FALSE # passed end of follow-up
   # randomly generate the propensity to relapse
@@ -312,29 +400,39 @@ generate_patient_data_Model2 = function(params, follow_up=360, drug, ID=1){
   if(drug=='CHQ' | drug == 'CHQ/PMQ') { 
     c1 = params$c1_CQ 
   } else if(drug=='AS') { 
-      c1 = params$c1_AS
+    c1 = params$c1_AS
   }
   
   while(!passed_EOF){
     if(drug == 'CHQ/PMQ'){ 
-      if(runif(1) < p){
+      true_p = p_PMQ
+      if(runif(1) < p_PMQ){ #reinfection
         next_event = generate_reinfection_time(params)
+        R_event = 'Reinfection'
       } else {
-        if(runif(1) < c1){ 
+        if(runif(1) < c1){ # recrudescence
           next_event = generate_recrudescence_time(drug = drug, params = params)
-        } else {
-          next_event = generate_relapse_time(drug = drug, params = params)
+          R_event = 'Recrudescence'
+        } else { # relapse
+          lapse = generate_relapse_time(drug = drug, params = params)
+          next_event = lapse$time
+          R_event = lapse$type
         }
       }
-
+      
     } else if (drug %in% c('CHQ','AS')){
-      if(runif(1) < p){
+      true_p = p
+      if(runif(1) < p){ #reinfection
         next_event = generate_reinfection_time(params)
+        R_event = 'Reinfection'
       } else {
-        if(runif(1) < c1){ 
+        if(runif(1) < c1){ #recrudescence
           next_event = generate_recrudescence_time(drug = drug, params = params)
-        } else {
-          next_event = generate_relapse_time(drug = drug, params = params)
+          R_event = 'Recrudescence'
+        } else { #relapse
+          lapse = generate_relapse_time(drug = drug, params = params)
+          next_event = lapse$time
+          R_event = lapse$type
         }
       }
     }
@@ -344,18 +442,85 @@ generate_patient_data_Model2 = function(params, follow_up=360, drug, ID=1){
     if(total_time <= follow_up){
       censor_status = c(censor_status, 0)
       time_events = c(time_events, next_event)
+      true_event_type = c(true_event_type, R_event)
     } else {
       censor_status = c(censor_status, 1)
       passed_EOF = TRUE
       time_events = c(time_events,follow_up - (total_time-next_event))
+      true_event_type = c(true_event_type, NA)
     }
   }
   
-  results = data.frame(time_events=time_events, censor_status=censor_status,ID=ID, drug=drug)
+  results = data.frame(time_events=time_events, censor_status=censor_status,
+                       ID=ID, drug=drug, true_p = true_p,
+                       true_event_type = true_event_type)
   return(results)
 }
 ```
 
+Generate some data
+```{r}
+params2 = list(inv_lambda = 900,
+              inv_gamma = 50,
+              EarlyL = 0.1,
+              c1_CQ = 0.01,
+              c1_AS = 0.01,
+              logit_mean_p = logit(0.2),
+              logit_sd_p = (-logit(0.2)+logit(0.8))/1.96,
+              logit_mean_p_PMQ = logit(0.95),
+              logit_sd_p_PMQ = (-logit(0.7)+logit(0.99))/1.96,
+              Recrud_shape = 10,
+              Recrud_scale = 15,
+              AS_shape = 10,
+              AS_scale = 21,
+              CQ_shape = 10,
+              CQ_scale = 42)
+
+sim_data_mod2 = data.frame(time_events=NA, censor_status=NA,
+                           ID=NA, drug=NA, true_p=NA,true_event_type=NA)
+for(i in 1:length(drugs)){
+  drug=drugs[i]
+  if(Ns[i]>0){
+    for(j in 1:Ns[i]){
+      dat = generate_patient_data_Model2(params = params2,
+                                         follow_up = FUP_time,
+                                         drug = drug,
+                                         ID=id)
+      id=id+1
+      sim_data_mod2 = rbind(sim_data_mod2,dat)
+    }
+  }
+  
+}
+sim_data_mod2 = sim_data_mod2[-1,]
+sim_data_mod2 = filter(sim_data_mod2, !(censor_status > -1 & time_events < 5))
+
+
+N_noPMQ = sum(sim_data_mod2$drug[!duplicated(sim_data_mod2$ID)] %in% c('CHQ','AS'))
+N_PMQ = sum(sim_data_mod2$drug[!duplicated(sim_data_mod2$ID)] == 'CHQ/PMQ')
+# Turn drug into a numeric vector
+sim_data_mod2$numeric_drug = as.integer(revalue(sim_data_mod2$drug,
+                                                c('AS'='0','CHQ'='1','CHQ/PMQ'='2')))
+
+
+# Create a vector that maps the nth person to 0 (always received Primaquine) 
+# or to their rank for those who didn't receive primaquine
+noPMQ_ind = which(sim_data_mod2$drug != "CHQ/PMQ")
+N_noPMQ = length(unique(sim_data_mod2$ID[noPMQ_ind])) #number of IDs without PMQ
+ID_mapped_to_noPMQ_rank = rep(0, N)
+
+index = 1
+for(id in 1:N){
+  ind = which(sim_data_mod2$ID==id)
+  if(!2 %in% sim_data_mod2$numeric_drug[ind]){
+    ID_mapped_to_noPMQ_rank[id] = index
+    index = index + 1
+  }
+}
+
+table(sim_data_mod2$true_event_type[sim_data_mod2$numeric_drug<2])
+table(sim_data_mod2$true_event_type[sim_data_mod2$numeric_drug==2])
+```
 
 # Simulating seasonal variation
 
@@ -373,7 +538,7 @@ generate_patient_data_Model3 = function(params, follow_up=360, drug, ID = 1){
   if(drug=='CHQ' | drug == 'CHQ/PMQ') { 
     c1 = params$c1_CQ 
   } else if(drug=='AS') { 
-      c1 = params$c1_AS
+    c1 = params$c1_AS
   }
   
   while(!passed_EOF){
@@ -387,7 +552,7 @@ generate_patient_data_Model3 = function(params, follow_up=360, drug, ID = 1){
           next_event = generate_relapse_time(drug = drug, params = params)
         }
       }
-
+      
     } else if (drug %in% c('CHQ','AS')){
       if(runif(1) < p){
         next_event = generate_reinfection_time(params)

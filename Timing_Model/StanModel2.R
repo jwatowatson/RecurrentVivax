@@ -14,10 +14,12 @@ data {
   int<lower=0,upper=N_PMQ>    ID_mapped_to_PMQ_rank[N];       // Vector mapping the the individual ID (from 1 to N) to the random effects index: logit_p_PMQ
   
   // Hyper parameters that are part of the `data` section
-  real<lower=0>   mu_inv_lambda;          // Mean of the prior on time to reinfection
-  real<lower=0>   sigma_inv_lambda;       // SD of the prior on time to reinfection
-  real<lower=0>   mu_inv_gamma;           // Mean of the prior on time to random reLapse
-  real<lower=0>   sigma_inv_gamma;        // SD of the prior on time to random reLapse
+  real<lower=0>   Hyper_lambda_scale;     // Mean of the prior on time to reinfection
+  real<lower=0>   Hyper_lambda_rate;      // SD of the prior on time to reinfection
+  real<lower=0>   Hyper_gamma_scale;      // Mean of the prior on time to random reLapse
+  real<lower=0>   Hyper_gamma_rate;       // SD of the prior on time to random reLapse
+  real<lower=0>   Hyper_lambda_recrud_scale;
+  real<lower=0>   Hyper_lambda_recrud_rate;
   real            Early_L_logit_mean;     // mean of prior on mean of logit Early_L
   real<lower=0>   Early_L_logit_sd;       // sd of prior on mean of logit Early_L
   real            Hyper_logit_mean_p_PMQ; //
@@ -26,16 +28,14 @@ data {
   real<lower=0>   Hyper_logit_sd_p;       // sd of prior on mean of logit p
   real            Hyper_logit_c1_mean;
   real<lower=0>   Hyper_logit_c1_sd;
-  real<lower=0>   mu_AS_shape;      
-  real<lower=0>   sigma_AS_shape;
-  real<lower=0>   mu_AS_scale;
-  real<lower=0>   sigma_AS_scale;
-  real<lower=0>   mu_CQ_shape;
-  real<lower=0>   sigma_CQ_shape;
-  real<lower=0>   mu_CQ_scale;
-  real<lower=0>   sigma_CQ_scale;
-  real<lower=0>   mu_inv_recrud;
-  real<lower=0>   sigma_inv_recrud;
+  real<lower=0>   Hyper_AS_shape_mean;      
+  real<lower=0>   Hyper_AS_shape_sd;      
+  real<lower=0>   Hyper_AS_scale_mean;
+  real<lower=0>   Hyper_AS_scale_sd;
+  real<lower=0>   Hyper_CQ_shape_mean;
+  real<lower=0>   Hyper_CQ_shape_sd;
+  real<lower=0>   Hyper_CQ_scale_mean;
+  real<lower=0>   Hyper_CQ_scale_sd;
 }
 
 parameters {
@@ -45,25 +45,21 @@ parameters {
   real                  logit_c1_CQ;          // proportion of recrudescences when not reinfection - CQ monotherapy
   real                  logit_c1_CQ_PMQ;      // proportion of recrudescences when not reinfection - CQ + PMQ
   real                  logit_EarlyL;         // Proportion of reLapses that are early/periodic
-  real<lower=0>         inv_lambda;           // reInfection mean time
-  real<lower=0>         inv_gamma;            // Late reLapse mean time
+  real<lower=0>         lambda;               // reInfection rate
+  real<lower=0>         gamma;                // Late reLapse rate
+  real<lower=0>         lambda_recrud;        // Recrudescence rate
   real                  logit_mean_p;         // logit mean proportion of reInfection (no rad cure)
   real<lower=0>         logit_sd_p;           // logit sd of proportion of reInfection (no rad cure)
   real                  logit_mean_p_PMQ;     // logit mean proportion of reInfection (after rad cure)
   real<lower=0>         logit_sd_p_PMQ;       // logit sd of proportion of reInfection (after rad cure)
-  real<lower=0>         inv_Recrud_lambda;    // Mean time to recrudescence
-  real<lower=1>         AS_shape;             // Weibull shape parameter: Artesunate
+  real<lower=0>         AS_shape;             // Weibull shape parameter: Artesunate
   real<lower=0>         AS_scale;             // Weibull scale parameter: Artesunate
-  real<lower=1>         CQ_shape;             // Weibull shape parameter: Chloroquine
+  real<lower=0>         CQ_shape;             // Weibull shape parameter: Chloroquine
   real<lower=0>         CQ_scale;             // Weibull scale parameter: Chloroquine
 
 }
 
 transformed parameters{
-  // Turn the inverse rates into rate parameters for the likelihood calculation
-  real lambda = 1/inv_lambda;   
-  real gamma = 1/inv_gamma;   
-  real lambda_recrud = 1/inv_Recrud_lambda;
 
   // Compute the reInfection and recrudescence rates
   // We define log scale parameters from inverse logit transformation
@@ -93,9 +89,9 @@ transformed parameters{
 model {
   
   // ********* Prior *********
-  inv_lambda ~ normal(mu_inv_lambda,sigma_inv_lambda);
-  inv_gamma ~ normal(mu_inv_gamma,sigma_inv_gamma);
-  inv_Recrud_lambda ~ normal(mu_inv_recrud, sigma_inv_recrud);
+  lambda ~ gamma(Hyper_lambda_scale, Hyper_lambda_rate);
+  gamma ~ gamma(Hyper_gamma_scale,Hyper_gamma_rate);
+  lambda_recrud ~ gamma(Hyper_lambda_recrud_scale,Hyper_lambda_recrud_rate);
 
   logit_mean_p ~ normal(Hyper_logit_mean_p, Hyper_logit_sd_p);
   logit_sd_p ~ normal(1, 0.5);
@@ -103,15 +99,19 @@ model {
   logit_mean_p_PMQ ~ normal(Hyper_logit_mean_p_PMQ,Hyper_logit_sd_p_PMQ);
   logit_sd_p_PMQ ~ normal(1, 0.5);
 
-  AS_shape ~ normal(mu_AS_shape,sigma_AS_shape);
-  AS_scale ~ normal(mu_AS_scale,sigma_AS_scale);
+  AS_shape ~ normal(Hyper_AS_shape_mean,Hyper_AS_shape_sd);
+  AS_scale ~ normal(Hyper_AS_scale_mean,Hyper_AS_scale_sd);
 
-  CQ_shape ~ normal(mu_CQ_shape,sigma_CQ_shape);
-  CQ_scale ~ normal(mu_CQ_scale,sigma_CQ_scale);
+  CQ_shape ~ normal(Hyper_CQ_shape_mean,Hyper_CQ_shape_sd);
+  CQ_scale ~ normal(Hyper_CQ_scale_mean,Hyper_CQ_scale_sd);
 
   // Random effects term for the reinfection after no radical cure
   // The probability of reinfection versus relapse when no radical cure
   logit_p ~ normal(logit_mean_p,logit_sd_p);
+  
+  // Random effects term for reinfection after radical cure
+  // The probability of relapse after radical cure
+  logit_p_PMQ ~ normal(logit_mean_p_PMQ,logit_sd_p_PMQ);
 
   // The probability of recrudescence if not reinfection
   // Same hyper prior for the three mixing weights
@@ -122,10 +122,7 @@ model {
   // The probability of early relapse
   logit_EarlyL ~ normal(Early_L_logit_mean,Early_L_logit_sd);
 
-  // Random effects term for reinfection after radical cure
-  // The probability of relapse after radical cure
-  logit_p_PMQ ~ normal(logit_mean_p_PMQ,logit_sd_p_PMQ);
-
+  
   // ********* Likelihood *********
   for(i in 1:Neps){
     int Ind;

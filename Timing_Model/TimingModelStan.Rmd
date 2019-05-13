@@ -198,27 +198,30 @@ drug_received = Combined_Time_Data$numeric_drug[ind]
 
 ```{r}
 # The hierachical parameters defining the prior distributions for model 1
-Prior_params_M0 = list(mu_inv_lambda = 900,
-                       sigma_inv_lambda = 100,
-                       mu_AS_shape = 3,
-                       sigma_AS_shape = 1,
-                       mu_AS_scale = 25,
-                       sigma_AS_scale = 5,
-                       mu_CQ_shape = 3,
-                       sigma_CQ_shape = 1,
-                       mu_CQ_scale = 42,
-                       sigma_CQ_scale = 5,
-                       Hyper_logit_mean_p = 0,
-                       Hyper_logit_sd_p = 1,
-                       Hyper_logit_c1_mean = -3,
+Prior_params_M0 = list(Hyper_inv_lambda_mean = 900,
+                       Hyper_inv_lambda_sd = 50,
+                       Hyper_AS_shape_mean = 10,
+                       Hyper_AS_shape_sd = 1,
+                       Hyper_AS_scale_mean = 21,
+                       Hyper_AS_scale_sd = 1,
+                       Hyper_CQ_shape_mean = 10,
+                       Hyper_CQ_shape_sd = 1,
+                       Hyper_CQ_scale_mean = 42,
+                       Hyper_CQ_scale_sd = 2,
+                       Hyper_logit_mean_p = -1.5,
+                       Hyper_logit_sd_p = .5,
+                       Hyper_logit_c1_mean = -4.5,
                        Hyper_logit_c1_sd = .25,
-                       Hyper_logit_exp_p = 1)
+                       Hyper_recrud_shape_mean = 8,
+                       Hyper_recrud_shape_sd = 1,
+                       Hyper_recrud_scale_mean = 14,
+                       Hyper_recrud_scale_sd = 1)
 # Model 1 has the same parameters with a few extra
 Prior_params_M1 = c(Prior_params_M0, 
                     Early_L_logit_mean = 0,
-                    Early_L_logit_sd = .5,
-                    mu_inv_gamma = 120,
-                    sigma_inv_gamma = 20)
+                    Early_L_logit_sd = .25,
+                    Hyper_inv_gamma_mean = 50,
+                    Hyper_inv_gamma_sd = 10)
 # Model 2: extra parameters
 Prior_params_M2 = c(Prior_params_M1, 
                     Hyper_logit_mean_p_PMQ = 3,
@@ -238,11 +241,11 @@ Set up parameters for the MCMC runs.
 # remove this once models 1-2 conform with augmented data (including Censored == -1)
 Combined_Time_Data = filter(Combined_Time_Data, Censored > -1)
 # Choose as many chains as available cores
-Chains = 8
+Chains = 6
 options(mc.cores = Chains)
-IT = 10^5
+IT = 10^4
 WarmUp = .5*IT
-thin = 400
+thin = 40
 
 # put the data into stan format
 # For model 1 
@@ -440,8 +443,8 @@ Not included in analysis - mainly here as a base model to help debugging.
 ```{r plotModel1}
 par(las=1)
 traceplot(mod1_Fit,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
-traceplot(mod1_Fit, c('inv_lambda','Recrud_shape','Recrud_scale'))
-traceplot(mod1_Fit, c('logit_c1_CQ','logit_c1_AS'))
+traceplot(mod1_Fit, c('inv_lambda','inv_gamma'))
+traceplot(mod1_Fit, c('Recrud_shape','Recrud_scale','logit_c1_CQ','logit_c1_AS'))
 traceplot(mod1_Fit, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
 par(mfrow=c(1,2))
 thetas_mod1 = extract(mod1_Fit)

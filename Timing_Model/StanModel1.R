@@ -13,53 +13,46 @@ data {
   int<lower=0,upper=N_noPMQ>  ID_mapped_to_noPMQ_rank[N]; // Vector mapping the the individual ID (from 1 to N) to the random effects index: logit_p
 
   // Hyper parameters that are part of the `data` section
-  real<lower=0>   mu_inv_lambda;          // Mean of the prior on time to reinfection
-  real<lower=0>   sigma_inv_lambda;       // SD of the prior on time to reinfection
-  real<lower=0>   mu_inv_gamma;           // Mean of the prior on time to random reLapse
-  real<lower=0>   sigma_inv_gamma;        // SD of the prior on time to random reLapse
+  real<lower=0>   Hyper_lambda_scale;     // Mean of the prior on time to reinfection
+  real<lower=0>   Hyper_lambda_rate;      // SD of the prior on time to reinfection
+  real<lower=0>   Hyper_gamma_scale;      // Mean of the prior on time to random reLapse
+  real<lower=0>   Hyper_gamma_rate;       // SD of the prior on time to random reLapse
+  real<lower=0>   Hyper_lambda_recrud_scale;
+  real<lower=0>   Hyper_lambda_recrud_rate;
   real            Early_L_logit_mean;     // mean of prior on mean of logit Early_L
   real<lower=0>   Early_L_logit_sd;       // sd of prior on mean of logit Early_L
   real            Hyper_logit_mean_p;     // mean of prior on mean of logit p
   real<lower=0>   Hyper_logit_sd_p;       // sd of prior on mean of logit p
   real            Hyper_logit_c1_mean;
   real<lower=0>   Hyper_logit_c1_sd;
-  real<lower=0>   mu_AS_shape;      
-  real<lower=0>   sigma_AS_shape;
-  real<lower=0>   mu_AS_scale;
-  real<lower=0>   sigma_AS_scale;
-  real<lower=0>   mu_CQ_shape;
-  real<lower=0>   sigma_CQ_shape;
-  real<lower=0>   mu_CQ_scale;
-  real<lower=0>   sigma_CQ_scale;
-  real<lower=0>   Hyper_recrud_shape_mean;
-  real<lower=0>   Hyper_recrud_shape_sd;
-  real<lower=0>   Hyper_recrud_scale_mean;
-  real<lower=0>   Hyper_recrud_scale_sd;
+  real<lower=0>   Hyper_AS_shape_mean;      
+  real<lower=0>   Hyper_AS_shape_sd;      
+  real<lower=0>   Hyper_AS_scale_mean;
+  real<lower=0>   Hyper_AS_scale_sd;
+  real<lower=0>   Hyper_CQ_shape_mean;
+  real<lower=0>   Hyper_CQ_shape_sd;
+  real<lower=0>   Hyper_CQ_scale_mean;
+  real<lower=0>   Hyper_CQ_scale_sd;
 }
 
 parameters {
-  real                  logit_p[N_noPMQ];     // logit proportion of reInfections no radical cure
-  real                  logit_c1_AS;          // proportion of recrudescences when not reinfection - AS monotherapy
-  real                  logit_c1_CQ;          // proportion of recrudescences when not reinfection - CQ monotherapy
-  real                  logit_EarlyL;         // Proportion of reLapses that are early/periodic
-  real<lower=0>         inv_lambda;           // reInfection mean time
-  real<lower=0>         inv_gamma;            // Late reLapse mean time
-  real                  logit_mean_p;         // logit mean proportion of reInfection (no rad cure)
-  real<lower=0>         logit_sd_p;           // logit sd of proportion of reInfection (no rad cure)
-  real<lower=0>         Recrud_shape;         // Weibull shape parameter: recrudescence
-  real<lower=0>         Recrud_scale;         // Weibull scale parameter: recrudescence
-  real<lower=1>         AS_shape;             // Weibull shape parameter: Artesunate
-  real<lower=0>         AS_scale;             // Weibull scale parameter: Artesunate
-  real<lower=1>         CQ_shape;             // Weibull shape parameter: Chloroquine
-  real<lower=0>         CQ_scale;             // Weibull scale parameter: Chloroquine
+  real                  logit_p[N_noPMQ];   // Logit proportion of reInfections no radical cure
+  real                  logit_c1_AS;        // Proportion of recrudescences when not reinfection - AS monotherapy
+  real                  logit_c1_CQ;        // Proportion of recrudescences when not reinfection - CQ monotherapy
+  real                  logit_EarlyL;       // Proportion of reLapses that are early/periodic
+  real<lower=0>         lambda;             // reInfection rate
+  real<lower=0>         gamma;              // Late reLapse rate
+  real<lower=0>         lambda_recrud;      // Recrudescence rate
+  real                  logit_mean_p;       // Logit mean proportion of reInfection (no rad cure)
+  real<lower=0>         logit_sd_p;         // Logit sd of proportion of reInfection (no rad cure)
+  real<lower=0>         AS_shape;           // Weibull inverse shape parameter: Artesunate
+  real<lower=0>         AS_scale;           // Weibull scale parameter: Artesunate
+  real<lower=0>         CQ_shape;           // Weibull inverse shape parameter: Chloroquine
+  real<lower=0>         CQ_scale;           // Weibull scale parameter: Chloroquine
 
 }
 
 transformed parameters{
-  // Turn the inverse rates into rate parameters for the likelihood calculation
-  real lambda = 1/inv_lambda;   
-  real gamma = 1/inv_gamma;   
-
   // Compute the reInfection and recrudescence rates
   // We define log scale parameters from inverse logit transformation
   real log_p[N_noPMQ];
@@ -81,20 +74,19 @@ transformed parameters{
 model {
   
   // ********* Prior *********
-  inv_lambda ~ normal(mu_inv_lambda,sigma_inv_lambda);
-  inv_gamma ~ normal(mu_inv_gamma,sigma_inv_gamma);
+  //inv_lambda ~ normal(Hyper_inv_lambda_mean,Hyper_inv_lambda_sd);
+  lambda ~ gamma(Hyper_lambda_scale, Hyper_lambda_rate);
+  gamma ~ gamma(Hyper_gamma_scale,Hyper_gamma_rate);
+  lambda_recrud ~ gamma(Hyper_lambda_recrud_scale,Hyper_lambda_recrud_rate);
 
   logit_mean_p ~ normal(Hyper_logit_mean_p, Hyper_logit_sd_p);
   logit_sd_p ~ normal(1, 0.5);
-  
-  Recrud_shape ~ normal(Hyper_recrud_shape_mean, Hyper_recrud_shape_sd);
-  Recrud_scale ~ normal(Hyper_recrud_scale_mean, Hyper_recrud_scale_sd);
 
-  AS_shape ~ normal(mu_AS_shape,sigma_AS_shape);
-  AS_scale ~ normal(mu_AS_scale,sigma_AS_scale);
+  AS_shape ~ normal(Hyper_AS_shape_mean,Hyper_AS_shape_sd);
+  AS_scale ~ normal(Hyper_AS_scale_mean,Hyper_AS_scale_sd);
 
-  CQ_shape ~ normal(mu_CQ_shape,sigma_CQ_shape);
-  CQ_scale ~ normal(mu_CQ_scale,sigma_CQ_scale);
+  CQ_shape ~ normal(Hyper_CQ_shape_mean,Hyper_CQ_shape_sd);
+  CQ_scale ~ normal(Hyper_CQ_scale_mean,Hyper_CQ_scale_sd);
 
   // Random effects term for the reinfection after no radical cure
   // The probability of reinfection versus relapse when no radical cure
@@ -108,7 +100,6 @@ model {
   // The probability of early relapse
   logit_EarlyL ~ normal(Early_L_logit_mean,Early_L_logit_sd);
 
-
   // ********* Likelihood *********
   for(i in 1:Neps){
     int Ind;
@@ -117,7 +108,7 @@ model {
     if(Censored[i] == 0){ // this is an observed time to new infection
       if(Drug[i] == 0){ 
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
-        // This is the Artesunate monotherapy: reLapses or reInfections
+        // This is the Artesunate monotherapy: reLapses, reCrudescences, or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);          
         // Early reLapse
@@ -125,13 +116,13 @@ model {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_AS + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_AS + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_AS + exponential_lpdf(Durations[i] | lambda_recrud);
 
         target += log_sum_exp(log_probs);
       } 
       if(Drug[i] == 1){ 
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
-        // Chloroquine Monotherapy
+        // Chloroquine Monotherapy: reLapses, reCrudescences, or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);
         // Early reLapse
@@ -139,21 +130,20 @@ model {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_CQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + exponential_lpdf(Durations[i] | lambda_recrud);
 
         target += log_sum_exp(log_probs);
       }
       if(Drug[i] == 2){ 
-        // Chloroquine plus Primaquine
-        // reInfection: only option
+        // Chloroquine + Primaquine
+        // reInfection is only option
         target += exponential_lpdf(Durations[i] | lambda);
-        
       }
     } 
     if(Censored[i] == 1){ // this is a right censored time to new infection
       if(Drug[i] == 0){ 
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
-        // This is the Artesunate monotherapy: reLapses or reInfections
+        // This is the Artesunate monotherapy: reLapses, reCrudescences, or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
         // Early reLapse
@@ -161,14 +151,14 @@ model {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_AS + log_1m_EarlyL + exponential_lccdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_AS + weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_AS + exponential_lccdf(Durations[i] | lambda_recrud);
         
         target += log_sum_exp(log_probs);
 
       } 
       if(Drug[i] == 1){ 
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
-        // This is the Chloroquine monotherapy: reLapses or reInfections
+        // This is the Chloroquine monotherapy: reLapses, reCrudescences, or reInfections
         // reInfection
         log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
         // Early reLapse
@@ -176,15 +166,14 @@ model {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_CQ + log_1m_EarlyL + exponential_lccdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + exponential_lccdf(Durations[i] | lambda_recrud);
         
         target += log_sum_exp(log_probs);
       } 
       if(Drug[i] == 2){ 
-        // This is the Chloroquine monotherapy: reLapses or reInfections
-        // reInfection: only option
-        target += exponential_lccdf(Durations[i] | lambda);          
-        
+        // This is the Chloroquine + Primaquine:
+        // reInfection is only option
+        target += exponential_lccdf(Durations[i] | lambda);
       }
     }
   }
@@ -209,7 +198,7 @@ generated quantities {
         // Late Relapse
         prob_labels_raw[3] = exp(log_1m_p[Ind])*exp(log_1m_c1_AS)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(exponential_lpdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 1){ // Chloroquine Monotherapy
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
@@ -220,7 +209,7 @@ generated quantities {
         // Late Relapse
         prob_labels_raw[3] = exp(log_1m_p[Ind])*exp(log_1m_c1_CQ)*exp(log_1m_EarlyL)*exp(exponential_lpdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(exponential_lpdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 2){ // Chloroquine + Primaquine
         // Reinfection
@@ -243,7 +232,7 @@ generated quantities {
         // Late Relapse
         prob_labels_raw[3] = exp(log_1m_p[Ind])*exp(log_1m_c1_AS)*exp(log_1m_EarlyL)*exp(exponential_lccdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_AS)*exp(exponential_lccdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 1){ // Chloroquine Monotherapy
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
@@ -254,7 +243,7 @@ generated quantities {
         // Late Relapse
         prob_labels_raw[3] = exp(log_1m_p[Ind])*exp(log_1m_c1_CQ)*exp(log_1m_EarlyL)*exp(exponential_lccdf(Durations[i] | gamma));
         // Recrudescence
-        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale));
+        prob_labels_raw[4] = exp(log_1m_p[Ind])*exp(log_c1_CQ)*exp(exponential_lccdf(Durations[i] | lambda_recrud));
       }
       if(Drug[i] == 2){ // Chloroquine + Primaquine
         // Reinfection
@@ -290,7 +279,7 @@ generated quantities {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_AS + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_AS + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_AS + exponential_lpdf(Durations[i] | lambda_recrud);
 
         log_lik[i] = log_sum_exp(log_probs);
       }
@@ -304,7 +293,7 @@ generated quantities {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_CQ + log_1m_EarlyL + exponential_lpdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + weibull_lpdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + exponential_lpdf(Durations[i] | lambda_recrud);
 
         log_lik[i] = log_sum_exp(log_probs);
       }
@@ -327,7 +316,7 @@ generated quantities {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_AS + log_1m_EarlyL + exponential_lccdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_AS + weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_AS + exponential_lccdf(Durations[i] | lambda_recrud);
 
         log_lik[i] = log_sum_exp(log_probs);
       }
@@ -341,7 +330,7 @@ generated quantities {
         // Late reLapse
         log_probs[3] = log_1m_p[Ind] + log_1m_c1_CQ + log_1m_EarlyL + exponential_lccdf(Durations[i] | gamma);
         // recrudescence
-        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + weibull_lccdf(Durations[i] | Recrud_shape, Recrud_scale);
+        log_probs[4] = log_1m_p[Ind] + log_c1_CQ + exponential_lccdf(Durations[i] | lambda_recrud);
 
         log_lik[i] = log_sum_exp(log_probs);
       }
