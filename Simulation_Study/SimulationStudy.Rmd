@@ -1,11 +1,13 @@
 ---
-title: "Simulation study to test vivax relatedness model"
+title: "Simulation study to test vivax genetic relatedness model"
 output:
   pdf_document: default
   html_document:
     df_print: paged
     keep_md: yes
 ---
+
+Reviewer's example: "a recurrence with MOI of 3, containing a clone and two unrelated strains, but with overall pairwise relatedness close to 0.5.""
 
 ```{r, echo=FALSE, include=F}
 knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
@@ -19,9 +21,8 @@ load('../RData/RPackages_List.RData')
 new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
 if(length(new.pkg) > 0){ # Install using .R script
   stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
-     sapply(pkgs, require, character.only = TRUE) # Load all packages
+    sapply(pkgs, require, character.only = TRUE) # Load all packages
   }
-
 tic()
 ```
 
@@ -43,93 +44,84 @@ PLOT_RESULTS = T
 
 ## Simulation 1: Effective Complexity of Infection
 
-We want to know how adding extra noisy parasites into an infection will affect recurrence state inference as a function of the number of markers typed. Note that the evidence for relapse increases with the number of markers, `M`, if `K_poly_markers` is less than `max(M)`: 
+We want to assess recurrence state inference as a function of the number of markers typed, adding extra noisy parasites into an infections with COI > 1. Note that when we previously specified a number a cut off for the number of heterolallelic calls (K_poly_markers < M), we unwittingly amplify evidence for relapse: 
 
 * when `M <= K_poly_markers` the noisy parasite will be a stranger in relation to the other parasites in the same infection 
-* when `K_poly_markers < M < 2*K_poly_markers` the noisy parasite will be a sibling of the other parasites in the same infection. 
+* when `K_poly_markers approx 0.5*M` the noisy parasite will be more like a sibling of the other parasites in the same infection. 
 * when `K_poly_markers << M`, the noisy will approach a clone of the other parasites in the same infection, but will be considered a sibling under the model
 
 Outline of simulation is as follows:
 
-* Simulate data for N individuals, with M markers which are polyallelic for a given number K (this controls complexity of problem). We do this for two episodes where there are underlying clonal or sibling relationships between episodes.
+* Simulate data for N individuals, with M markers which are polyallelic for a given number K (this controls complexity of problem). We do this for two episodes where there are underlying clonal sibling and stranger relationships between episodes.
 * Compute resulting recurrence state estimates
 * Plot resulting recurrence state estimates as a function of the problem complexity, and the effective COI
 
 ```{r}
 # Setup simulation study parameters
-N_alleles_Choices = c(4,13,28) # Marker cardinality (set to match mean and range our panel)
-K_indivs = 1000 # Number of indiviuduals
-Ms = seq(3,12, by = 3) # Number of markers
-K_poly_markers = 3 # Number of polyallelic markers 
-Tn_fixed = 2 # Total number of episodes
-COI_1_max = 1 # Maximum COI of primary episode 
-COI_2_max = 1 # Maximum COI of recurrent episode
-CLI_prior = c('C' = 0, 'L' = 1/3, 'I' = 1/3) # Discrete uniform prior on recurrence states 
-States = c('C','I','L')
+set.seed(1)
+Cardinalities = c(4,13) # Marker cardinalities (set to match min and mean of our panel)
+K_indivs = 10 # 1000 # Number of individuals
+Ms = seq(3,12,3) # Number of MS markers
+K_poly_markers = 9 # Number of polyallelic markers 
+COIs_1 = c(1,3) # Maximum COI of primary episode 
+COIs_2 = c(1,3) # Maximum COI of recurrent episode
+COI_c_max = 6 # Maximum COI summed over infections that is computationally feasible
+Related_types = c('Sibling','Stranger','Clone')
 
 # Enumerate all combinations of COI complexity and numbers of markers
-settings = expand.grid(1:COI_1_max, 1:COI_2_max, Ms) 
-names(settings)= c('COI_1', 'COI_2', 'M')
-settings = settings[settings$COI_1+settings$COI_2<4,]
-settings$COI_pattern <- paste(settings$COI_1, settings$COI_2, sep = "_")
-JOBS = nrow(settings)
+settings = expand.grid(Ms, COIs_1, COIs_2) # Enumerate all possible combinations of COIs and markers 
+names(settings)= c('M','COI_1','COI_2') # Name colunms 
+settings = settings[settings$COI_1+settings$COI_2<COI_c_max,] # Remove any with cumulative COI greater than that feasible
+settings$COI_pattern <- paste(settings$COI_1, settings$COI_2, sep = "_") # Store the COIs as a patter
+jobs = nrow(settings) # Number of simulations jobs
 ```
 
 ```{r}
+RUN_MODELS = T
+cardinality = 4 
+related_type = 'Sibling'
+job = 1 
+
 # All simulation parameter settings possible
 if(RUN_MODELS){
-  # iterate over cardinality of markers
-  for(N_alleles in N_alleles_Choices){
-    # iterative over simulation scenario 
-    for(related_type in c('Sibling','Stranger','Clone')){
-      # iterate over parameter settings
-      thetas_all = foreach(s = 1:JOBS, .combine = rbind, 
-                           .packages = c('dplyr','Matrix','gtools',
-                                         'igraph','matrixStats','doParallel')
+  for(cardinality in Cardinalities){ # iterate over cardinality of markers
+    for(related_type in Related_types){ # iterative over simulation scenario 
+      
+      thetas_all = foreach(job = 1:jobs, .combine = rbind, # iterate over jobs parameter settings
+                           .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
       ) %do% { # parallisation happening inside the function
         
-        COI_1 = settings$COI_1[s] # COI of primary infection
-        COI_2 = settings$COI_2[s] # COI of recurrent infection
-        M = settings$M[s] # Number of markers
-        
-        MS_markers = sapply(1:M, function(x) paste0('MS',x)) # Marker names
-        FS = lapply(MS_markers, function(x) table(1:N_alleles)/N_alleles) # Marker frequencies
-        names(FS) = MS_markers # Discrete uniform distribution on the alleles 
+        COI_1 = settings$COI_1[job] # COI of primary infection
+        COI_2 = settings$COI_2[job] # COI of recurrent infection
+        M = settings$M[job] # Number of markers
         
         #####################################################
-        # create a dataframe to store the simulated MS data
+        # Simulate and save MS data
         #####################################################
-        MS_data = BuildSimData(Tn = Tn_fixed, 
-                               COIs = c(COI_1, COI_2), 
-                               M = M, 
-                               N = K_indivs,
-                               N_alleles = N_alleles, 
-                               K_poly_markers = M, 
-                               relatedness = related_type)
-        eps_ids = unique(MS_data$Episode_Identifier[MS_data$Episode>1])
-        P_matrix = data.frame(Episode_Identifier=eps_ids,
-                              C = rep(CLI_prior['C'],K_indivs),
-                              L = rep(CLI_prior['L'],K_indivs),
-                              I = rep(CLI_prior['I'],K_indivs))
+        sim_output = BuildSimData(COIs = c(COI_1, COI_2), 
+                                  M = M, 
+                                  N = K_indivs,
+                                  N_alleles = cardinality, 
+                                  K_poly_markers = M, 
+                                  relatedness = related_type)
+        MS_data = sim_output$MS_data_sim
         
+        # Save a copy of the simulated data
+        save(MS_data, file=sprintf('SimulationOutputs/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
+                                   cardinality, M, settings$COI_pattern[job], related_type))
         
-        ###################################
-        # Run the model on the data
-        ###################################
-        TH = post_prob_CLI(MSdata = MS_data, 
-                           cores = 7,
-                           Fs = FS, 
-                           verbose = F, 
-                           p = P_matrix)
-        
-        TH$setting = s # Add setting number for plotting
+        ######################################################################
+        # Run the model on the data using default uniform prior over states
+        ######################################################################
+        TH = post_prob_CLI(MSdata = MS_data, cores = 7, Fs = sim_output$FS, verbose = F)
+        TH$setting = job # Add setting number for plotting
         TH # return results
       }
-      writeLines(paste0('********** Done for ',related_type,' **********'))
+      writeLines(paste0('********** Done for ', related_type,' **********'))
       fname = paste0('SimulationOutputs/Posterior_Probs_N*=',
-                     N_alleles,'_',
+                     cardinality,'_',
                      related_type,'_EffectCOI.RData')
-      save(thetas_all, file = fname)
+      #save(thetas_all, file = fname)
     }
   }
 }
@@ -140,6 +132,7 @@ if(RUN_MODELS){
 ### Plot results
 
 ```{r results_COI_effect, fig.width = 12, fig.height = 5}
+States = c("C","I","L")
 if(PLOT_RESULTS){
   
   # Alternative vizualisation: show one row in main plot
@@ -148,33 +141,36 @@ if(PLOT_RESULTS){
   related_type_names = c('Clone' = 'Clonal scenario', 
                          'Sibling' = 'Sibling scenario',
                          'Stranger' = 'Stranger scenario')
+  
   par(mfrow = c(1,3), family = 'serif', pty = 's', oma = c(0,0,3,0), las =1, mar=c(4,5,4,1))
-  BESIDES = T # Allows visualisation of error
+  BESIDES = T # Allows visualisation of error by stacking bars side by side
   
   
   for(pattern in unique(settings$COI_pattern)){
     JOBS_pattern <- which(settings$COI_pattern == as.character(pattern))
-    for(N_alleles in N_alleles_Choices){ # N_alleles_Choices
+    for(cardinality in Cardinalities){ # Cardinalities
       
       # Iterate over simulation scenarions (types of data)
       for(related_type in names(related_type_names)){
         
         # Load data 
-        fname = load(paste0('SimulationOutputs/Posterior_Probs_N*=',N_alleles,'_',
+        fname = load(paste0('SimulationOutputs/Posterior_Probs_N*=',cardinality,'_',
                             related_type,'_EffectCOI.RData'))
         
-        # Summary plot
+        # Extract medians
         X <- sapply(JOBS_pattern, function(x){
           ind <- thetas_all$setting == x
           apply(thetas_all[ind,States], 2, median)
         })
         
+        # Extract standard deviations
         sds <- sapply(JOBS_pattern, function(x){
           ind <- thetas_all$setting == x
           apply(thetas_all[ind,States], 2, sd)
         })
         
         colnames(X) = settings[JOBS_pattern,'M']
+        
         # Barplot
         Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
                     ylab = '', xlab = '', cex.names=1.5,cex.axis = 1.5,
@@ -185,9 +181,10 @@ if(PLOT_RESULTS){
           legend(ifelse(BESIDES,'topleft','top'), fill = mycols[1:3], 
                  legend = State_names[States], inset = 0.01,cex = 1.3)
         }
+        
         # Title
         mtext(text = sprintf('Marker cardinality: %s \n COI of first and second infection: %s and %s, respectively', 
-                             N_alleles, strsplit(pattern, split = '_')[[1]][1], 
+                             cardinality, strsplit(pattern, split = '_')[[1]][1], 
                              strsplit(pattern, split = '_')[[1]][1]), side = 3, outer = T)
         
         # Add error bars (+/- sd)
