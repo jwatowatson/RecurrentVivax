@@ -6,10 +6,6 @@
 #' @param N The number of individuals
 #' @param N_alleles The number of alleles per microsatellite 
 #' (this is the same across all markers for simplicity)
-#' @param K_poly_markers The number of markers which are polyallelic 
-#' with number of different alleles equal to theCOI_j
-#' in the simulated data, this controls the complexity of the haplotype reconstruction 
-#' problem
 #' @param relatedness The type of relatedness between episodes in the simulated data, 
 #' this is either: 'clone': clonal (exact replicates); 'sibling': IBD of a half, 
 #' e.g. probability of a half of being the copied with probability one per marker; 
@@ -21,7 +17,7 @@
 
 
 BuildSimData = function(Tn = 2, # Currently we consider only 2 
-                        COIs, M, N, N_alleles=10, K_poly_markers,
+                        COIs, M, N, N_alleles=10, 
                         relatedness = c('Clone','Sibling','Stranger')){
   # Check the inputs
   if(length(COIs) != Tn & Tn > 1){
@@ -36,32 +32,18 @@ BuildSimData = function(Tn = 2, # Currently we consider only 2
   FS = lapply(MS_markers, function(x) table(1:N_alleles)/N_alleles)
   names(FS) = MS_markers
   
-  # The number of polyallelelic markers: make into vector of length N (per individual) if not already
-  if(length(K_poly_markers) == 1) K_poly_markers = rep(K_poly_markers,N)
-  
   # Construct a dataframe for the simulated data of correct size
   C_total = sum(COIs)
   MS_data_sim = as.data.frame(array(dim = c(N * C_total, M+4)))
-  colnames(MS_data_sim) = c('ID','COI_id', MS_markers, 'Episode', 'Episode_Identifier')
+  colnames(MS_data_sim) = c('ID','MOI_id', MS_markers, 'Episode', 'Episode_Identifier')
   
   for(n in 1:N){
-    
-    # Number of polyallelic markers: this determines the complexity of problem
-    K_poly_allele = K_poly_markers[n]
     
     # indices of infection 1
     inf_1_ind = ((n-1) * C_total + 1) : ((n-1) * C_total + COIs[1])
     
     # Generate marker data for infection 1
-    for(ms in 1:K_poly_allele){ # First we do the polyallelic markers
-      # sample without replacement to ensure sample doesn't collapse to COI < COIs[1]
-      MS_data_sim[inf_1_ind,MS_markers[ms]] = sample(1:N_alleles, size=COIs[1], replace = F)
-    }
-    if(K_poly_allele < M){ # and then the non-polyallelic markers
-      for(ms in (K_poly_allele+1):M){ 
-        MS_data_sim[inf_1_ind, MS_markers[ms]] = sample(1:N_alleles, size = 1)
-      }
-    }
+    for(ms in 1:M){MS_data_sim[inf_1_ind,MS_markers[ms]]=sample(1:N_alleles, size=COIs[1], replace = T)}
     
     # Add extra information needed for the Likelihood functions
     MS_data_sim$ID[inf_1_ind] = paste('SIM',n,sep = '_') # Name simulated individual
@@ -88,22 +70,14 @@ BuildSimData = function(Tn = 2, # Currently we consider only 2
         
         if(COIs[inf]>1){
           # Generate alleles at random for infection 2
-          for(ms in 1:K_poly_allele){
+          for(ms in 1:M){
             # sample without replacement: remove x from the sampling (prevent collapse to clone)
-            x = MS_data_sim[inf_Rec_ind[1],MS_markers[ms]]
-            MS_data_sim[inf_Rec_ind[2:COIs[inf]],MS_markers[ms]] = sample((1:N_alleles)[-x], size = COIs[inf]-1, replace = F)
-          }
-          if(K_poly_allele<M){
-            for(ms in (K_poly_allele+1):M){
-              # just copy from previous
-              x = MS_data_sim[inf_Rec_ind[1],MS_markers[ms]]
-              MS_data_sim[inf_Rec_ind, MS_markers[ms]] = x
-            }
+            MS_data_sim[inf_Rec_ind[2:COIs[inf]],MS_markers[ms]] = sample(1:N_alleles, size = COIs[inf]-1, replace = T)
           }
         }
       }
-      ###############################################
       
+      ###############################################
       # We copy with probability 0.5 from infection 1
       if(relatedness == 'Sibling'){
         IBD = sample(c(T,F), size = M, replace = T)
@@ -112,18 +86,8 @@ BuildSimData = function(Tn = 2, # Currently we consider only 2
         
         if(COIs[inf]>1){
           # Generate alleles at random for infection 2
-          for(ms in 1:K_poly_allele){
-            # sample without replacement: remove x from the sampling
-            x = MS_data_sim[inf_Rec_ind[1],MS_markers[ms]]
-            MS_data_sim[inf_Rec_ind[2:COIs[inf]],MS_markers[ms]] = sample((1:N_alleles)[-x], size = COIs[inf]-1, replace = F)
-          }
-          
-          if(K_poly_allele<M){
-            for(ms in (K_poly_allele+1):M){
-              # just copy from previous
-              x = MS_data_sim[inf_Rec_ind[1],MS_markers[ms]]
-              MS_data_sim[inf_Rec_ind, MS_markers[ms]] = x
-            }
+          for(ms in 1:M){
+            MS_data_sim[inf_Rec_ind[2:COIs[inf]],MS_markers[ms]] = sample((1:N_alleles), size = COIs[inf]-1, replace = T)
           }
         }
       }
@@ -131,14 +95,8 @@ BuildSimData = function(Tn = 2, # Currently we consider only 2
       ###############################################
       # Random data: same as for infection 1
       if(relatedness == 'Stranger'){
-        for(ms in 1:K_poly_allele){ # First we do the polyallelic markers
-          # sample without replacement
-          MS_data_sim[inf_Rec_ind,MS_markers[ms]] = sample(1:N_alleles, size = COIs[inf], replace = F)
-        }
-        if(K_poly_allele<M){
-          for(ms in (K_poly_allele+1):M){ # and then the non-polyallelic markers
-            MS_data_sim[inf_Rec_ind, MS_markers[ms]] = sample(1:N_alleles, size = 1)
-          }
+        for(ms in 1:M){ # First we do the polyallelic markers
+          MS_data_sim[inf_Rec_ind,MS_markers[ms]] = sample(1:N_alleles, size = COIs[inf], replace = T)
         }
       }
     }
@@ -148,13 +106,16 @@ BuildSimData = function(Tn = 2, # Currently we consider only 2
   return(list(MS_data_sim=MS_data_sim, FS=FS))
 }
 
+
 # # Some examples of how to use this function
-# xsclone=BuildSimData(Tn = 3,COIs = c(3,3,1), M = 3, N = 10,
-#                 relatedness = 'Clone',
-#                 N_alleles = 10, K_poly_markers = 1)
-# xs_sib=BuildSimData(Tn = 3,COIs = c(3,3,1), M = 3, N = 10,
-#                 relatedness = 'Sibling',
-#                 N_alleles = 10, K_poly_markers = 1)
-# xs=BuildSimData(Tn = 3,COIs = c(3,3,1), M = 3, N = 10,
-#                 relatedness = 'Stranger', 
-#                 N_alleles = 10, K_poly_markers = 1)
+xsclone=BuildSimData(Tn = 3,COIs = c(3,3,1),M = 3,N = 10,
+                     relatedness = 'Clone',
+                     N_alleles = 10)
+
+xs_sib=BuildSimData(Tn = 3,COIs = c(3,3,1), M = 3, N = 10,
+                    relatedness = 'Sibling',
+                    N_alleles = 10)
+
+xs_str=BuildSimData(Tn = 3,COIs = c(3,3,1), M = 3, N = 10,
+                    relatedness = 'Stranger',
+                    N_alleles = 10)
