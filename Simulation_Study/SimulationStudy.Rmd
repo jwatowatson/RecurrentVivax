@@ -38,7 +38,8 @@ source('BuildSimData.R')
 
 Determines whether to run the full suite of simulations (takes a long time to run).
 ```{r}
-RUN_MODELS = T
+SIM_DATA = T 
+RUN_MODELS = F
 PLOT_RESULTS = T
 ```
 
@@ -77,12 +78,37 @@ jobs = nrow(settings) # Number of simulations jobs
 ```
 
 ```{r}
-RUN_MODELS = T
-cardinality = 4 
-related_type = 'Sibling'
-job = 1 
+# Simulate data first
+if(SIM_DATA){
+  for(cardinality in Cardinalities){ # iterate over cardinality of markers
+    for(related_type in Related_types){ # iterative over simulation scenario 
+      
+      thetas_all = foreach(job = 1:jobs, .combine = rbind, # iterate over jobs parameter settings
+                           .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
+      ) %do% { # parallisation happening inside the function
+        
+        #####################################################
+        # Simulate and save MS data
+        #####################################################
+        sim_output = BuildSimData(COIs = c(settings$COI_1[job],  # COI from settings
+                                           settings$COI_2[job]), # COI from settings
+                                  M = settings$M[job], # Number of markers from settings 
+                                  N = K_indivs,
+                                  N_alleles = cardinality, 
+                                  K_poly_markers = M, 
+                                  relatedness = related_type)
+        
+        # Save a copy of the simulated data
+        save(sim_output, file=sprintf('SimulationOutputs/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
+                                      cardinality, M, settings$COI_pattern[job], related_type))
+      }
+    }
+  }
+}
+```
 
-# All simulation parameter settings possible
+
+```{r}
 if(RUN_MODELS){
   for(cardinality in Cardinalities){ # iterate over cardinality of markers
     for(related_type in Related_types){ # iterative over simulation scenario 
@@ -91,29 +117,10 @@ if(RUN_MODELS){
                            .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
       ) %do% { # parallisation happening inside the function
         
-        COI_1 = settings$COI_1[job] # COI of primary infection
-        COI_2 = settings$COI_2[job] # COI of recurrent infection
-        M = settings$M[job] # Number of markers
-        
-        #####################################################
-        # Simulate and save MS data
-        #####################################################
-        sim_output = BuildSimData(COIs = c(COI_1, COI_2), 
-                                  M = M, 
-                                  N = K_indivs,
-                                  N_alleles = cardinality, 
-                                  K_poly_markers = M, 
-                                  relatedness = related_type)
-        MS_data = sim_output$MS_data_sim
-        
-        # Save a copy of the simulated data
-        save(MS_data, file=sprintf('SimulationOutputs/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
-                                   cardinality, M, settings$COI_pattern[job], related_type))
-        
         ######################################################################
         # Run the model on the data using default uniform prior over states
         ######################################################################
-        TH = post_prob_CLI(MSdata = MS_data, cores = 7, Fs = sim_output$FS, verbose = F)
+        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, cores = 7, Fs = sim_output$FS, verbose = F)
         TH$setting = job # Add setting number for plotting
         TH # return results
       }
