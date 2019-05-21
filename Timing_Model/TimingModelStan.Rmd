@@ -175,30 +175,30 @@ drug_received = Combined_Time_Data$numeric_drug[ind]
 
 ```{r}
 # The hierachical parameters defining the prior distributions for model 1
-Prior_params_M1 = list(Hyper_lambda_shape = 100,
-                       Hyper_lambda_rate = 100*1200,
+Prior_params_M1 = list(Hyper_lambda_shape = 50,
+                       Hyper_lambda_rate = 50*1200,
                        Hyper_gamma_shape = 100,
                        Hyper_gamma_rate = 100*50,
                        Hyper_lambda_recrud_shape = 100,
                        Hyper_lambda_recrud_rate = 100*10,
                        Hyper_AS_shape_mean = 10,
                        Hyper_AS_shape_sd = 1,
-                       Hyper_AS_scale_mean = 21,
+                       Hyper_AS_scale_mean = 23,
                        Hyper_AS_scale_sd = 1,
                        Hyper_CQ_shape_mean = 10,
                        Hyper_CQ_shape_sd = 1,
-                       Hyper_CQ_scale_mean = 42,
-                       Hyper_CQ_scale_sd = 2,
+                       Hyper_CQ_scale_mean = 45,
+                       Hyper_CQ_scale_sd = 1,
                        Hyper_logit_mean_p_mean = logit(0.3),
-                       Hyper_logit_mean_p_sd = 1,
+                       Hyper_logit_mean_p_sd = .5,
                        Hyper_logit_sd_p_lambda = 1,
                        Hyper_logit_c1_mean = logit(0.01),
                        Hyper_logit_c1_sd = .25,
                        Early_L_logit_mean = 0,
-                       Early_L_logit_sd = .5)
+                       Early_L_logit_sd = .25)
 # Model 2: extra parameters
 Prior_params_M2 = c(Prior_params_M1, 
-                    Hyper_logit_mean_pPMQ_mean = logit(0.9),
+                    Hyper_logit_mean_pPMQ_mean = logit(0.95),
                     Hyper_logit_mean_pPMQ_sd = .25,
                     Hyper_logit_sd_pPMQ_lambda = 1)
 ```
@@ -210,7 +210,7 @@ Set up parameters for the MCMC runs.
 # remove this once models 1-2 conform with augmented data (including Censored == -1)
 Combined_Time_Data = filter(Combined_Time_Data, Censored > -1)
 # Choose as many chains as available cores
-Chains = 6
+Chains = 7
 options(mc.cores = Chains)
 IT = 10^4
 WarmUp = .5*IT
@@ -281,13 +281,13 @@ if(RUN_MODELS){
                       data = c(Time_data_2, Prior_params_M2),
                       iter = IT, warmup = WarmUp,
                       chains=Chains, thin = thin,
-                      init = lapply(1:Chains, 
+                      init = lapply(1:Chains,
                                     FUN = function(x,Prior_params_M2,N_noPMQ, N_PMQ){
                                       generate_inital_values_M2(Prior_params_M2,
                                                                 N_noPMQ,
                                                                 N_PMQ)
-                                    }, 
-                                    Prior_params_M2 = Prior_params_M2, 
+                                    },
+                                    Prior_params_M2 = Prior_params_M2,
                                     N_noPMQ = N_noPMQ,
                                     N_PMQ = N_PMQ))
   save(mod2_Fit, file = '../RData/LargeFiles/StanModels_mod2.RData')
@@ -327,16 +327,21 @@ if(PLOT_Censored_Obs){
 
 ## Model 1
 
-```{r plotModel1}
+```{r traceplotModel1}
 par(las=1)
 traceplot(mod1_Fit,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
 traceplot(mod1_Fit, c('lambda','gamma','lambda_recrud','logit_EarlyL'))
 traceplot(mod1_Fit, c('logit_c1_CQ','logit_c1_AS','logit_mean_p','logit_sd_p'))
+```
 
+
+```{r estimated_Model1}
 par(mfrow=c(1,2))
+par(las=1)
+
 thetas_mod1 = extract(mod1_Fit)
-hist(thetas_mod1$lambda, main='Mean time to reinfection', xlab='lambda (1/days)')
-hist(thetas_mod1$gamma, main='Mean time to late reLapse', xlab='gamma (1/days)')
+hist(1/thetas_mod1$lambda, main='Mean time to reinfection', xlab='lambda (1/days)')
+hist(1/thetas_mod1$gamma, main='Mean time to late reLapse', xlab='gamma (1/days)')
 
 par(las=1, mfrow=c(2,2))
 
@@ -396,15 +401,19 @@ axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
 ## Model 2
 
 Traceplots and posterior distributions:
-```{r plotModel2}
+```{r traceplots_Model2}
 traceplot(mod2_Fit,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
-traceplot(mod2_Fit, c('inv_lambda','inv_Recrud_lambda'))
+traceplot(mod2_Fit, c('gamma','lambda','lambda_recrud'))
 traceplot(mod2_Fit, c('logit_c1_AS','logit_c1_CQ','logit_c1_CQ_PMQ'))
 traceplot(mod2_Fit, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
+```
+
+
+```{r estimated_Model2}
 par(mfrow=c(1,2))
 thetas_mod2 = extract(mod2_Fit)
-hist(thetas_mod2$inv_lambda, xlab='Mean time to reinfection (days)', main='')
-hist(thetas_mod2$inv_gamma, xlab='Mean time to late reLapse (days)', main='')
+hist(1/thetas_mod2$lambda, xlab='Mean time to reinfection (days)', main='')
+hist(1/thetas_mod2$gamma, xlab='Mean time to late reLapse (days)', main='')
 
 hist(inv.logit(apply(thetas_mod2$logit_p,2,mean)),
      xlab = 'Reinfection: no PMQ', main = '',
@@ -488,18 +497,20 @@ The simpler model (model 1) has higher predictive accuracy.
 ```{r prior_to_posterior1, fig.height=10}
 par(mfrow=c(4,3))
 # lambda: reinfection rate
-hist(1/thetas_mod1$lambda,freq = FALSE, xlim = c(300,1400), main='',
-     xlab='Time to reinfection (1/lambda)', ylab = '', yaxt='n', col='grey', breaks=10)
-lines(dnorm(x = 1:1600,mean = Prior_params_M1$mu_inv_lambda, 
-            sd = Prior_params_M1$sigma_inv_lambda),
+hist(thetas_mod1$lambda,freq = FALSE, main='',yaxt='n',
+     xlab='reinfection rate (lambda)', ylab = '', col='grey', breaks=10)
+xs = quantile(thetas_mod1$lambda, probs = seq(0,1,by = 0.001))
+lines(xs, dgamma(x = xs,shape = Prior_params_M1$Hyper_lambda_shape, 
+            rate = Prior_params_M1$Hyper_lambda_rate),
       col='red',lwd=3)
 
 # gamma: late relapse rate
-hist(1/thetas_mod1$gamma,freq = FALSE, xlim = c(0,200), main='',
-     xlab='Time to late relapse (1/gamma)', ylab = '', yaxt='n', 
+hist(thetas_mod1$gamma,freq = FALSE, main='',
+     xlab='Late relapse rate (gamma)', ylab = '', yaxt='n', 
      col='grey', breaks=10)
-lines(dnorm(x = 1:1000,mean = Prior_params_M1$mu_inv_gamma, 
-            sd = Prior_params_M1$sigma_inv_gamma),
+xs = quantile(thetas_mod1$gamma, probs = seq(0,1,by = 0.001))
+lines(xs, dgamma(x = xs,shape = Prior_params_M1$Hyper_gamma_shape, 
+            rate = Prior_params_M1$Hyper_gamma_rate),
       col='red',lwd=3)
 
 # AS_shape (Weibull shape parameter for AS monotherapy)
@@ -572,19 +583,21 @@ lines(seq(-1,5,by=.01), dnorm(x = seq(-1,5,by=.01),
 ```{r prior_to_posterior2, fig.height=10}
 par(mfrow=c(4,3))
 # lambda: reinfection rate
-hist(1/thetas_mod2$lambda,freq = FALSE, xlim = c(600,1600), main='',
-     xlab=expression(paste('Time to reinfection (' , 1/lambda,')',sep='')), 
+hist(thetas_mod2$lambda,freq = FALSE, main='',
+     xlab=expression(paste('Reinfection rate (' , lambda,')',sep='')), 
      ylab = '', yaxt='n', col='grey', breaks=10)
-lines(dnorm(x = 1:1400,mean = Prior_params_M2$mu_inv_lambda, 
-            sd = Prior_params_M2$sigma_inv_lambda),
+xs = quantile(thetas_mod1$lambda, probs = seq(0,1,by = 0.001))
+lines(xs, dgamma(x = xs,shape = Prior_params_M2$Hyper_lambda_shape, 
+            rate = Prior_params_M2$Hyper_lambda_rate),
       col='red',lwd=3)
 
 # gamma: late relapse rate
-hist(1/thetas_mod2$gamma,freq = FALSE, xlim = c(60,160), main='',
-     xlab=expression(paste('Time to late relapse (',1/gamma,')',sep='')), 
+hist(thetas_mod2$gamma,freq = FALSE, main='',
+     xlab=expression(paste('Late relapse rate (',gamma,')',sep='')), 
      ylab = '', yaxt='n', col='grey', breaks=10)
-lines(dnorm(x = 1:1000,mean = Prior_params_M2$mu_inv_gamma, 
-            sd = Prior_params_M2$sigma_inv_gamma),
+xs = quantile(thetas_mod1$gamma, probs = seq(0,1,by = 0.001))
+lines(xs, dnorm(x = xs,shape = Prior_params_M2$Hyper_gamma_shape, 
+            rate = Prior_params_M2$Hyper_gamma_rate),
       col='red',lwd=3)
 
 # AS_shape (Weibull shape parameter for AS monotherapy)
@@ -672,103 +685,6 @@ lines(seq(-1,5,by=.01), dnorm(x = seq(-1,5,by=.01),
       col='red',lwd=3)
 ```
 
-```{r prior_to_posterior3, fig.height=10}
-# thetas_mod3 = extract(mod3_Fit)
-# par(mfrow=c(4,3))
-# # lambda: reinfection rate
-# hist(1/thetas_mod3$lambda,freq = FALSE, xlim = c(300,1400), main='',
-#      xlab='Time to reinfection (1/lambda)', ylab = '', yaxt='n', col='grey', breaks=10)
-# lines(dnorm(x = 1:1400,mean = Prior_params_M2$mu_inv_lambda, 
-#             sd = Prior_params_M2$sigma_inv_lambda),
-#       col='red',lwd=3)
-# 
-# # gamma: late relapse rate
-# hist(1/thetas_mod3$gamma,freq = FALSE, xlim = c(0,160), main='',
-#      xlab='Time to late relapse (1/gamma)', ylab = '', yaxt='n', col='grey', breaks=10)
-# lines(dnorm(x = 1:1000,mean = Prior_params_M2$mu_inv_gamma, 
-#             sd = Prior_params_M2$sigma_inv_gamma),
-#       col='red',lwd=3)
-# 
-# # AS_shape (Weibull shape parameter for AS monotherapy)
-# hist(thetas_mod3$AS_shape, xlim = c(0,5), freq = F, main='',
-#      xlab= 'AS shape parameter', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(0,10,by=0.1), dnorm(x = seq(0,10,by=0.1),
-#                               mean = Prior_params_M2$mu_AS_shape, 
-#                               sd = Prior_params_M2$sigma_AS_shape),
-#       col='red',lwd=3)
-# 
-# # AS_scale (Weibill scale parameter for AS monotherapy)
-# hist(thetas_mod3$AS_scale, xlim = c(15,35), freq = F, main='',
-#      xlab= 'AS scale parameter', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(0,50,by=1), dnorm(x = seq(0,50,by=1),
-#                             mean = Prior_params_M2$mu_AS_scale, 
-#                             sd = Prior_params_M2$sigma_AS_scale),
-#       col='red',lwd=3)
-# 
-# # CQ_shape (Weibull shape parameter for CQ with or without PMQ)
-# hist(thetas_mod3$CQ_shape, xlim = c(0,6), freq = F, main='',
-#      xlab= 'CQ shape parameter', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(0,10,by=0.1), dnorm(x = seq(0,10,by=0.1),
-#                               mean = Prior_params_M2$mu_CQ_shape, 
-#                               sd = Prior_params_M2$sigma_CQ_shape),
-#       col='red',lwd=3)
-# 
-# # CQ_scale (Weibull scale parameter for CQ with or without PMQ)
-# hist(thetas_mod3$CQ_scale, xlim = c(35,55), freq = F, main='',
-#      xlab= 'CQ scale parameter', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(30,70,by=1), dnorm(x = seq(30,70,by=1),
-#                              mean = Prior_params_M2$mu_CQ_scale, 
-#                              sd = Prior_params_M2$sigma_CQ_scale),
-#       col='red',lwd=3)
-# 
-# # Mean logit p (hierachical mean reinfection proportion)
-# hist(thetas_mod3$logit_mean_p, xlim = c(-4,-1), freq = F, main='',
-#      xlab= 'Population logit p', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(-5,3,by=.01), dnorm(x = seq(-5,3,by=.01),
-#                               mean = Prior_params_M2$Hyper_logit_mean_p, 
-#                               sd = Prior_params_M2$Hyper_logit_sd_p),
-#       col='red',lwd=3)
-# 
-# # Mean logit p_PMQ (hierachical mean reinfection proportion after PMQ)
-# hist(thetas_mod3$logit_mean_p_PMQ, xlim = c(2,5), freq = F, main='',
-#      xlab= 'Population logit p_PMQ', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(0,5,by=.01), dnorm(x = seq(0,5,by=.01),
-#                              mean = Prior_params_M2$Hyper_logit_mean_p_PMQ, 
-#                              sd = Prior_params_M2$Hyper_logit_sd_p_PMQ),
-#       col='red',lwd=3)
-# 
-# # Mean c1 AS (hierachical mean early relapse)
-# hist(thetas_mod3$logit_c1_AS, xlim = c(-5,-2), freq = F, main='',
-#      xlab= 'Population logit c1: AS', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-#                               mean = Prior_params_M2$Hyper_logit_c1_mean, 
-#                               sd = Prior_params_M2$Hyper_logit_c1_sd),
-#       col='red',lwd=3)
-# 
-# # Mean c1: CQ (hierachical mean early relapse)
-# hist(thetas_mod3$logit_c1_CQ,  xlim = c(-5,-2), freq = F, main='',
-#      xlab= 'Population logit c1: CQ', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-#                               mean = Prior_params_M2$Hyper_logit_c1_mean, 
-#                               sd = Prior_params_M2$Hyper_logit_c1_sd),
-#       col='red',lwd=3)
-# 
-# # Mean c1: CQ_PMQ (hierachical mean early relapse)
-# hist(thetas_mod3$logit_c1_CQ_PMQ,  xlim = c(-5,-2), freq = F, main='',
-#      xlab= 'Population logit c1: PMQ+', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-#                               mean = Prior_params_M2$Hyper_logit_c1_mean, 
-#                               sd = Prior_params_M2$Hyper_logit_c1_sd),
-#       col='red',lwd=3)
-# 
-# # logit_EarlyL relapse 
-# hist(thetas_mod3$logit_EarlyL, xlim = c(-1,1), freq = F, main='',
-#      xlab= 'logit EarlyL', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(-1,5,by=.01), dnorm(x = seq(-1,5,by=.01),
-#                               mean = Prior_params_M2$Early_L_logit_mean, 
-#                               sd = Prior_params_M2$Early_L_logit_sd),
-#       col='red',lwd=3)
-```
 
 # Interpretation of results
 
@@ -784,7 +700,7 @@ Mixture = sapply(Early_relapse, FUN = function(x){
 # Artesunate mono-therapy
 T1s = rweibull(n = K, shape = sample(x = thetas_mod2$AS_shape, size = K, replace = T),
                scale = sample(x = thetas_mod2$AS_scale, size = K, replace = T))
-T2s = rexp(n = K, rate =  sample(x = 1/thetas_mod2$inv_gamma, size = K, replace = T))
+T2s = rexp(n = K, rate =  sample(x = thetas_mod2$gamma, size = K, replace = T))
 Times_RelapseAS = c(T1s[Mixture==1], T2s[Mixture==2])
 ```
 
@@ -794,7 +710,7 @@ par(mfrow=c(1,2), las=1)
 # Chloroquine mono-therapy
 T1s = rweibull(n = K, shape = sample(x = thetas_mod2$CQ_shape, size = K, replace = T),
                scale = sample(x = thetas_mod2$CQ_scale, size = K, replace = T))
-T2s = rexp(n = K, rate =  sample(x = 1/thetas_mod2$inv_gamma, size = K, replace = T))
+T2s = rexp(n = K, rate =  sample(x = thetas_mod2$gamma, size = K, replace = T))
 Times_RelapseCQ = c(T1s[Mixture==1], T2s[Mixture==2])
 
 hist(Times_RelapseAS, breaks = seq(0,7000, by=7), xlim=c(0,100),
