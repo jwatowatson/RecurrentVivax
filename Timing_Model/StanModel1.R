@@ -13,16 +13,17 @@ data {
   int<lower=0,upper=N_noPMQ>  ID_mapped_to_noPMQ_rank[N]; // Vector mapping the the individual ID (from 1 to N) to the random effects index: logit_p
 
   // Hyper parameters that are part of the `data` section
-  real<lower=0>   Hyper_lambda_scale;     // Mean of the prior on time to reinfection
-  real<lower=0>   Hyper_lambda_rate;      // SD of the prior on time to reinfection
-  real<lower=0>   Hyper_gamma_scale;      // Mean of the prior on time to random reLapse
-  real<lower=0>   Hyper_gamma_rate;       // SD of the prior on time to random reLapse
-  real<lower=0>   Hyper_lambda_recrud_scale;
+  real<lower=0>   Hyper_lambda_shape;         // Mean of the prior on time to reinfection
+  real<lower=0>   Hyper_lambda_rate;          // SD of the prior on time to reinfection
+  real<lower=0>   Hyper_gamma_shape;          // Mean of the prior on time to random reLapse
+  real<lower=0>   Hyper_gamma_rate;           // SD of the prior on time to random reLapse
+  real<lower=0>   Hyper_lambda_recrud_shape;
   real<lower=0>   Hyper_lambda_recrud_rate;
-  real            Early_L_logit_mean;     // mean of prior on mean of logit Early_L
-  real<lower=0>   Early_L_logit_sd;       // sd of prior on mean of logit Early_L
-  real            Hyper_logit_mean_p;     // mean of prior on mean of logit p
-  real<lower=0>   Hyper_logit_sd_p;       // sd of prior on mean of logit p
+  real            Early_L_logit_mean;           // mean of prior on mean of logit Early_L
+  real<lower=0>   Early_L_logit_sd;             // sd of prior on mean of logit Early_L
+  real            Hyper_logit_mean_p_mean;      // mean of prior on mean of logit p
+  real<lower=0>   Hyper_logit_mean_p_sd;        // sd of prior on mean of logit p
+  real<lower=0>   Hyper_logit_sd_p_lambda;      // the prior rate parameter for the sd of of p
   real            Hyper_logit_c1_mean;
   real<lower=0>   Hyper_logit_c1_sd;
   real<lower=0>   Hyper_AS_shape_mean;      
@@ -53,7 +54,7 @@ parameters {
 }
 
 transformed parameters{
-  // Compute the reInfection and recrudescence rates
+  // Compute the reInfection and recrudescence mixing proportions
   // We define log scale parameters from inverse logit transformation
   real log_p[N_noPMQ];
   real log_c1_AS      = log_inv_logit(logit_c1_AS);
@@ -75,12 +76,12 @@ model {
   
   // ********* Prior *********
   //inv_lambda ~ normal(Hyper_inv_lambda_mean,Hyper_inv_lambda_sd);
-  lambda ~ gamma(Hyper_lambda_scale, Hyper_lambda_rate);
-  gamma ~ gamma(Hyper_gamma_scale,Hyper_gamma_rate);
-  lambda_recrud ~ gamma(Hyper_lambda_recrud_scale,Hyper_lambda_recrud_rate);
+  lambda ~ gamma(Hyper_lambda_shape, Hyper_lambda_rate);
+  gamma ~ gamma(Hyper_gamma_shape,Hyper_gamma_rate);
+  lambda_recrud ~ gamma(Hyper_lambda_recrud_shape,Hyper_lambda_recrud_rate);
 
-  logit_mean_p ~ normal(Hyper_logit_mean_p, Hyper_logit_sd_p);
-  logit_sd_p ~ normal(1, 0.5);
+  logit_mean_p ~ normal(Hyper_logit_mean_p_mean, Hyper_logit_mean_p_sd);
+  logit_sd_p ~ exponential(Hyper_logit_sd_p_lambda);
 
   AS_shape ~ normal(Hyper_AS_shape_mean,Hyper_AS_shape_sd);
   AS_scale ~ normal(Hyper_AS_scale_mean,Hyper_AS_scale_sd);
@@ -135,8 +136,7 @@ model {
         target += log_sum_exp(log_probs);
       }
       if(Drug[i] == 2){ 
-        // Chloroquine + Primaquine
-        // reInfection is only option
+        // Chloroquine + Primaquine: reInfection is only option
         target += exponential_lpdf(Durations[i] | lambda);
       }
     } 
@@ -178,12 +178,11 @@ model {
     }
   }
 } 
-
 generated quantities {
 
   vector[Neps] log_lik;
   matrix[Neps,4] prob_labels;
-  
+
   // This computes respective densities of each mixture component
   for(i in 1:Neps){
     int Ind;
@@ -221,7 +220,7 @@ generated quantities {
         // Recrudescence
         prob_labels_raw[4] = 0;
       }
-    } 
+    }
     if(Censored[i] == 1){ // this is a right censored time to new infection
       if(Drug[i] == 0){ // Artesunate monotherapy:
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
@@ -273,7 +272,7 @@ generated quantities {
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
-        log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);          
+        log_probs[1] = log_p[Ind] + exponential_lpdf(Durations[i] | lambda);
         // Early reLapse
         log_probs[2] = log_1m_p[Ind] + log_1m_c1_AS + log_EarlyL + weibull_lpdf(Durations[i] | AS_shape, AS_scale);
         // Late reLapse
@@ -301,16 +300,16 @@ generated quantities {
         // Chloroquine + Primaquine
         // reInfection: only option
         log_lik[i] = exponential_lpdf(Durations[i] | lambda);
-        
+
       }
-    } 
+    }
     if(Censored[i] == 1){ // this is a right censored time to new infection
       // This is the unobserved case (data are right censored)
       if(Drug[i] == 0){
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Artesunate monotherapy: reLapses or reInfections
         // reInfection
-        log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
+        log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);
         // Early reLapse
         log_probs[2] = log_1m_p[Ind] + log_1m_c1_AS + log_EarlyL + weibull_lccdf(Durations[i] | AS_shape, AS_scale);
         // Late reLapse
@@ -324,7 +323,7 @@ generated quantities {
         Ind = ID_mapped_to_noPMQ_rank[ID_of_Patient[i]];
         // This is the Chloroquine monotherapy: reLapses or reInfections
         // reInfection
-        log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);          
+        log_probs[1] = log_p[Ind] + exponential_lccdf(Durations[i] | lambda);
         // Early reLapse
         log_probs[2] = log_1m_p[Ind] + log_1m_c1_CQ + log_EarlyL + weibull_lccdf(Durations[i] | CQ_shape, CQ_scale);
         // Late reLapse
@@ -335,15 +334,14 @@ generated quantities {
         log_lik[i] = log_sum_exp(log_probs);
       }
       if(Drug[i] == 2){
-        // Chloroquine + Primaquine: 
+        // Chloroquine + Primaquine:
         // reInfection
-        log_lik[i] = exponential_lccdf(Durations[i] | lambda);          
-        
+        log_lik[i] = exponential_lccdf(Durations[i] | lambda);
+
       }
     }
   }
 }
-
 '
 
 Timing_Model1 = stan_model(model_code = mod1)

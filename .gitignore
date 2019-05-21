@@ -40,3 +40,9 @@ Icon
 Icon
 Icon
 RData/LargeFiles/StanModels_Sim1_mod1.RData
+RData/LargeFiles/StanModels_Sim2_mod2.RData
+RData/LargeFiles/StanModels_SimSeasonal_mod1.RData
+RData/LargeFiles/StanModels_SimSeasonal_mod2.RData
+RData/TimingModel/simulation_full_results_mod1.RData
+RData/TimingModel/simulation_full_results_mod2.RData
+RData/TimingModel/simulation_full_results_mod_seasonal.RData

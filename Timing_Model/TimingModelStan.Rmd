@@ -30,35 +30,12 @@ tic()
 # Note that recompilation is necessary on different platforms
 RECOMPILE_MODELS = F
 # Running the full stan models can take several days
-RUN_MODELS = F
+RUN_MODELS = T
+source('../Simulation_Study/Functions.R')
 ```
 
 
 # Load Stan models
-
-
-## Model 0
-
-This is the most unrealistic model. We include it to get some idea of how bad it is. Not included in the paper for simplicity.
-
-* ReInfections occur at 'random' (exponential distribution). A random effects term is used to adjust for inter-individual variability in propensity to be reinfected.
-
-* Recrudescences can happen in the first couple of weeks. Relapses happen as described by a Weibull with blood-stage drug dependent parameters.
-
-* Primaquine is assumed to have 100% efficacy.
-
-
-```{r, include=FALSE}
-if(RECOMPILE_MODELS){
-  writeLines('Compiling model 0....')
-  source('StanModel0.R')
-  save(Timing_Model0, file = '../RData/TimingModel/Timing_Model0.RData')
-} else {
-  load('../RData/TimingModel/Timing_Model0.RData')
-}
-```
-
-
 
 ## Model 1: Mixture of three components
 
@@ -116,7 +93,7 @@ Here we explore whether a seasonality term is useful to explain some reinfection
 The seasonal term is given in units of weeks by $\exp(\beta_1  \sin (\frac{2\pi t}{T} + \beta_1))$ where $T=365/7$ (number of weeeks in the year).
 This increases the reinfection mixing proportion $p_{(n)}$ for each drug treatment.
 
-This model is still in development.
+This model is still in development and not currently functional.
 
 
 ```{r, include=FALSE}
@@ -198,8 +175,12 @@ drug_received = Combined_Time_Data$numeric_drug[ind]
 
 ```{r}
 # The hierachical parameters defining the prior distributions for model 1
-Prior_params_M0 = list(Hyper_inv_lambda_mean = 900,
-                       Hyper_inv_lambda_sd = 50,
+Prior_params_M1 = list(Hyper_lambda_shape = 100,
+                       Hyper_lambda_rate = 100*1200,
+                       Hyper_gamma_shape = 100,
+                       Hyper_gamma_rate = 100*50,
+                       Hyper_lambda_recrud_shape = 100,
+                       Hyper_lambda_recrud_rate = 100*10,
                        Hyper_AS_shape_mean = 10,
                        Hyper_AS_shape_sd = 1,
                        Hyper_AS_scale_mean = 21,
@@ -208,30 +189,18 @@ Prior_params_M0 = list(Hyper_inv_lambda_mean = 900,
                        Hyper_CQ_shape_sd = 1,
                        Hyper_CQ_scale_mean = 42,
                        Hyper_CQ_scale_sd = 2,
-                       Hyper_logit_mean_p = -1.5,
-                       Hyper_logit_sd_p = .5,
-                       Hyper_logit_c1_mean = -4.5,
+                       Hyper_logit_mean_p_mean = logit(0.3),
+                       Hyper_logit_mean_p_sd = 1,
+                       Hyper_logit_sd_p_lambda = 1,
+                       Hyper_logit_c1_mean = logit(0.01),
                        Hyper_logit_c1_sd = .25,
-                       Hyper_recrud_shape_mean = 8,
-                       Hyper_recrud_shape_sd = 1,
-                       Hyper_recrud_scale_mean = 14,
-                       Hyper_recrud_scale_sd = 1)
-# Model 1 has the same parameters with a few extra
-Prior_params_M1 = c(Prior_params_M0, 
-                    Early_L_logit_mean = 0,
-                    Early_L_logit_sd = .25,
-                    Hyper_inv_gamma_mean = 50,
-                    Hyper_inv_gamma_sd = 10)
+                       Early_L_logit_mean = 0,
+                       Early_L_logit_sd = .5)
 # Model 2: extra parameters
 Prior_params_M2 = c(Prior_params_M1, 
-                    Hyper_logit_mean_p_PMQ = 3,
-                    Hyper_logit_sd_p_PMQ = .25)
-# Model 3: extra parameters
-Prior_params_M3 = c(Prior_params_M2,
-                    beta_1_mean = 1,
-                    beta_1_sigma = 0.25,
-                    beta_0_mean = 1,
-                    beta_0_sigma = 2)
+                    Hyper_logit_mean_pPMQ_mean = logit(0.9),
+                    Hyper_logit_mean_pPMQ_sd = .25,
+                    Hyper_logit_sd_pPMQ_lambda = 1)
 ```
 
 # Run Model
@@ -290,62 +259,39 @@ Time_data_2 =list(N         = N,
                   ID_mapped_to_PMQ_rank = ID_mapped_to_PMQ_rank
                   # the index mapping PMQ individuals to their rank
 )
-# For model 3
-Time_data_3 =list(N         = N,
-                  #Number of individuals
-                  Neps      = as.integer(nrow(Combined_Time_Data)),
-                  #Number of durations
-                  N_noPMQ   = as.integer(N_noPMQ),
-                  # Number of individuals who do not recieve PMQ
-                  N_PMQ     = as.integer(N_PMQ),
-                  # Number of individuals who do not recieve PMQ
-                  Durations = as.double(Combined_Time_Data$Time_to_event),
-                  #Time to reinfection or time to censoring
-                  Censored  = as.integer(Combined_Time_Data$Censored),
-                  #If the duration is right censored or not
-                  WeekTime  = as.double(Combined_Time_Data$WeekTime),
-                  #Time of year in units of weeks
-                  Drug      = as.integer(Combined_Time_Data$numeric_drug),
-                  # drug coded as an integer
-                  ID_of_Patient   = Combined_Time_Data$ID,
-                  # the index of the individual for each time interval
-                  ID_mapped_to_noPMQ_rank = as.integer(ID_mapped_to_noPMQ_rank),
-                  # the index mapping no PMQ individuals to their rank
-                  ID_mapped_to_PMQ_rank = as.integer(ID_mapped_to_PMQ_rank),
-                  # the index mapping PMQ individuals to their rank
-                  Nweeks = as.double(365/7) 
-)
 ```
 
-Run with X parallel chains. This depends on local computing power.
+Run with `{r} Chains` parallel chains. This depends on local computing power.
 
-```{r runModels, echo=T}
+```{r runModels, echo=T, include=FALSE}
 if(RUN_MODELS){
-  # mod0_Fit = sampling(Timing_Model0,
-  #                    data = c(Time_data_1, Prior_params_M1),
-  #                    iter = IT, warmup = WarmUp,
-  #                    chains=Chains, thin = thin)
-  # save(mod0_Fit, file = '../RData/LargeFiles/StanModels_mod0.RData')
-  # 
   mod1_Fit = sampling(Timing_Model1,
                       data = c(Time_data_1, Prior_params_M1),
                       iter = IT, warmup = WarmUp,
-                      chains=Chains, thin = thin)
+                      chains=Chains, thin = thin,
+                      init = lapply(1:Chains, 
+                                    FUN = function(x,Prior_params_M1,N_noPMQ){
+                                      generate_inital_values_M1(Prior_params_M1,N_noPMQ)
+                                    }, 
+                                    Prior_params_M1 = Prior_params_M1, 
+                                    N_noPMQ = N_noPMQ))
   save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
   
   mod2_Fit = sampling(Timing_Model2,
                       data = c(Time_data_2, Prior_params_M2),
                       iter = IT, warmup = WarmUp,
-                      chains=Chains, thin = thin)
+                      chains=Chains, thin = thin,
+                      init = lapply(1:Chains, 
+                                    FUN = function(x,Prior_params_M2,N_noPMQ, N_PMQ){
+                                      generate_inital_values_M2(Prior_params_M2,
+                                                                N_noPMQ,
+                                                                N_PMQ)
+                                    }, 
+                                    Prior_params_M2 = Prior_params_M2, 
+                                    N_noPMQ = N_noPMQ,
+                                    N_PMQ = N_PMQ))
   save(mod2_Fit, file = '../RData/LargeFiles/StanModels_mod2.RData')
-  
-  # mod3_Fit = sampling(Timing_Model3,
-  #                     data = c(Time_data_3, Prior_params_M3),
-  #                     iter = IT, warmup = WarmUp,
-  #                     chains=Chains, thin = thin)
-  # save(mod3_Fit, file = '../RData/LargeFiles/StanModels_mod3.RData')
 }
-# load('OutputResults/StanModels_mod1.RData')
 load('../RData/LargeFiles/StanModels_mod1.RData')
 load('../RData/LargeFiles/StanModels_mod2.RData')
 ```
@@ -378,86 +324,31 @@ if(PLOT_Censored_Obs){
 ```
 
 
-## Model 0
-
-Not included in analysis - mainly here as a base model to help debugging.
-
-```{r plotModel0}
-# # Traceplots
-# traceplot(mod0_Fit,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
-# traceplot(mod0_Fit, c('inv_lambda','logit_c1','Recrud_shape','Recrud_scale'))
-# traceplot(mod0_Fit, c('logit_mean_p','logit_sd_p'))
-# 
-# # Extract samples
-# thetas_mod2 = extract(mod0_Fit)
-# 
-# par(las=1, mfrow=c(1,2))
-# hist(thetas_mod2$inv_lambda, main='Mean time to reinfection',
-#      xlab='1/lambda (days)')
-# hist(inv.logit(apply(thetas_mod2$logit_p,2,mean)),
-#      main = 'proportion of reInfections', xlab='p')
-# 
-# par(las=1, mfrow=c(1,1))
-# # Plot the outcome of the predicted labels
-# #****************************** Reinfection ******************************
-# labels = extract(mod0_Fit, 'prob_labels')$prob_labels
-# mean_labels_Reinfection = apply(labels[,ind_plotting,1,drop=T], 2, mean)
-# plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfection),
-#      col = mycols[numeric_drug[ind_plotting]+1],
-#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-#      ylab='Probability of ReInfection', yaxt='n',xaxt='n',
-#      xlab='Months from last episode', xlim=c(0,400))
-# axis(1, at = seq(0, 420, by=60), labels = seq(0, 420, by=60)/30)
-# axis(2, at = -2:0, labels= 10^(-2:0))
-# axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
-# axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
-# axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
-# legend('bottomright',legend = c('AS','CQ','CQ+PMQ'),
-#        col=c(mycols),pch = c(rep(1,3)), bty='n',lwd=2,lty=NA)
-# 
-# 
-# #****************************** Recrudescence ****************************
-# mean_labels_ReCrud = apply(labels[,ind_plotting,3,drop=T], 2, mean)
-# plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud,
-#      col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
-#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-#      ylab='ReCrudescence',
-#      xlab='Weeks from last episode', xlim=c(0,30))
-# axis(1, at = seq(0,28,by=7), labels = seq(0,28,by=7)/7)
-# 
-# 
-# #****************************** Relapse ****************************
-# mean_labels_ReLap = apply(labels[,ind_plotting,2,drop=T], 2, mean)
-# plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap),
-#      col = mycols[numeric_drug[ind_plotting]+1], xaxt='n',
-#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-#      ylab='log10 Probability of ReLapse',yaxt='n',
-#      xlab='Months from last episode', xlim=c(0,100),
-#      ylim = c(-10,0))
-# axis(1, at = seq(0, 90, by= 30), labels = seq(0, 90, by=30)/30)
-# axis(2, at = -2:0, labels= 10^(-2:0))
-```
 
 ## Model 1
 
 ```{r plotModel1}
 par(las=1)
 traceplot(mod1_Fit,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
-traceplot(mod1_Fit, c('inv_lambda','inv_gamma'))
-traceplot(mod1_Fit, c('Recrud_shape','Recrud_scale','logit_c1_CQ','logit_c1_AS'))
-traceplot(mod1_Fit, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
+traceplot(mod1_Fit, c('lambda','gamma','lambda_recrud','logit_EarlyL'))
+traceplot(mod1_Fit, c('logit_c1_CQ','logit_c1_AS','logit_mean_p','logit_sd_p'))
+
 par(mfrow=c(1,2))
 thetas_mod1 = extract(mod1_Fit)
-#save(thetas_mod1, file = 'OutputResults/thetas_mod1.RData')
-hist(thetas_mod1$inv_lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
-hist(thetas_mod1$inv_gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
+hist(thetas_mod1$lambda, main='Mean time to reinfection', xlab='lambda (1/days)')
+hist(thetas_mod1$gamma, main='Mean time to late reLapse', xlab='gamma (1/days)')
 
 par(las=1, mfrow=c(2,2))
 
-hist(inv.logit(apply(thetas_mod1$logit_p,2,mean)), xlab = 'Probability reinfection', main = '')
-hist(inv.logit(thetas_mod1$logit_c1_AS), xlab = 'proportion recrudescence: AS', main='')
-hist(inv.logit(thetas_mod1$logit_c1_CQ), xlab = 'proportion recrudescence: AS', main='')
-hist(inv.logit(thetas_mod1$logit_EarlyL), xlab = 'proportion early Relapse', main='')
+hist(inv.logit(apply(thetas_mod1$logit_p,2,mean)), 
+     xlab = 'Probability reinfection for no PMQ', main = '')
+
+hist(inv.logit(thetas_mod1$logit_c1_AS), 
+     xlab = 'Mixing proportion recrudescence: AS', main='')
+hist(inv.logit(thetas_mod1$logit_c1_CQ), 
+     xlab = 'Mixing proportion recrudescence: AS', main='')
+hist(inv.logit(thetas_mod1$logit_EarlyL), 
+     xlab = 'Mixing proportion early vs late relapse', main='')
 ```
 
 ```{r, plotModel1_labels}
@@ -574,86 +465,6 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap),
 axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
 ```
 
-## Model 3
-
-Still in development...
-
-```{r plotModel3}
-# traceplot(mod3_Fit,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
-# traceplot(mod3_Fit, c('inv_lambda','Recrud_shape','Recrud_scale'))
-# traceplot(mod3_Fit, c('logit_c1_AS','logit_c1_CQ','logit_c1_CQ_PMQ'))
-# traceplot(mod3_Fit, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
-# traceplot(mod3_Fit, c('logit_mean_p_PMQ','logit_sd_p_PMQ'))
-# traceplot(mod3_Fit, c('beta0','beta1'))
-# par(mfrow=c(1,2))
-# thetas_mod3 = extract(mod3_Fit)
-# hist(thetas_mod3$inv_lambda, xlab='Mean time to reinfection (days)', main='')
-# hist(thetas_mod3$inv_gamma, xlab='Mean time to late reLapse (days)', main='')
-# 
-# hist(inv.logit(apply(thetas_mod3$logit_p,2,mean)),
-#      xlab = 'Reinfection: no PMQ', main = '',
-#      yaxt='n',ylab='')
-# 
-# hist(inv.logit(apply(thetas_mod3$logit_p_PMQ,2,mean)),
-#      xlab = 'Reinfection: PMQ', main = '',
-#      yaxt='n',ylab='')
-# # Recrudescence weights
-# plot(density(100*inv.logit(thetas_mod3$logit_c1_AS)), col = drug_cols3['AS'],lwd=3,
-#      xlab = 'Recrudescence (%)', main='',yaxt='n',ylab='', xlim=c(0,10))
-# lines(density(100*inv.logit(thetas_mod3$logit_c1_CQ)), col = drug_cols3['CHQ'],lwd=3)
-# lines(density(100*inv.logit(thetas_mod3$logit_c1_CQ_PMQ)), col = drug_cols3['CHQ/PMQ'], lwd=3)
-# legend('topright',col=drug_cols3, legend = c('Artesunate monotherapy','Chloroquine monotherapy','Chloroquine+Primaquine'),lwd=3)
-# 
-# hist(inv.logit(thetas_mod3$logit_EarlyL), xlab = 'Early Relapse',
-#      main='',yaxt='n',ylab='')
-# 
-# par(las=1, mfrow=c(1,1))
-# # Plot the outcome of the predicted labels
-# #****************************** Reinfection ******************************
-# labels3 = extract(mod3_Fit, 'prob_labels')$prob_labels
-# mean_labels_Reinfection = apply(labels3[,ind_plotting,1,drop=T], 2, mean)
-# plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfection),
-#      col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1],
-#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-#      ylab='Probability of ReInfection', yaxt='n',xaxt='n',
-#      xlab='Months from last episode', xlim=c(0,400))
-# axis(1, at = seq(0, 420, by=60), labels = seq(0, 420, by=60)/30)
-# axis(2, at = -2:0, labels= 10^(-2:0))
-# axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
-# axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
-# axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
-# legend('bottomright',legend = c('Artesunate','Chloroquine','Chloroquine\nPrimaquine'),
-#        col=c(drug_cols3),pch = rep(1,3), bty='n',lwd=2,lty=NA)
-# 
-# 
-# #****************************** Recrudescence ****************************
-# mean_labels_ReCrud = apply(labels3[,ind_plotting,4,drop=T], 2, mean)
-# plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReCrud,
-#      col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1], xaxt='n',
-#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-#      ylab='ReCrudescence',
-#      xlab='Weeks from last episode', xlim=c(0,60))
-# axis(1, at = seq(0,54,by=7), labels = seq(0,54,by=7)/7)
-# 
-# #****************************** Relapse ****************************
-# mean_labels_ReLap1 = apply(labels3[,ind_plotting,2,drop=T], 2, mean)
-# mean_labels_ReLap2 = apply(labels3[,ind_plotting,3,drop=T], 2, mean)
-# mean_labels_ReLap = mean_labels_ReLap1 + mean_labels_ReLap2
-# plot(Combined_Time_Data$Time_to_event[ind_plotting], mean_labels_ReLap,
-#      col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1], xaxt='n',
-#      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-#      ylab='log10 Probability of ReLapse',
-#      xlab='Months from last episode')
-# axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
-# 
-# # The probabilities that the primary infections are reinfections
-# ind_enrolment = Combined_Time_Data$Censored == -1
-# plot(Combined_Time_Data$WeekTime[ind_enrolment], 
-#      apply(labels3[,ind_enrolment, 1, drop=T], 2, mean),
-#      xlab = 'Week of the year of enrollment',
-#      ylab = 'Probability reinfection')
-```
-
 
 # Model Evaluation
 
@@ -663,9 +474,7 @@ Still in development...
 library(loo)
 log_lik1 = extract_log_lik(mod1_Fit)
 log_lik2 = extract_log_lik(mod2_Fit)
-#log_lik3 = extract_log_lik(mod3_Fit)
 
-#waic3 = waic(log_lik3)
 loo_2 = loo(log_lik2)
 loo_1 = loo(log_lik1)
 loo::compare(loo_1,loo_2)

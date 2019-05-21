@@ -18,6 +18,8 @@ if(length(new.pkg) > 0){ # Install using .R script
   stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
     sapply(pkgs, require, character.only = TRUE) # Load all packages
   }
+
+source('Functions.R')
 ```
 
 
@@ -25,232 +27,70 @@ if(length(new.pkg) > 0){ # Install using .R script
 # Note that recompilation is necessary on different platforms
 RECOMPILE_MODELS = F
 # Running the full stan models can take several days
-RUN_MODELS = T
+RUN_MODELS = F
 ```
 
+Global options for stan model runs
+```{r}
+Chains = 6
+options(mc.cores = Chains)
+IT = 10^4
+WarmUp = .5*IT
+thin = 40
+```
 
-## Simulated data
+Global simulation sample sizes and follow-up time
+```{r}
+N_PMQ = 800
+N_AS = 200
+N_CQ = 200
+FUP_time = 300
+```
+
+## Data simulation functions
 
 We explore a few scenarios of increasing complexity to check:
 
 * The model can recover correct parameters when the data generating process is correctly specified (sanity check)
 * The effect of a mis-specified data generating process. For this we look at the impact of seasonality
 
-Functions to generate data
+
+## Data simulation for model 1
+
+This simulates data under the assumptions of Model 1.
+
+We set the simulation parameters:
 ```{r}
-generate_relapse_time = function(drug, params){
-  early_versus_late = runif(1)
-  type=NA
-  if(early_versus_late < params$EarlyL){ # early relapse
-    if(drug %in% c('PMQ/CHQ', 'CHQ')){
-      next_event = round(rweibull(1, shape = params$CQ_shape, scale = params$CQ_scale))
-    } else if (drug=='AS') {
-      next_event = round(rweibull(1, shape = params$AS_shape, scale = params$AS_scale))
-    }
-    type = 'EarlyRelapse'
-  } else {
-    next_event = round(rexp(1, rate = params$gamma))
-    type = 'LateRelapse'
-  }
-  return(list(time=next_event,type=type))
-}
-
-generate_reinfection_time = function(params){
-  next_event = round(rexp(1, rate = params$lambda))
-  return(next_event)
-}
-
-generate_recrudescence_time = function(drug, params){
-  next_event = round(rexp(1, rate = params$lambda_recrud))
-  return(next_event)
-}
-
-generate_patient_data_Model1 = function(params, follow_up=360, drug, ID=1){
-  time_events = c()
-  censor_status = c()
-  true_event_type = c()
-  total_time = 0
-  passed_EOF = FALSE # passed end of follow-up
-  # randomly generate the propensity to relapse
-  p = inv.logit(rnorm(1,mean = params$logit_mean_p,sd = params$logit_sd_p))
-  if(drug=='CHQ') { c1 = params$c1_CQ } else if(drug=='AS') { c1 = params$c1_AS}
-  
-  R_event = NA
-  while(!passed_EOF){
-    if(drug == 'CHQ/PMQ'){ 
-      # primaquine: 100% efficacy, reinfection is the only option
-      next_event = generate_reinfection_time(params = params)
-      R_event = 'Reinfection'
-    } else if (drug %in% c('CHQ','AS')){
-      if(runif(1) < p){
-        next_event = generate_reinfection_time(params)
-        R_event = 'Reinfection'
-      } else {
-        if(runif(1) < c1){ 
-          next_event = generate_recrudescence_time(drug = drug, params = params)
-          R_event = 'Recrudescence'
-        } else {
-          lapse = generate_relapse_time(drug = drug, params = params)
-          next_event = lapse$time
-          R_event = lapse$type
-        }
-      }
-    }
-    
-    total_time = total_time + next_event
-    
-    if(total_time <= follow_up){
-      censor_status = c(censor_status, 0)
-      time_events = c(time_events, next_event)
-      true_event_type = c(true_event_type, R_event)
-    } else {
-      censor_status = c(censor_status, 1)
-      passed_EOF = TRUE
-      time_events = c(time_events,follow_up - (total_time-next_event))
-      true_event_type = c(true_event_type, R_event)
-    }
-  }
-  
-  results = data.frame(time_events=time_events, censor_status=censor_status,
-                       ID=ID, drug=drug, true_p = p,
-                       true_event_type = true_event_type)
-  return(results)
-}
+params_M1 = list(lambda = 1/900,
+                 gamma = 1/50,
+                 lambda_recrud = 1/10,
+                 logit_EarlyL = 0,
+                 c1_CQ = 0.01,
+                 c1_AS = 0.01,
+                 logit_mean_p = logit(0.2),
+                 logit_sd_p = (-logit(0.2)+logit(0.8))/1.96,
+                 AS_shape = 10,
+                 AS_scale = 21,
+                 CQ_shape = 10,
+                 CQ_scale = 42)
 ```
 
 
-# Data simulation for model 1
-
-Choose simulation parameters:
+Generate data with these parameters:
 ```{r}
-params = list(lambda = 1/900,
-              gamma = 1/50,
-              lambda_recrud = 1/10,
-              EarlyL = 0.5,
-              c1_CQ = 0.01,
-              c1_AS = 0.01,
-              logit_mean_p = logit(0.2),
-              logit_sd_p = (-logit(0.2)+logit(0.8))/1.96,
-              AS_shape = 10,
-              AS_scale = 21,
-              CQ_shape = 10,
-              CQ_scale = 42)
+set.seed(475732)
+out1 = simulate_dataset(N_PMQ = N_PMQ, N_CQ = N_CQ, 
+                        N_AS = N_AS,FUP_time = FUP_time,
+                        data_generation_function = generate_patient_data_Model1,
+                        params = params_M1)
+Simdata_Model1 = out1$Simdata
+Simulation_truth1 = out1$Simulation_truth
 ```
 
 
-Generate a dataset
-```{r}
-#set.seed(475732)
-drugs = c('CHQ/PMQ','CHQ','AS')
-Ns = c(1000, 300, 300)
-FUP_time = 300 # the follow-up time
+# Run Stan Model 1 on simulated data generated from Model 1
 
-N = sum(Ns)
-id = 1
-sim_data_mod1 = data.frame(time_events=NA, censor_status=NA,
-                           ID=NA, drug=NA, true_p=NA,true_event_type=NA)
-for(i in 1:length(drugs)){
-  drug=drugs[i]
-  if(Ns[i]>0){
-    for(j in 1:Ns[i]){
-      dat = generate_patient_data_Model1(params = params,
-                                         follow_up = FUP_time,
-                                         drug = drug,
-                                         ID=id)
-      id=id+1
-      sim_data_mod1 = rbind(sim_data_mod1,dat)
-    }
-  }
-  
-}
-sim_data_mod1 = sim_data_mod1[-1,]
-sim_data_mod1 = filter(sim_data_mod1, !(censor_status > -1 & time_events < 5))
-
-
-N_noPMQ = sum(sim_data_mod1$drug[!duplicated(sim_data_mod1$ID)] %in% c('CHQ','AS'))
-N_PMQ = sum(sim_data_mod1$drug[!duplicated(sim_data_mod1$ID)] == 'CHQ/PMQ')
-# Turn drug into a numeric vector
-sim_data_mod1$numeric_drug = as.integer(revalue(sim_data_mod1$drug,
-                                                c('AS'='0','CHQ'='1','CHQ/PMQ'='2')))
-
-
-# Create a vector that maps the nth person to 0 (always received Primaquine) 
-# or to their rank for those who didn't receive primaquine
-noPMQ_ind = which(sim_data_mod1$drug != "CHQ/PMQ")
-N_noPMQ = length(unique(sim_data_mod1$ID[noPMQ_ind])) #number of IDs without PMQ
-ID_mapped_to_noPMQ_rank = rep(0, N)
-
-index = 1
-for(id in 1:N){
-  ind = which(sim_data_mod1$ID==id)
-  if(!2 %in% sim_data_mod1$numeric_drug[ind]){
-    ID_mapped_to_noPMQ_rank[id] = index
-    index = index + 1
-  }
-}
-
-table(sim_data_mod1$true_event_type[sim_data_mod1$censor_status==0&sim_data_mod1$numeric_drug<2])
-table(sim_data_mod1$true_event_type[sim_data_mod1$censor_status==1])
-
-
-table(sim_data_mod1$true_event_type[sim_data_mod1$numeric_drug<2])
-table(sim_data_mod1$true_event_type[sim_data_mod1$numeric_drug==2])
-```
-
-```{r}
-par(las=1, mfrow=c(2,2))
-reinfection_times = sapply(1:1000,function(x,params) generate_reinfection_time(params), 
-                           params = params)
-reinfection_times = reinfection_times[reinfection_times<FUP_time]
-
-hist(reinfection_times,main = 'Times of reinfection')
-
-recrudescence_times = sapply(1:1000,function(x,params) 
-  generate_recrudescence_time(drug = 'CHQ',params=params), 
-  params = params)
-hist(recrudescence_times,main = 'Times of recrudescence')
-
-
-early_relapsesAS = sapply(1:1000,
-                          FUN = function(x,params) {
-                            lapse = generate_relapse_time(params=params,drug = 'AS')
-                            if(lapse$type=='EarlyRelapse') return(lapse$time) else return(NA)
-                          },
-                          params = params)
-early_relapsesAS = early_relapsesAS[complete.cases(early_relapsesAS)]
-early_relapsesCQ = sapply(1:1000,
-                          FUN = function(x,params) {
-                            lapse = generate_relapse_time(params=params,drug = 'CHQ')
-                            if(lapse$type=='EarlyRelapse') return(lapse$time) else return(NA)
-                          },
-                          params = params)
-early_relapsesCQ = early_relapsesCQ[complete.cases(early_relapsesCQ)]
-
-plot(density(early_relapsesCQ), col='red',lwd=3, xlim=c(10,60))
-lines(density(early_relapsesAS), col='green',lwd=3)
-
-late_relapsesAS = sapply(1:1000,
-                         FUN = function(x,params) {
-                           lapse = generate_relapse_time(params=params,drug = 'AS')
-                           if(lapse$type=='LateRelapse') return(lapse$time) else return(NA)
-                         },
-                         params = params)
-
-late_relapsesCQ = sapply(1:1000,
-                         FUN = function(x,params) {
-                           lapse = generate_relapse_time(params=params,drug = 'CHQ')
-                           if(lapse$type=='LateRelapse') return(lapse$time) else return(NA)
-                         },
-                         params = params)
-
-hist(c(late_relapsesCQ, late_relapsesAS), xlim = c(0,FUP_time))
-```
-
-
-# Run Model1 on simulated data generated from Model 1
-
-
-
+Load or compile the stan model 1
 ```{r}
 if(RECOMPILE_MODELS){
   writeLines('Compiling model 1....')
@@ -264,320 +104,356 @@ if(RECOMPILE_MODELS){
 Prior specification
 ```{r}
 # The hierachical parameters defining the prior distributions for model 1
-Prior_params_M0 = list(Hyper_lambda_scale = 100,
-                       Hyper_lambda_rate = 100*(1/params$lambda),
-                       Hyper_lambda_recrud_scale = 100,
-                       Hyper_lambda_recrud_rate = 100*(1/params$lambda_recrud),
-                       Hyper_AS_shape_mean = params$AS_shape,
+Prior_params_M1 = list(Hyper_lambda_shape = 100,
+                       Hyper_lambda_rate = 100*(1/params_M1$lambda),
+                       Hyper_gamma_shape = 100,
+                       Hyper_gamma_rate = 100*(1/params_M1$gamma),
+                       Hyper_lambda_recrud_shape = 100,
+                       Hyper_lambda_recrud_rate = 100*(1/params_M1$lambda_recrud),
+                       Hyper_AS_shape_mean = params_M1$AS_shape,
                        Hyper_AS_shape_sd = 1,
-                       Hyper_AS_scale_mean = params$AS_scale,
+                       Hyper_AS_scale_mean = params_M1$AS_scale,
                        Hyper_AS_scale_sd = 1,
-                       Hyper_CQ_shape_mean = params$CQ_shape,
+                       Hyper_CQ_shape_mean = params_M1$CQ_shape,
                        Hyper_CQ_shape_sd = 1,
-                       Hyper_CQ_scale_mean = params$CQ_scale,
+                       Hyper_CQ_scale_mean = params_M1$CQ_scale,
                        Hyper_CQ_scale_sd = 2,
-                       Hyper_logit_mean_p = params$logit_mean_p,
-                       Hyper_logit_sd_p = 1,
-                       Hyper_logit_c1_mean = logit(params$c1_AS),
-                       Hyper_logit_c1_sd = .25)
-# Model 1 has the same parameters with a few extra
-Prior_params_M1 = c(Prior_params_M0, 
-                    Early_L_logit_mean = logit(params$EarlyL),
-                    Early_L_logit_sd = 1,
-                    Hyper_gamma_scale = 100,
-                    Hyper_gamma_rate = 100*(1/params$gamma))
+                       Hyper_logit_mean_p_mean = params_M1$logit_mean_p,
+                       Hyper_logit_mean_p_sd = 1,
+                       Hyper_logit_sd_p_lambda = 1,
+                       Hyper_logit_c1_mean = logit(params_M1$c1_AS),
+                       Hyper_logit_c1_sd = .25,
+                       Early_L_logit_mean = params_M1$logit_EarlyL,
+                       Early_L_logit_sd = .5)
 ```
 
-Setup options for stan and dataset in stan format
-```{r}
-Chains = 1
-options(mc.cores = Chains)
-IT = 10^4
-WarmUp = .5*IT
-thin = 30
 
-# put the data into stan format
-# For model 1 
-Simdata_Model1 =list(N         = N,
-                     #Number of individuals
-                     Neps      = as.integer(nrow(sim_data_mod1)),
-                     #Number of durations
-                     N_noPMQ   = as.integer(N_noPMQ),
-                     # Number of individuals who do not recieve PMQ
-                     N_PMQ     = as.integer(N_PMQ),
-                     # Number of individuals who do not recieve PMQ
-                     Durations = as.double(sim_data_mod1$time_events),
-                     # Time to recurrence or time to censoring
-                     Censored  = as.integer(sim_data_mod1$censor_status),
-                     # If the duration is right censored or not
-                     Drug      = sim_data_mod1$numeric_drug,
-                     # drug coded as an integer
-                     ID_of_Patient = sim_data_mod1$ID,
-                     # the ID corresponding to each time interval
-                     ID_mapped_to_noPMQ_rank = ID_mapped_to_noPMQ_rank
-                     # the index mapping PMQ individuals to their rank
-)
-```
 
-Run model on simulated data
+Fit stan model to simulated data
 ```{r, include=FALSE}
 if(RUN_MODELS){
+  tic()
   mod1_Fit = sampling(Timing_Model1,
                       data = c(Simdata_Model1, Prior_params_M1),
                       iter = IT, warmup = WarmUp,
-                      chains=Chains, thin = thin)
+                      chains = Chains, thin = thin, 
+                      init = lapply(1:Chains, 
+                                    FUN = function(x,Prior_params_M1,N_noPMQ){
+                                      generate_inital_values_M1(Prior_params_M1,N_noPMQ)
+                                    }, 
+                                    Prior_params_M1 = Prior_params_M1, 
+                                    N_noPMQ = Simdata_Model1$N_noPMQ))
   save(mod1_Fit, file = '../RData/LargeFiles/StanModels_Sim1_mod1.RData')
+  toc()
+} else {
+  load(file = '../RData/LargeFiles/StanModels_Sim1_mod1.RData')
 }
 thetas_mod1 = extract(mod1_Fit)
 ```
 
-```{r plotModel1}
-par(las=1)
-par(mfrow=c(2,2))
-
-# Time to reinfection
-hist(1/thetas_mod1$lambda, main='Mean time to reinfection', xlab='1/lambda (days)')
-abline(v=params$inv_lambda,col='red')
-# Time to late relapse
-hist(1/thetas_mod1$gamma, main='Mean time to late reLapse', xlab='1/gamma (days)')
-abline(v=params$inv_gamma,col='red')
-# Proportion early/late relapse
-hist((thetas_mod1$logit_EarlyL), main='Logit early relapse', xlab='')
-abline(v=logit(params$EarlyL),col='red')
-
-par(mfrow=c(2,2))
-# recrudescence proportion
-hist(thetas_mod1$logit_c1_AS, main='Logit c1 AS', xlab='')
-abline(v=logit(params$c1_AS),col='red')
-hist(thetas_mod1$logit_c1_CQ, main='Logit c1 CQ', xlab='')
-abline(v=logit(params$c1_CQ),col='red')
-hist(thetas_mod1$Recrud_shape, main='Recrud shape', xlab='')
-abline(v=(params$Recrud_shape),col='red')
-hist(thetas_mod1$Recrud_scale, main='Recrud scale', xlab='')
-abline(v=(params$Recrud_scale),col='red')
-
-par(mfrow=c(2,2))
-# shape and scale for AS early relapse
-hist(thetas_mod1$AS_shape, main='AS shape', xlab='')
-abline(v=(params$AS_shape),col='red')
-hist(thetas_mod1$AS_scale, main='AS scale', xlab='')
-abline(v=(params$AS_scale),col='red')
-# shape and scale for CQ early relapse
-hist(thetas_mod1$CQ_shape, main='CQ shape', xlab='')
-abline(v=(params$CQ_shape),col='red')
-hist(thetas_mod1$CQ_scale, main='CQ scale', xlab='')
-abline(v=(params$CQ_scale),col='red')
-
-par(mfrow=c(2,2))
-# proportion reinfection
-hist(inv.logit(thetas_mod1$logit_mean_p), main='Logit mean p', xlab='')
-abline(v=inv.logit(params$logit_mean_p),col='red')
-hist(thetas_mod1$logit_sd_p, main='Logit sd p', xlab='')
-abline(v=(params$logit_sd_p),col='red')
-# individual estimates versus true params for proportion reinfection
-p_estimates = (apply(thetas_mod1$logit_p,2,mean))
-true_p_estimates= logit(sim_data_mod1$true_p[!duplicated(sim_data_mod1$ID) & sim_data_mod1$numeric_drug<2])
-plot(p_estimates, true_p_estimates)
-lines(c(-10,10),c(-10,10))
-plot(p_estimates, p_estimates-true_p_estimates)
-abline(h=0)
+Plot output, comparing prior, ground truth and model estimate. This gives a qualitative assessement but for a single simulation run.
+```{r plotModel1_fit}
+plot_output_model1(thetas_mod1,Simulation_truth1,Simdata_Model1,Prior_params_M1)
 ```
 
-# Not assuming 100% efficacy of primaquine
 
-The following function generates data under the assumptions of model 2 - primaquine does not have 100% efficacy
+#### Multiple random simulations to assess systematic bias 
 
-```{r}
-generate_patient_data_Model2 = function(params, follow_up=360, drug, ID=1){
-  time_events = c()
-  censor_status = c()
-  true_event_type = c()
-  total_time = 0
-  passed_EOF = FALSE # passed end of follow-up
-  # randomly generate the propensity to relapse
-  p = inv.logit(rnorm(1,mean = params$logit_mean_p,sd = params$logit_sd_p))
-  p_PMQ = inv.logit(rnorm(1,mean = params$logit_mean_p_PMQ,sd = params$logit_sd_p_PMQ))
-  if(drug=='CHQ' | drug == 'CHQ/PMQ') { 
-    c1 = params$c1_CQ 
-  } else if(drug=='AS') { 
-    c1 = params$c1_AS
-  }
-  
-  while(!passed_EOF){
-    if(drug == 'CHQ/PMQ'){ 
-      true_p = p_PMQ
-      if(runif(1) < p_PMQ){ #reinfection
-        next_event = generate_reinfection_time(params)
-        R_event = 'Reinfection'
-      } else {
-        if(runif(1) < c1){ # recrudescence
-          next_event = generate_recrudescence_time(drug = drug, params = params)
-          R_event = 'Recrudescence'
-        } else { # relapse
-          lapse = generate_relapse_time(drug = drug, params = params)
-          next_event = lapse$time
-          R_event = lapse$type
-        }
-      }
-      
-    } else if (drug %in% c('CHQ','AS')){
-      true_p = p
-      if(runif(1) < p){ #reinfection
-        next_event = generate_reinfection_time(params)
-        R_event = 'Reinfection'
-      } else {
-        if(runif(1) < c1){ #recrudescence
-          next_event = generate_recrudescence_time(drug = drug, params = params)
-          R_event = 'Recrudescence'
-        } else { #relapse
-          lapse = generate_relapse_time(drug = drug, params = params)
-          next_event = lapse$time
-          R_event = lapse$type
-        }
-      }
-    }
-    
-    total_time = total_time + next_event
-    
-    if(total_time <= follow_up){
-      censor_status = c(censor_status, 0)
-      time_events = c(time_events, next_event)
-      true_event_type = c(true_event_type, R_event)
-    } else {
-      censor_status = c(censor_status, 1)
-      passed_EOF = TRUE
-      time_events = c(time_events,follow_up - (total_time-next_event))
-      true_event_type = c(true_event_type, NA)
+```{r, include=FALSE}
+params_interest = c('lambda','gamma','logit_mean_p',
+                    'logit_sd_p','logit_EarlyL')
+Sim_Iterations = 100
+if(RUN_MODELS){
+
+  comparison_matrix = array(dim = c(Sim_Iterations,length(params_interest),2))
+  for(sim in 1:Sim_Iterations){
+
+    results = full_shebang(simulation_patient_function = generate_patient_data_Model1,
+                           simulate_data_function = simulate_dataset,
+                           stan_model = Timing_Model1,
+                           params = params_M1,
+                           init_values_function = generate_inital_values_M1,
+                           N_AS = N_AS, N_CQ = N_CQ, N_PMQ = N_PMQ,
+                           Prior_params = Prior_params_M1,
+                           IT = IT,WarmUp = WarmUp,Chains = 1,thin = thin,
+                           params_interest = params_interest)
+
+    # record results: mean estimated value and true simulation value
+    for(p in params_interest){
+      comparison_matrix[sim,which(p==params_interest),] = results$summary_parameters[[p]]
     }
   }
-  
-  results = data.frame(time_events=time_events, censor_status=censor_status,
-                       ID=ID, drug=drug, true_p = true_p,
-                       true_event_type = true_event_type)
-  return(results)
+
+  save(comparison_matrix,file = '../RData/TimingModel/simulation_full_results_mod1.RData')
+} else {
+  load('../RData/TimingModel/simulation_full_results_mod1.RData')
 }
 ```
 
-Generate some data
+```{r full_shebang_results_mod1}
+for(p in params_interest){
+  hist(comparison_matrix[,which(p==params_interest),1], main=p)
+  abline(v=unique(comparison_matrix[,which(p==params_interest),2]),
+         lwd=3,col='red')
+}
+```
+
+## Data simulation for model 2
+
+Model 2 does not assume 100% efficacy of primaquine.
+
+Ground truth model parameters for simulated data:
 ```{r}
-params2 = list(inv_lambda = 900,
-              inv_gamma = 50,
-              EarlyL = 0.1,
-              c1_CQ = 0.01,
-              c1_AS = 0.01,
-              logit_mean_p = logit(0.2),
-              logit_sd_p = (-logit(0.2)+logit(0.8))/1.96,
+params_M2 = c(params_M1,
               logit_mean_p_PMQ = logit(0.95),
-              logit_sd_p_PMQ = (-logit(0.7)+logit(0.99))/1.96,
-              Recrud_shape = 10,
-              Recrud_scale = 15,
-              AS_shape = 10,
-              AS_scale = 21,
-              CQ_shape = 10,
-              CQ_scale = 42)
-
-sim_data_mod2 = data.frame(time_events=NA, censor_status=NA,
-                           ID=NA, drug=NA, true_p=NA,true_event_type=NA)
-for(i in 1:length(drugs)){
-  drug=drugs[i]
-  if(Ns[i]>0){
-    for(j in 1:Ns[i]){
-      dat = generate_patient_data_Model2(params = params2,
-                                         follow_up = FUP_time,
-                                         drug = drug,
-                                         ID=id)
-      id=id+1
-      sim_data_mod2 = rbind(sim_data_mod2,dat)
-    }
-  }
-  
-}
-sim_data_mod2 = sim_data_mod2[-1,]
-sim_data_mod2 = filter(sim_data_mod2, !(censor_status > -1 & time_events < 5))
-
-
-N_noPMQ = sum(sim_data_mod2$drug[!duplicated(sim_data_mod2$ID)] %in% c('CHQ','AS'))
-N_PMQ = sum(sim_data_mod2$drug[!duplicated(sim_data_mod2$ID)] == 'CHQ/PMQ')
-# Turn drug into a numeric vector
-sim_data_mod2$numeric_drug = as.integer(revalue(sim_data_mod2$drug,
-                                                c('AS'='0','CHQ'='1','CHQ/PMQ'='2')))
-
-
-# Create a vector that maps the nth person to 0 (always received Primaquine) 
-# or to their rank for those who didn't receive primaquine
-noPMQ_ind = which(sim_data_mod2$drug != "CHQ/PMQ")
-N_noPMQ = length(unique(sim_data_mod2$ID[noPMQ_ind])) #number of IDs without PMQ
-ID_mapped_to_noPMQ_rank = rep(0, N)
-
-index = 1
-for(id in 1:N){
-  ind = which(sim_data_mod2$ID==id)
-  if(!2 %in% sim_data_mod2$numeric_drug[ind]){
-    ID_mapped_to_noPMQ_rank[id] = index
-    index = index + 1
-  }
-}
-
-table(sim_data_mod2$true_event_type[sim_data_mod2$numeric_drug<2])
-table(sim_data_mod2$true_event_type[sim_data_mod2$numeric_drug==2])
+              logit_sd_p_PMQ = (-logit(0.8)+logit(0.99))/1.96)
 ```
+
+Generate simulated data under the assumptions of model 2
+```{r}
+set.seed(7656728)
+out2 = simulate_dataset(N_PMQ = N_PMQ, 
+                        N_CQ = N_CQ, 
+                        N_AS = N_AS,
+                        FUP_time = FUP_time,
+                        data_generation_function = generate_patient_data_Model2,
+                        params = params_M2)
+Simdata_Model2 = out2$Simdata
+Simulation_truth2 = out2$Simulation_truth
+table(Simulation_truth2$True_state, Simulation_truth2$Drug)
+```
+
+Prior specification for stan fit:
+```{r}
+Prior_params_M2 = c(Prior_params_M1,
+                    Hyper_logit_mean_pPMQ_mean = logit(0.95),
+                    Hyper_logit_mean_pPMQ_sd = (logit(0.95)-logit(0.7))/1.96,
+                    Hyper_logit_sd_pPMQ_lambda = 1)
+```
+
+
+Load or compile the stan model 2
+```{r}
+if(RECOMPILE_MODELS){
+  writeLines('Compiling model 2....')
+  source('../Timing_Model/StanModel2.R')
+  save(Timing_Model2, file = '../RData/TimingModel/Timing_Model2.RData')
+} else {
+  load('../RData/TimingModel/Timing_Model2.RData')
+}
+```
+
+
+Fit stan model 2 to simulated data from model 2
+```{r, include=FALSE}
+if(RUN_MODELS){
+  tic()
+  mod2_Fit = sampling(Timing_Model2,
+                      data = c(Simdata_Model2, Prior_params_M2),
+                      iter = IT, warmup = WarmUp,
+                      chains=Chains, thin = thin, 
+                      init = lapply(1:Chains, 
+                                    FUN = function(x,Prior_params_M2,N_noPMQ,N_PMQ){
+                                      generate_inital_values_M2(Prior_params_M2,N_noPMQ,N_PMQ)
+                                    }, 
+                                    Prior_params_M2 = Prior_params_M2, 
+                                    N_noPMQ = Simdata_Model2$N_noPMQ,
+                                    N_PMQ = Simdata_Model2$N_PMQ))
+  save(mod2_Fit, file = '../RData/LargeFiles/StanModels_Sim2_mod2.RData')
+  toc()
+} else {
+  load(file = '../RData/LargeFiles/StanModels_Sim2_mod2.RData')
+}
+thetas_mod2 = extract(mod2_Fit)
+```
+
+
+Plot output, comparing prior, ground truth and model estimate:
+```{r plotModel2_fit}
+plot_output_model2(thetas_mod2,Simulation_truth2,Simdata_Model2,Prior_params_M2)
+```
+
+Compare summary statistics from simulated data and estimated:
+```{r}
+# the true failure rate in the primaquine arm
+sum(Simulation_truth2$True_state[Simulation_truth2$Drug=="CHQ/PMQ"] != 'Reinfection')/sum(Simulation_truth2$Drug=="CHQ/PMQ")
+
+classification_mod2 = apply(thetas_mod2$prob_labels,c(2,3),quantile, probs=0.975)
+1-sum(classification_mod2[Simdata_Model2$Drug==2,1])/sum(Simdata_Model2$Drug==2)
+
+classification_mod2 = apply(thetas_mod2$prob_labels,c(2,3),median)
+1-sum(classification_mod2[Simdata_Model2$Drug==2,1])/sum(Simdata_Model2$Drug==2)
+
+classification_mod2 = apply(thetas_mod2$prob_labels,c(2,3),quantile, probs=0.025)
+1-sum(classification_mod2[Simdata_Model2$Drug==2,1])/sum(Simdata_Model2$Drug==2)
+```
+
+
+#### Multiple random simulations to assess systematic bias 
+
+```{r, include=FALSE}
+params_interest = c('lambda','gamma','logit_mean_p','logit_mean_p_PMQ',
+                    'logit_sd_p','logit_EarlyL')
+Sim_Iterations = 100
+if(RUN_MODELS){
+
+  comparison_matrix = array(dim = c(Sim_Iterations,length(params_interest),2))
+  failure_matrix = array(dim = c(Sim_Iterations, 2))
+  for(sim in 1:Sim_Iterations){
+
+    results = full_shebang(simulation_patient_function = generate_patient_data_Model2,
+                           simulate_data_function = simulate_dataset,
+                           stan_model = Timing_Model2,
+                           params = params_M2,
+                           init_values_function = generate_inital_values_M2,
+                           N_AS = N_AS, N_CQ = N_CQ, N_PMQ = N_PMQ,
+                           Prior_params = Prior_params_M2,
+                           IT = IT,WarmUp = WarmUp,Chains = Chains,thin = thin,
+                           params_interest = params_interest)
+
+    # record results: mean estimated value and true simulation value
+    for(p in params_interest){
+      comparison_matrix[sim,which(p==params_interest),] = results$summary_parameters[[p]]
+    }
+    failure_matrix[sim,] = results$summary_stats
+  }
+  simulation_full_results_mod2 = list(comparison_matrix=comparison_matrix,
+                                      failure_matrix=failure_matrix)
+  save(simulation_full_results_mod2,
+       file = '../RData/TimingModel/simulation_full_results_mod2.RData')
+} else {
+  load('../RData/TimingModel/simulation_full_results_mod2.RData')
+}
+```
+
+```{r full_shebang_results_mod2}
+for(p in params_interest){
+  hist(simulation_full_results_mod2$comparison_matrix[,which(p==params_interest),1], main=p)
+  abline(v=unique(simulation_full_results_mod2$comparison_matrix[,which(p==params_interest),2]),col='red',lwd=3)
+}
+
+plot(100*simulation_full_results_mod2$failure_matrix[,1],
+     100*simulation_full_results_mod2$failure_matrix[,2],
+     xlab='True PMQ failure rate', ylab = 'Estimated PMQ failure rate')
+lines(c(0,1),c(0,1))
+```
+
 
 # Simulating seasonal variation
 
+Estimate the empirical seasonal reinfecton distribution from enrollment episodes. This assumes that the majority of enrollment episodes are reinfections which should be approximately true.
 ```{r}
-# include seasonal variation
-generate_patient_data_Model3 = function(params, follow_up=360, drug, ID = 1){
-  time_events = c()
-  censor_status = c()
-  total_time = 0
-  passed_EOF = FALSE # passed end of follow-up
-  # randomly generate the propensity to relapse
-  p = inv.logit(rnorm(1,mean = params$logit_mean_p,sd = params$logit_sd_p))
-  
-  p_PMQ = inv.logit(rnorm(1,mean = params$logit_mean_p_PMQ,sd = params$logit_sd_p_PMQ))
-  if(drug=='CHQ' | drug == 'CHQ/PMQ') { 
-    c1 = params$c1_CQ 
-  } else if(drug=='AS') { 
-    c1 = params$c1_AS
-  }
-  
-  while(!passed_EOF){
-    if(drug == 'CHQ/PMQ'){ 
-      if(runif(1) < p){
-        next_event = generate_reinfection_time(params)
-      } else {
-        if(runif(1) < c1){ 
-          next_event = generate_recrudescence_time(drug = drug, params = params)
-        } else {
-          next_event = generate_relapse_time(drug = drug, params = params)
-        }
-      }
-      
-    } else if (drug %in% c('CHQ','AS')){
-      if(runif(1) < p){
-        next_event = generate_reinfection_time(params)
-      } else {
-        if(runif(1) < c1){ 
-          next_event = generate_recrudescence_time(drug = drug, params = params)
-        } else {
-          next_event = generate_relapse_time(drug = drug, params = params)
-        }
-      }
-    }
-    
-    total_time = total_time + next_event
-    
-    if(total_time <= follow_up){
-      censor_status = c(censor_status, 0)
-      time_events = c(time_events, next_event)
-    } else {
-      censor_status = c(censor_status, 1)
-      passed_EOF = TRUE
-      time_events = c(time_events,follow_up - (total_time-next_event))
-    }
-  }
-  
-  results = data.frame(time_events=time_events, censor_status=censor_status,ID=ID, drug=drug)
-  return(results)
+load('../RData/TimingModel/Combined_Time_Event.RData')
+Combined_Time_Data = filter(Combined_Time_Data, Censored == -1)
+ind = Combined_Time_Data$WeekTime>52
+Combined_Time_Data$WeekTime[ind] = Combined_Time_Data$WeekTime[ind]-52
+hist(Combined_Time_Data$WeekTime, breaks = 0:52, 
+     main = 'Week of enrollment',xlab='Week of the year')
+# the vector we can use for empirical distribution sampling
+seasonal_sampling_vector = Combined_Time_Data$WeekTime
+```
+
+Generate patient data under the assumptions of model 1 with the additional assumption of seasonality for reinfection.
+```{r}
+# test to show this does the right thing
+set.seed(76576)
+ys = sapply(1:1000, FUN = function(x, seasonal_sampling_vector){
+  generate_reinfection_time_seasonal(params_M1,0,seasonal_sampling_vector)
+}, seasonal_sampling_vector)
+hist(ys, breaks = seq(0,10000,by=14), xlim = c(0,3*360), 
+     main='Reinfection times',
+     xlab='days from 1st January')
+```
+
+
+Generate data with these parameters:
+```{r}
+set.seed(87678)
+out3 = simulate_dataset(N_PMQ = N_PMQ, N_CQ = N_CQ, 
+                        N_AS = N_AS,FUP_time = FUP_time,
+                        data_generation_function = generate_patient_data_Model2_Seasonal,
+                        params = params_M2,
+                        seasonal_sampling_vector = seasonal_sampling_vector)
+Simdata_Model_Seasonal = out3$Simdata
+Simulation_truth_Seasonal = out3$Simulation_truth
+```
+
+
+Fit stan model to simulated data where assumption of constant reinfection rate is wrong
+```{r, include=FALSE}
+if(RUN_MODELS){
+  mod_seasonal_Fit = sampling(Timing_Model2,
+                              data = c(Simdata_Model_Seasonal, Prior_params_M2),
+                              iter = IT, warmup = WarmUp,
+                              chains=Chains, thin = thin, 
+                              init = lapply(1:Chains, 
+                                   FUN = function(x,Prior_params_M2,N_noPMQ,N_PMQ){
+                                     generate_inital_values_M2(Prior_params_M2,N_noPMQ,N_PMQ)
+                                   }, 
+                                   Prior_params = Prior_params_M2, 
+                                   N_noPMQ = Simdata_Model_Seasonal$N_noPMQ,
+                                   N_PMQ = Simdata_Model_Seasonal$N_PMQ))
+  save(mod_seasonal_Fit, file = '../RData/LargeFiles/StanModels_SimSeasonal_mod2.RData')
+} else {
+  load(file = '../RData/LargeFiles/StanModels_SimSeasonal_mod2.RData')
 }
+thetas_mod_seasonal = extract(mod_seasonal_Fit)
+```
+
+
+Plot output, comparing prior, ground truth and model estimate:
+```{r plotModel_Seasonal_fit}
+plot_output_model1(thetas_mod_seasonal,Simulation_truth_Seasonal,
+                   Simdata_Model_Seasonal,Prior_params_M1)
+```
+
+### Run multiple random iterations to assess model fit and bias
+
+
+```{r, include=FALSE}
+params_interest = c('lambda','gamma','logit_mean_p',
+                    'logit_sd_p','logit_EarlyL')
+Sim_Iterations = 100
+if(RUN_MODELS){
+  comparison_matrix = array(dim = c(Sim_Iterations,length(params_interest),2))
+  for(sim in 1:Sim_Iterations){
+    results = full_shebang(simulation_patient_function = 
+                             generate_patient_data_Model2_Seasonal,
+                           simulate_data_function = simulate_dataset,
+                           stan_model = Timing_Model2,
+                           params = params_M2,
+                           init_values_function = generate_inital_values_M2,
+                           N_AS = N_AS, N_CQ = N_CQ, N_PMQ = N_PMQ,
+                           Prior_params = Prior_params_M2,
+                           IT = IT, WarmUp = WarmUp, Chains = Chains, thin = thin,
+                           params_interest = params_interest,
+                           seasonal_sampling_vector=seasonal_sampling_vector)
+    
+    # record results: mean estimated value and true simulation value
+    for(p in params_interest){
+      comparison_matrix[sim,which(p==params_interest),] = results$summary_parameters[[p]]
+    }
+  }
+  
+  save(comparison_matrix,
+       file = '../RData/TimingModel/simulation_full_results_mod_seasonal.RData')
+} else {
+  load('../RData/TimingModel/simulation_full_results_mod_seasonal.RData')
+}
+```
+
+
+
+```{r full_shebang_results_mod2}
+for(p in params_interest){
+  writeLines(sprintf('For parameter %s, %s%% are below the true parameter',p,100*sum(comparison_matrix[,which(p==params_interest),1]<
+        unique(comparison_matrix[,which(p==params_interest),2]))/Sim_Iterations))
+  hist(comparison_matrix[,which(p==params_interest),1], main=p)
+  abline(v=unique(comparison_matrix[,which(p==params_interest),2]),col='red',lwd=3)
+}
+
+# plot(100*simulation_full_results_mod2$failure_matrix[,1],
+#      100*simulation_full_results_mod2$failure_matrix[,2],
+#      xlab='True PMQ failure rate', ylab = 'Estimated PMQ failure rate')
+# lines(c(0,1),c(0,1))
 ```

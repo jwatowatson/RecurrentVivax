@@ -14,18 +14,20 @@ data {
   int<lower=0,upper=N_PMQ>    ID_mapped_to_PMQ_rank[N];       // Vector mapping the the individual ID (from 1 to N) to the random effects index: logit_p_PMQ
   
   // Hyper parameters that are part of the `data` section
-  real<lower=0>   Hyper_lambda_scale;     // Mean of the prior on time to reinfection
+  real<lower=0>   Hyper_lambda_shape;     // Mean of the prior on time to reinfection
   real<lower=0>   Hyper_lambda_rate;      // SD of the prior on time to reinfection
-  real<lower=0>   Hyper_gamma_scale;      // Mean of the prior on time to random reLapse
+  real<lower=0>   Hyper_gamma_shape;      // Mean of the prior on time to random reLapse
   real<lower=0>   Hyper_gamma_rate;       // SD of the prior on time to random reLapse
-  real<lower=0>   Hyper_lambda_recrud_scale;
+  real<lower=0>   Hyper_lambda_recrud_shape;
   real<lower=0>   Hyper_lambda_recrud_rate;
   real            Early_L_logit_mean;     // mean of prior on mean of logit Early_L
   real<lower=0>   Early_L_logit_sd;       // sd of prior on mean of logit Early_L
-  real            Hyper_logit_mean_p_PMQ; //
-  real<lower=0>   Hyper_logit_sd_p_PMQ;   //
-  real            Hyper_logit_mean_p;     // mean of prior on mean of logit p
-  real<lower=0>   Hyper_logit_sd_p;       // sd of prior on mean of logit p
+  real            Hyper_logit_mean_pPMQ_mean; //
+  real<lower=0>   Hyper_logit_mean_pPMQ_sd;   //
+  real<lower=0>   Hyper_logit_sd_pPMQ_lambda;
+  real            Hyper_logit_mean_p_mean;     // mean of prior on mean of logit p
+  real<lower=0>   Hyper_logit_mean_p_sd;       // sd of prior on mean of logit p
+  real<lower=0>   Hyper_logit_sd_p_lambda;
   real            Hyper_logit_c1_mean;
   real<lower=0>   Hyper_logit_c1_sd;
   real<lower=0>   Hyper_AS_shape_mean;      
@@ -61,7 +63,7 @@ parameters {
 
 transformed parameters{
 
-  // Compute the reInfection and recrudescence rates
+  // Compute the reInfection and recrudescence mixing proportions
   // We define log scale parameters from inverse logit transformation
   real log_p[N_noPMQ];
   real log_p_PMQ[N_PMQ];
@@ -89,15 +91,15 @@ transformed parameters{
 model {
   
   // ********* Prior *********
-  lambda ~ gamma(Hyper_lambda_scale, Hyper_lambda_rate);
-  gamma ~ gamma(Hyper_gamma_scale,Hyper_gamma_rate);
-  lambda_recrud ~ gamma(Hyper_lambda_recrud_scale,Hyper_lambda_recrud_rate);
+  lambda ~ gamma(Hyper_lambda_shape, Hyper_lambda_rate);
+  gamma ~ gamma(Hyper_gamma_shape,Hyper_gamma_rate);
+  lambda_recrud ~ gamma(Hyper_lambda_recrud_shape,Hyper_lambda_recrud_rate);
 
-  logit_mean_p ~ normal(Hyper_logit_mean_p, Hyper_logit_sd_p);
-  logit_sd_p ~ normal(1, 0.5);
+  logit_mean_p ~ normal(Hyper_logit_mean_p_mean, Hyper_logit_mean_p_sd);
+  logit_sd_p ~ exponential(Hyper_logit_sd_p_lambda);
   
-  logit_mean_p_PMQ ~ normal(Hyper_logit_mean_p_PMQ,Hyper_logit_sd_p_PMQ);
-  logit_sd_p_PMQ ~ normal(1, 0.5);
+  logit_mean_p_PMQ ~ normal(Hyper_logit_mean_pPMQ_mean,Hyper_logit_mean_pPMQ_sd);
+  logit_sd_p_PMQ ~ exponential(Hyper_logit_sd_pPMQ_lambda);
 
   AS_shape ~ normal(Hyper_AS_shape_mean,Hyper_AS_shape_sd);
   AS_scale ~ normal(Hyper_AS_scale_mean,Hyper_AS_scale_sd);
