@@ -2,10 +2,10 @@
 title: "Time-to-event model of vivax recurrence"
 author: "James Watson & Aimee Taylor"
 output:
-  pdf_document: default
   html_document:
     fig_caption: yes
     keep_md: yes
+  pdf_document: default
 ---
 ```{r, echo=F}
 knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
@@ -28,9 +28,9 @@ tic()
 
 ```{r, echo=FALSE}
 # Note that recompilation is necessary on different platforms
-RECOMPILE_MODELS = T
+RECOMPILE_MODELS = F
 # Running the full stan models can take several days
-RUN_MODELS = T
+RUN_MODELS = F
 source('../Simulation_Study/Functions.R')
 ```
 
@@ -97,13 +97,13 @@ This model is still in development and not currently functional.
 
 
 ```{r, include=FALSE}
-if(RECOMPILE_MODELS){
-  writeLines('Compiling model 3....')
-  source('StanModel3.R')
-  save(Timing_Model3, file = '../RData/TimingModel/Timing_Model3.RData')
-} else {
-  load('../RData/TimingModel/Timing_Model3.RData')
-}
+# if(RECOMPILE_MODELS){
+#   writeLines('Compiling model 3....')
+#   source('StanModel3.R')
+#   save(Timing_Model3, file = '../RData/TimingModel/Timing_Model3.RData')
+# } else {
+#   load('../RData/TimingModel/Timing_Model3.RData')
+# }
 ```
 
 
@@ -114,17 +114,12 @@ if(RECOMPILE_MODELS){
 load('../RData/TimingModel/Combined_Time_Event.RData')
 # Get rid of the very short durations 
 Combined_Time_Data = filter(Combined_Time_Data, !(Censored > -1 & Time_to_event < 5))
-
-###***** Testing ******##### To be removed
-#Combined_Time_Data = filter(Combined_Time_Data, Censored == -1)
-
-# This is so that stan can compute the seasonality factor (can't handle missing values)
-# Combined_Time_Data$WeekTime[is.na(Combined_Time_Data$WeekTime)]=0
-
+# Turn drug into a numeric vector
+Combined_Time_Data$numeric_drug = as.integer(revalue(Combined_Time_Data$arm_num,
+                                                     c('AS'='0','CHQ'='1','CHQ/PMQ'='2')))
 # deal with non-integer ids
 Combined_Time_Data$patientid = factor(Combined_Time_Data$patientid)
-# create a mapping from the factor to integer
-map = mapLevels(x=Combined_Time_Data$patientid)
+
 # Convert ID to integer
 Combined_Time_Data$ID = as.integer(Combined_Time_Data$patientid)
 Combined_Time_Data = arrange(Combined_Time_Data, ID, episode)
@@ -132,16 +127,12 @@ Combined_Time_Data = arrange(Combined_Time_Data, ID, episode)
 ids = unique(Combined_Time_Data$ID)
 N = as.integer(length(ids))
 
-
-# Turn drug into a numeric vector
-Combined_Time_Data$numeric_drug = as.integer(revalue(Combined_Time_Data$arm_num,
-                                                     c('AS'='0','CHQ'='1','CHQ/PMQ'='2')))
-
 # Create a vector that maps the nth person to 0 (always received Primaquine) 
 # or to their rank for those who didn't receive primaquine
 noPMQ_ind = which(Combined_Time_Data$arm_num != "CHQ/PMQ")
 N_noPMQ = length(unique(Combined_Time_Data$ID[noPMQ_ind])) #number of IDs without PMQ
 ID_mapped_to_noPMQ_rank = rep(0, N)
+
 
 index = 1
 for(id in 1:N){
@@ -152,10 +143,12 @@ for(id in 1:N){
   }
 }
 
+
 # Create a vector that maps the nth person to 0 (always received Primaquine) or
 PMQ_ind = which(Combined_Time_Data$arm_num == "CHQ/PMQ")
 N_PMQ = length(unique(Combined_Time_Data$ID[PMQ_ind])) #number of IDs with PMQ
 ID_mapped_to_PMQ_rank = rep(0, N)
+
 
 index = 1
 for(id in 1:N){
@@ -195,7 +188,9 @@ Prior_params_M1 = list(Hyper_lambda_shape = 50,
                        Hyper_logit_c1_mean = logit(0.01),
                        Hyper_logit_c1_sd = .25,
                        Early_L_logit_mean = 0,
-                       Early_L_logit_sd = .25)
+                       Early_L_logit_sd = .25,
+                       Hyper_mean_rate_decrease = 0.66,
+                       Hyper_sd_rate_decrease = 0.15)
 # Model 2: extra parameters
 Prior_params_M2 = c(Prior_params_M1, 
                     Hyper_logit_mean_pPMQ_mean = logit(0.95),
@@ -210,11 +205,11 @@ Set up parameters for the MCMC runs.
 # remove this once models 1-2 conform with augmented data (including Censored == -1)
 Combined_Time_Data = filter(Combined_Time_Data, Censored > -1)
 # Choose as many chains as available cores
-Chains = 8
+Chains = 6
 options(mc.cores = Chains)
-IT = 10^5
+IT = 10^4
 WarmUp = .5*IT
-thin = 400
+thin = 40
 
 # put the data into stan format
 # For model 1 
@@ -234,8 +229,9 @@ Time_data_1 =list(N         = N,
                   # drug coded as an integer
                   ID_of_Patient = Combined_Time_Data$ID,
                   # the ID corresponding to each time interval
-                  ID_mapped_to_noPMQ_rank = ID_mapped_to_noPMQ_rank
+                  ID_mapped_to_noPMQ_rank = ID_mapped_to_noPMQ_rank,
                   # the index mapping PMQ individuals to their rank
+                  Study_Period = as.integer(Combined_Time_Data$Study_Period)
 )
 # For model 2
 Time_data_2 =list(N         = N,
@@ -256,27 +252,27 @@ Time_data_2 =list(N         = N,
                   # the index of the individual for each time interval
                   ID_mapped_to_noPMQ_rank = ID_mapped_to_noPMQ_rank,
                   # the index mapping no PMQ individuals to their rank
-                  ID_mapped_to_PMQ_rank = ID_mapped_to_PMQ_rank
+                  ID_mapped_to_PMQ_rank = ID_mapped_to_PMQ_rank,
                   # the index mapping PMQ individuals to their rank
-)
+                  Study_Period = as.integer(Combined_Time_Data$Study_Period))
 ```
 
-Run with `{r} Chains` parallel chains. This depends on local computing power.
+Run with ```{r} Chains``` parallel chains. The choice of this number depends on compute power.
 
 ```{r runModels, echo=T, include=FALSE}
 if(RUN_MODELS){
-  # mod1_Fit = sampling(Timing_Model1,
-  #                     data = c(Time_data_1, Prior_params_M1),
-  #                     iter = IT, warmup = WarmUp,
-  #                     chains=Chains, thin = thin,
-  #                     init = lapply(1:Chains,
-  #                                   FUN = function(x,Prior_params_M1,N_noPMQ){
-  #                                     generate_inital_values_M1(Prior_params_M1,N_noPMQ)
-  #                                   },
-  #                                   Prior_params_M1 = Prior_params_M1,
-  #                                   N_noPMQ = N_noPMQ))
-  # save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
-  # 
+  mod1_Fit = sampling(Timing_Model1,
+                      data = c(Time_data_1, Prior_params_M1),
+                      iter = IT, warmup = WarmUp,
+                      chains=Chains, thin = thin,
+                      init = lapply(1:Chains,
+                                    FUN = function(x,Prior_params_M1,N_noPMQ){
+                                      generate_inital_values_M1(Prior_params_M1,N_noPMQ)
+                                    },
+                                    Prior_params_M1 = Prior_params_M1,
+                                    N_noPMQ = N_noPMQ))
+  save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
+
   mod2_Fit = sampling(Timing_Model2,
                       data = c(Time_data_2, Prior_params_M2),
                       iter = IT, warmup = WarmUp,
@@ -291,9 +287,12 @@ if(RUN_MODELS){
                                     N_noPMQ = N_noPMQ,
                                     N_PMQ = N_PMQ))
   save(mod2_Fit, file = '../RData/LargeFiles/StanModels_mod2.RData')
+  
+} else {
+  load('../RData/LargeFiles/StanModels_mod1.RData')
+  load('../RData/LargeFiles/StanModels_mod2.RData')
+  load('../RData/LargeFiles/StanModels_mod2_VHX.RData')
 }
-load('../RData/LargeFiles/StanModels_mod1.RData')
-load('../RData/LargeFiles/StanModels_mod2.RData')
 ```
 
 # Plot output
@@ -329,17 +328,19 @@ if(PLOT_Censored_Obs){
 ```{r traceplotModel1}
 par(las=1)
 traceplot(mod1_Fit,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
-traceplot(mod1_Fit, c('lambda','gamma','lambda_recrud','logit_EarlyL'))
+traceplot(mod1_Fit, c('lambda','gamma','rate_decrease'))
+traceplot(mod1_Fit, c('lambda_recrud','logit_EarlyL'))
 traceplot(mod1_Fit, c('logit_c1_CQ','logit_c1_AS','logit_mean_p','logit_sd_p'))
+thetas_mod1 = extract(mod1_Fit)
 ```
 
 
 ```{r estimated_Model1}
-par(mfrow=c(1,2))
 par(las=1)
-
-thetas_mod1 = extract(mod1_Fit)
-hist(1/thetas_mod1$lambda, main='Mean time to reinfection', xlab='days')
+par(mfrow=c(1,3))
+hist((1/thetas_mod1$lambda)/360, main='Mean time to reinfection (VHX)', xlab='years')
+hist((1/(thetas_mod1$lambda*thetas_mod1$rate_decrease))/360, 
+     main='Mean time to reinfection (BPD)', xlab='years')
 hist(1/thetas_mod1$gamma, main='Mean time to late reLapse', xlab='days')
 
 par(las=1, mfrow=c(2,2))
@@ -402,15 +403,17 @@ axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
 Traceplots and posterior distributions:
 ```{r traceplots_Model2}
 traceplot(mod2_Fit,c('AS_shape', 'CQ_shape', 'AS_scale', 'CQ_scale'))
-traceplot(mod2_Fit, c('gamma','lambda','lambda_recrud'))
+traceplot(mod2_Fit, c('gamma','lambda','lambda_recrud','rate_decrease'))
 traceplot(mod2_Fit, c('logit_c1_AS','logit_c1_CQ','logit_c1_CQ_PMQ'))
 traceplot(mod2_Fit, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
+thetas_mod2 = extract(mod2_Fit)
 ```
 
 
+
+
 ```{r estimated_Model2}
-par(mfrow=c(1,2),las=1)
-thetas_mod2 = extract(mod2_Fit)
+# save a set of posterior parameter values for posterior predictive simulation
 parameter_names = names(generate_inital_values_M2(Prior_params_M2,10,10))
 parameter_names = parameter_names[!parameter_names %in% c('logit_p','logit_p_PMQ')]
 N_samples = 200
@@ -420,8 +423,12 @@ for(p in parameter_names){
   thetas2_matrix[,which(p==parameter_names)] = sample(thetas_mod2[[p]],size = N_samples)
 }
 save(thetas2_matrix, file = '../RData/TimingModel/Posterior_theta_samples.RData')
-hist(1/thetas_mod2$lambda, xlab='Mean time to reinfection (days)', main='')
-hist(1/thetas_mod2$gamma, xlab='Mean time to late reLapse (days)', main='')
+
+par(mfrow=c(1,3),las=1)
+hist((1/thetas_mod2$lambda)/360, xlab='Mean time to reinfection in VHX (years)', main='')
+hist((1/(thetas_mod2$lambda*thetas_mod2$rate_decrease))/360, 
+     xlab='Mean time to reinfection in BPD (years)', main='')
+hist((1/thetas_mod2$gamma), xlab='Mean time to late reLapse (days)', main='')
 
 par(mfrow=c(3,2),las=1)
 # distribution of individual mixing proportions
@@ -472,7 +479,7 @@ mean_labels_Reinfection = apply(labels2[,ind_plotting,1,drop=T], 2, mean)
 plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfection),
      col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1],
      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-     ylab='Probability of ReInfection', yaxt='n',xaxt='n',
+     ylab='log10 probability of reinfection', yaxt='n',xaxt='n',
      xlab='Months from last episode', xlim=c(0,400))
 axis(1, at = seq(0, 420, by=60), labels = seq(0, 420, by=60)/30)
 axis(2, at = -2:0, labels= 10^(-2:0))
@@ -488,7 +495,7 @@ mean_labels_ReCrud = apply(labels2[,ind_plotting,4,drop=T], 2, mean)
 plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReCrud),
      col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1], xaxt='n',
      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-     ylab='ReCrudescence',
+     ylab='log10 probability of recrudescence',
      xlab='Months from last episode')
 axis(1, at = seq(0,360,by=30), labels = seq(0,360,by=30)/30)
 
@@ -499,7 +506,7 @@ mean_labels_ReLap = mean_labels_ReLap1 + mean_labels_ReLap2
 plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap),
      col = drug_cols3[Combined_Time_Data$numeric_drug[ind_plotting]+1], xaxt='n',
      pch = as.numeric(Combined_Time_Data$Censored[ind_plotting])+16,
-     ylab='log10 Probability of ReLapse',
+     ylab='log10 probability of relapse',
      xlab='Months from last episode')
 axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
 ```
@@ -580,7 +587,7 @@ hist(thetas_mod1$logit_mean_p, freq = F, main='',
      xlab= 'Population logit p', yaxt='n', ylab='', col='grey', breaks=10)
 xs = quantile(thetas_mod1$logit_p, probs = seq(0,1,by = 0.001))
 lines(xs, dnorm(x = xs, mean = Prior_params_M1$Hyper_logit_mean_p_mean, 
-                              sd = Prior_params_M1$Hyper_logit_mean_p_sd),
+                sd = Prior_params_M1$Hyper_logit_mean_p_sd),
       col='red',lwd=3)
 
 # # Mean c1 AS (hierachical mean early relapse)
@@ -604,7 +611,7 @@ hist(thetas_mod1$logit_EarlyL, freq = F, main='',
      xlab= 'logit EarlyL', yaxt='n', ylab='', col='grey', breaks=10)
 xs = quantile(thetas_mod1$logit_EarlyL, probs = seq(0,1,by = 0.001))
 lines(xs, dnorm(x = xs, mean = Prior_params_M1$Early_L_logit_mean, 
-                              sd = Prior_params_M1$Early_L_logit_sd),
+                sd = Prior_params_M1$Early_L_logit_sd),
       col='red',lwd=3)
 ```
 
@@ -781,7 +788,8 @@ prob_labels_raw_AS[2,] =
   exp(mean(thetas_mod2$log_1m_p))*
   exp(mean(thetas_mod2$log_1m_c1_AS))*
   exp(mean(thetas_mod2$log_EarlyL))*
-  dweibull(Ts , shape = mean(thetas_mod2$AS_shape), scale = mean(thetas_mod2$AS_scale))
+  dweibull(Ts , shape = mean(thetas_mod2$AS_shape), 
+           scale = mean(thetas_mod2$AS_scale))
 # Late Relapse
 prob_labels_raw_AS[3,] =
   exp(mean(thetas_mod2$log_1m_p))*
@@ -805,7 +813,8 @@ prob_labels_raw_CQ[2,] =
   exp(mean(thetas_mod2$log_1m_p))*
   exp(mean(thetas_mod2$log_1m_c1_CQ))*
   exp(mean(thetas_mod2$log_EarlyL))*
-  dweibull(Ts , shape = mean(thetas_mod2$CQ_shape), scale = mean(thetas_mod2$CQ_scale))
+  dweibull(Ts , shape = mean(thetas_mod2$CQ_shape), 
+           scale = mean(thetas_mod2$CQ_scale))
 # Late Relapse
 prob_labels_raw_CQ[3,] =
   exp(mean(thetas_mod2$log_1m_p))*
@@ -829,7 +838,8 @@ prob_labels_raw_CQPMQ[2,] =
   exp(mean(thetas_mod2$log_1m_p_PMQ))*
   exp(mean(thetas_mod2$log_1m_c1_CQ_PMQ))*
   exp(mean(thetas_mod2$log_EarlyL))*
-  dweibull(Ts , shape = mean(thetas_mod2$CQ_shape), scale = mean(thetas_mod2$CQ_scale))
+  dweibull(Ts , shape = mean(thetas_mod2$CQ_shape), 
+           scale = mean(thetas_mod2$CQ_scale))
 # Late Relapse
 prob_labels_raw_CQPMQ[3,] =
   exp(mean(thetas_mod2$log_1m_p_PMQ))*
@@ -1052,7 +1062,7 @@ legend('right',legend = c('Relapse',
 ```{r}
 labels = extract(mod2_Fit, 'prob_labels')$prob_labels
 # recrudescence
-Combined_Time_Data$Recrudescence_mean_theta = apply(labels[,,4,drop=T],2,mean)
+Combined_Time_Data$Recrudescence_mean_theta = apply(labels[,,4,drop=T],2,median)
 Combined_Time_Data$Recrudescence_975_theta = apply(labels[,,4,drop=T],2,quantile, 
                                                    probs = 0.975)
 Combined_Time_Data$Recrudescence_025_theta = apply(labels[,,4,drop=T],2,quantile, 
@@ -1060,12 +1070,12 @@ Combined_Time_Data$Recrudescence_025_theta = apply(labels[,,4,drop=T],2,quantile
 
 # relapse
 Relapse_labels = labels[,,2,drop=T] + labels[,,3,drop=T]
-Combined_Time_Data$Relapse_mean_theta = apply(Relapse_labels,2,mean)
+Combined_Time_Data$Relapse_mean_theta = apply(Relapse_labels,2,median)
 Combined_Time_Data$Relapse_975_theta = apply(Relapse_labels,2,quantile, probs = 0.975)
 Combined_Time_Data$Relapse_025_theta = apply(Relapse_labels,2,quantile, probs = 0.025)
 
 # reinfection
-Combined_Time_Data$ReInfection_mean_theta = apply(labels[,,1,drop=T],2,mean)
+Combined_Time_Data$ReInfection_mean_theta = apply(labels[,,1,drop=T],2,median)
 Combined_Time_Data$ReInfection_975_theta = apply(labels[,,1,drop=T],2,quantile, 
                                                  probs = 0.975)
 Combined_Time_Data$ReInfection_025_theta = apply(labels[,,1,drop=T],2,quantile, 
@@ -1083,7 +1093,6 @@ Mod2_ThetaEstimates$Episode_Identifier =
           paste(x['patientid'], as.integer(x['episode']), sep = '_')
         } )
 save(Mod2_ThetaEstimates, file = '../RData/TimingModel/MOD2_theta_estimates.RData')
-
 ```
 
 We also save a matrix of posterior samples to be used by the genetic model for full computation of the posterior:
@@ -1273,14 +1282,14 @@ writeLines(paste('Reinfections are approximately ',
 writeLines('\n')
 #******** CQ + PMQ ***************
 writeLines(paste('Relapses are approximately ',
-                 round(100*mean(res_estimates$PQ_L),2),'(', 
+                 round(100*mean(res_estimates$PQ_L),1),'(', 
                  round(100*quantile(res_estimates$PQ_L, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$PQ_L, probs = 0.975),1),')',
                  '% of recurrences after CQ+PMQ'))
 writeLines(paste('Recrudescences are approximately ',
                  round(100*mean(res_estimates$PQ_C),2),'(', 
-                 round(100*quantile(res_estimates$PQ_C, probs = 0.025),1),'-',
-                 round(100*quantile(res_estimates$PQ_C, probs = 0.975),1),')',
+                 round(100*quantile(res_estimates$PQ_C, probs = 0.025),2),'-',
+                 round(100*quantile(res_estimates$PQ_C, probs = 0.975),2),')',
                  '% of recurrences after CQ+PMQ'))
 writeLines(paste('Reinfections are approximately ',
                  round(100*mean(res_estimates$PQ_I),2),'(', 

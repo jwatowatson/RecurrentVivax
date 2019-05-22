@@ -19,8 +19,13 @@ generate_relapse_time = function(drug, params){
   return(list(time=next_event,type=type))
 }
 
-generate_reinfection_time = function(params){
-  next_event = round(rexp(1, rate = params$lambda))
+generate_reinfection_time = function(params, Study_Period=NA){
+  if(!is.na(Study_Period) & Study_Period==2) {
+    lambda = params$lambda*params$rate_decrease
+  } else {
+    lambda = params$lambda
+  }
+  next_event = round(rexp(1, rate = lambda))
   return(next_event)
 }
 
@@ -45,27 +50,40 @@ simulate_dataset = function(N_PMQ, N_CQ, N_AS,
                             FUP_time=300,
                             data_generation_function, 
                             params,
-                            seasonal_sampling_vector=NA){
+                            seasonal_sampling_vector=NA, Study_Period){
   drugs = c('CHQ/PMQ','CHQ','AS')
   Ns = c(N_PMQ, N_CQ, N_AS)
-  
   N = sum(Ns)
+  
+  if(length(FUP_time) == 1){
+    FUP_time = rep(FUP_time, N)
+  }
+  if(length(FUP_time) != N) {
+    stop('FUP_time vector needs to be same length as all simulated patients')
+  }
+  if(length(Study_Period) != N) {
+    stop('Study_Period vector needs to be same length as all simulated patients')
+  }
+  
   # set up data structure
   id = 1
   sim_data = data.frame(time_events=NA, censor_status=NA,
-                        ID=NA, drug=NA, true_p=NA,true_event_type=NA)
+                        ID=NA, drug=NA, true_p=NA,true_event_type=NA,
+                        Study_Period = NA)
   # iterate over the 3 drug types and over each patient in the drug arm
+  patient_i = 1 # keep track of patient index for correct follow-up time
   for(i in 1:length(drugs)){
     drug=drugs[i]
     if(Ns[i]>0){
       for(j in 1:Ns[i]){
         dat = data_generation_function(params = params,
-                                       follow_up = FUP_time,
+                                       follow_up = FUP_time[patient_i],
                                        drug = drug,
-                                       ID=id,
+                                       ID=id, Study_Period=Study_Period[patient_i],
                                        seasonal_sampling_vector=seasonal_sampling_vector)
         id=id+1
         sim_data = rbind(sim_data,dat)
+        patient_i = patient_i+1
       }
     }
     
@@ -125,8 +143,9 @@ simulate_dataset = function(N_PMQ, N_CQ, N_AS,
                 # the ID corresponding to each time interval
                 ID_mapped_to_noPMQ_rank = ID_mapped_to_noPMQ_rank,
                 # the index mapping PMQ individuals to their rank
-                ID_mapped_to_PMQ_rank = ID_mapped_to_PMQ_rank
+                ID_mapped_to_PMQ_rank = ID_mapped_to_PMQ_rank,
                 # the index mapping PMQ individuals to their rank
+                Study_Period = sim_data$Study_Period
   )
   # This is to check outputs of stan model: ground simulation truth
   Simulation_truth = list(ID = sim_data$ID,
@@ -139,7 +158,7 @@ simulate_dataset = function(N_PMQ, N_CQ, N_AS,
 
 ##************ Model 1 assumptions for generating data **********
 generate_patient_data_Model1 = function(params, follow_up=360, drug, ID=1,
-                                        seasonal_sampling_vector=NA){
+                                        seasonal_sampling_vector=NA, Study_Period){
   time_events = c()
   censor_status = c()
   true_event_type = c()
@@ -147,17 +166,21 @@ generate_patient_data_Model1 = function(params, follow_up=360, drug, ID=1,
   passed_EOF = FALSE # passed end of follow-up
   # randomly generate the propensity to relapse
   p = inv.logit(rnorm(1,mean = params$logit_mean_p,sd = params$logit_sd_p))
-  if(drug=='CHQ') { c1 = params$c1_CQ } else if(drug=='AS') { c1 = params$c1_AS}
+  if(drug=='CHQ') { 
+    c1 = inv.logit(params$logit_c1_CQ) 
+  } else if(drug=='AS') { 
+    c1 = inv.logit(params$logit_c1_AS) 
+  }
   
   R_event = NA
   while(!passed_EOF){
     if(drug == 'CHQ/PMQ'){ 
       # primaquine: 100% efficacy, reinfection is the only option
-      next_event = generate_reinfection_time(params = params)
+      next_event = generate_reinfection_time(params = params,Study_Period = Study_Period)
       R_event = 'Reinfection'
     } else if (drug %in% c('CHQ','AS')){
       if(runif(1) < p){
-        next_event = generate_reinfection_time(params)
+        next_event = generate_reinfection_time(params,Study_Period = Study_Period)
         R_event = 'Reinfection'
       } else {
         if(runif(1) < c1){ 
@@ -187,13 +210,13 @@ generate_patient_data_Model1 = function(params, follow_up=360, drug, ID=1,
   
   results = data.frame(time_events=time_events, censor_status=censor_status,
                        ID=ID, drug=drug, true_p = p,
-                       true_event_type = true_event_type)
+                       true_event_type = true_event_type, Study_Period=Study_Period)
   return(results)
 }
 
 ##************ Model 2 assumptions for generating data **********
 generate_patient_data_Model2 = function(params, follow_up=360, drug, ID=1,
-                                        seasonal_sampling_vector=NA){
+                                        seasonal_sampling_vector=NA, Study_Period=NA){
   time_events = c()
   censor_status = c()
   true_event_type = c()
@@ -204,16 +227,16 @@ generate_patient_data_Model2 = function(params, follow_up=360, drug, ID=1,
   p_PMQ = inv.logit(rnorm(1,mean = params$logit_mean_p_PMQ,sd = params$logit_sd_p_PMQ))
   
   if(drug=='CHQ' | drug == 'CHQ/PMQ') { 
-    c1 = params$c1_CQ 
+    c1 = inv.logit(params$logit_c1_CQ)
   } else if(drug=='AS') { 
-    c1 = params$c1_AS
+    c1 = inv.logit(params$logit_c1_AS)
   }
   
   while(!passed_EOF){
     if(drug == 'CHQ/PMQ'){ 
       true_p = p_PMQ
       if(runif(1) < p_PMQ){ #reinfection
-        next_event = generate_reinfection_time(params)
+        next_event = generate_reinfection_time(params,Study_Period=Study_Period)
         R_event = 'Reinfection'
       } else {
         if(runif(1) < c1){ # recrudescence
@@ -229,7 +252,7 @@ generate_patient_data_Model2 = function(params, follow_up=360, drug, ID=1,
     } else if (drug %in% c('CHQ','AS')){
       true_p = p
       if(runif(1) < p){ #reinfection
-        next_event = generate_reinfection_time(params)
+        next_event = generate_reinfection_time(params,Study_Period=Study_Period)
         R_event = 'Reinfection'
       } else {
         if(runif(1) < c1){ #recrudescence
@@ -259,7 +282,8 @@ generate_patient_data_Model2 = function(params, follow_up=360, drug, ID=1,
   
   results = data.frame(time_events=time_events, censor_status=censor_status,
                        ID=ID, drug=drug, true_p = true_p,
-                       true_event_type = true_event_type)
+                       true_event_type = true_event_type, 
+                       Study_Period=Study_Period)
   return(results)
 }
 
@@ -275,7 +299,7 @@ generate_patient_data_Model1_Seasonal = function(params, follow_up=360, drug, ID
   passed_EOF = FALSE # passed end of follow-up
   # randomly generate the propensity to relapse
   p = inv.logit(rnorm(1,mean = params$logit_mean_p,sd = params$logit_sd_p))
-  if(drug=='CHQ') { c1 = params$c1_CQ } else if(drug=='AS') { c1 = params$c1_AS}
+  if(drug=='CHQ') { c1 = params$logit_c1_CQ } else if(drug=='AS') { c1 = params$logit_c1_AS}
   
   R_event = NA
   while(!passed_EOF){
@@ -321,13 +345,13 @@ generate_patient_data_Model1_Seasonal = function(params, follow_up=360, drug, ID
   
   results = data.frame(time_events=time_events, censor_status=censor_status,
                        ID=ID, drug=drug, true_p = p,
-                       true_event_type = true_event_type)
+                       true_event_type = true_event_type, Study_Period=Study_Period)
   return(results)
 }
 
 ##************ Model 2 assumptions for generating data with seasonality **********
 generate_patient_data_Model2_Seasonal = function(params, follow_up=360, 
-                                                 drug, ID=1, 
+                                                 drug, ID=1,
                                                  seasonal_sampling_vector){
   time_events = c()
   censor_status = c()
@@ -340,9 +364,9 @@ generate_patient_data_Model2_Seasonal = function(params, follow_up=360,
   p_PMQ = inv.logit(rnorm(1,mean = params$logit_mean_p_PMQ,sd = params$logit_sd_p_PMQ))
   
   if(drug=='CHQ' | drug == 'CHQ/PMQ') { 
-    c1 = params$c1_CQ 
+    c1 = params$logit_c1_CQ 
   } else if(drug=='AS') { 
-    c1 = params$c1_AS
+    c1 = params$logit_c1_AS
   }
   
   while(!passed_EOF){
@@ -400,7 +424,7 @@ generate_patient_data_Model2_Seasonal = function(params, follow_up=360,
   
   results = data.frame(time_events=time_events, censor_status=censor_status,
                        ID=ID, drug=drug, true_p = true_p,
-                       true_event_type = true_event_type)
+                       true_event_type = true_event_type, Study_Period=Study_Period)
   return(results)
 }
 
@@ -445,7 +469,10 @@ generate_inital_values_M1 = function(Prior_params_M1, N_noPMQ, N_PMQ){
                                 sd = Prior_params_M1$Hyper_CQ_shape_sd),
                CQ_scale = rnorm(n = 1,
                                 mean = Prior_params_M1$Hyper_CQ_scale_mean,
-                                sd = Prior_params_M1$Hyper_CQ_scale_sd))
+                                sd = Prior_params_M1$Hyper_CQ_scale_sd),
+               rate_decrease = rtruncnorm(n = 1, a = 0, 
+                                          mean = Prior_params_M1$Hyper_mean_rate_decrease, 
+                                          sd = Prior_params_M1$Hyper_sd_rate_decrease))
   return(inits)
 }
 # function that generates values from the Prior for model 2
@@ -453,8 +480,8 @@ generate_inital_values_M2 = function(Prior_params_M2, N_noPMQ, N_PMQ){
   # the models are nested so we generate for model 1 first
   inits = generate_inital_values_M1(Prior_params_M2, N_noPMQ = N_noPMQ)
   logit_p_PMQ = list(rnorm(N_PMQ,
-                      mean = Prior_params_M2$Hyper_logit_mean_pPMQ_mean,
-                      sd = Prior_params_M2$Hyper_logit_mean_pPMQ_sd))
+                           mean = Prior_params_M2$Hyper_logit_mean_pPMQ_mean,
+                           sd = Prior_params_M2$Hyper_logit_mean_pPMQ_sd))
   inits = append(inits, logit_p_PMQ)
   names(inits)[length(inits)] = 'logit_p_PMQ'
   inits = c(inits,
@@ -476,7 +503,7 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   par(mfrow=c(2,2))
   
   # Time to reinfection
-  hist(thetas$lambda, main='Reinfection rate', xlab='lambda', 
+  hist(thetas$lambda, main='Reinfection rate (Period 1)', xlab='lambda', 
        freq = F, breaks = 20)
   abline(v=params_M1$lambda,col='red',lwd=3)
   abline(v=mean(thetas$lambda),col='blue',lwd=3)
@@ -485,6 +512,16 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
                    Prior_params_M1$Hyper_lambda_shape,
                    Prior_params_M1$Hyper_lambda_rate),
         lwd=3,col='red')
+  hist(thetas$rate_decrease, main='Decrease in reinfection rate (Period 2)', xlab='decrease proportion', 
+       freq = F, breaks = 20)
+  abline(v=params_M1$rate_decrease,col='red',lwd=3)
+  abline(v=mean(thetas$rate_decrease),col='blue',lwd=3)
+  xs=quantile(x = thetas$rate_decrease,probs = seq(0,1,by=0.01))
+  lines(xs, dnorm(x = xs, 
+                  Prior_params_M1$Hyper_mean_rate_decrease,
+                  Prior_params_M1$Hyper_sd_rate_decrease),
+        lwd=3,col='red')
+  
   # Time to late relapse
   hist(thetas$gamma, main='Mean time to late reLapse', 
        freq=F,xlab='1/gamma (days)')
@@ -509,7 +546,7 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   par(mfrow=c(2,2))
   # recrudescence proportion
   hist(thetas$logit_c1_AS, main='Logit c1 AS', xlab='',freq=F)
-  abline(v=logit(params_M1$c1_AS),col='red',lwd=3)
+  abline(v=logit(params_M1$logit_c1_AS),col='red',lwd=3)
   abline(v=mean(thetas$logit_c1_AS),col='blue',lwd=3)
   xs=quantile(x = thetas$logit_c1_AS,probs = seq(0,1,by=0.005))
   lines(xs, dnorm(x = xs, 
@@ -522,7 +559,7 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
                   Prior_params_M1$Hyper_logit_c1_mean,
                   Prior_params_M1$Hyper_logit_c1_sd),
         lwd=3,col='red')
-  abline(v=logit(params_M1$c1_CQ),col='red',lwd=3)
+  abline(v=logit(params_M1$logit_c1_CQ),col='red',lwd=3)
   abline(v=mean(thetas$logit_c1_CQ),col='blue',lwd=3)
   
   hist(thetas$lambda_recrud, main='Recrudescence rate', xlab='',freq=F)
@@ -642,7 +679,7 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   par(mfrow=c(2,2))
   # recrudescence proportion
   hist(thetas$logit_c1_AS, main='Logit c1 AS', xlab='',freq=F)
-  abline(v=logit(params_M2$c1_AS),col='red',lwd=3)
+  abline(v=logit(params_M2$logit_c1_AS),col='red',lwd=3)
   abline(v=mean(thetas$logit_c1_AS),col='blue',lwd=3)
   xs=quantile(x = thetas$logit_c1_AS,probs = seq(0,1,by=0.005))
   lines(xs, dnorm(x = xs, 
@@ -655,7 +692,7 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
                   Prior_params_M2$Hyper_logit_c1_mean,
                   Prior_params_M2$Hyper_logit_c1_sd),
         lwd=3,col='red')
-  abline(v=logit(params_M2$c1_CQ),col='red',lwd=3)
+  abline(v=logit(params_M2$logit_c1_CQ),col='red',lwd=3)
   abline(v=mean(thetas$logit_c1_CQ),col='blue',lwd=3)
   
   hist(thetas$lambda_recrud, main='Recrudescence rate', xlab='',freq=F)
