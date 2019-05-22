@@ -452,15 +452,18 @@ generate_inital_values_M1 = function(Prior_params_M1, N_noPMQ, N_PMQ){
 generate_inital_values_M2 = function(Prior_params_M2, N_noPMQ, N_PMQ){
   # the models are nested so we generate for model 1 first
   inits = generate_inital_values_M1(Prior_params_M2, N_noPMQ = N_noPMQ)
+  logit_p_PMQ = list(rnorm(N_PMQ,
+                      mean = Prior_params_M2$Hyper_logit_mean_pPMQ_mean,
+                      sd = Prior_params_M2$Hyper_logit_mean_pPMQ_sd))
+  inits = append(inits, logit_p_PMQ)
+  names(inits)[length(inits)] = 'logit_p_PMQ'
   inits = c(inits,
-            logit_p_PMQ = rnorm(N_PMQ,
-                                mean = Prior_params_M2$Hyper_logit_mean_pPMQ_mean,
-                                sd = Prior_params_M2$Hyper_logit_mean_pPMQ_sd),
             logit_mean_p_PMQ = rnorm(1,
                                      mean = Prior_params_M2$Hyper_logit_mean_pPMQ_mean,
                                      sd = Prior_params_M2$Hyper_logit_mean_pPMQ_sd),
             logit_sd_p_PMQ = rexp(n = 1,
                                   rate = Prior_params_M2$Hyper_logit_sd_pPMQ_lambda))
+  
   return(inits)
 }
 

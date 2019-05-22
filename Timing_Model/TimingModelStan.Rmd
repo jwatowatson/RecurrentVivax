@@ -18,7 +18,7 @@ load('../RData/RPackages_List.RData')
 new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
 if(length(new.pkg) > 0){ # Install using .R script
   stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
-     sapply(pkgs, require, character.only = TRUE) # Load all packages
+    sapply(pkgs, require, character.only = TRUE) # Load all packages
   }
 
 tic()
@@ -28,7 +28,7 @@ tic()
 
 ```{r, echo=FALSE}
 # Note that recompilation is necessary on different platforms
-RECOMPILE_MODELS = F
+RECOMPILE_MODELS = T
 # Running the full stan models can take several days
 RUN_MODELS = T
 source('../Simulation_Study/Functions.R')
@@ -177,16 +177,16 @@ drug_received = Combined_Time_Data$numeric_drug[ind]
 # The hierachical parameters defining the prior distributions for model 1
 Prior_params_M1 = list(Hyper_lambda_shape = 50,
                        Hyper_lambda_rate = 50*1200,
-                       Hyper_gamma_shape = 100,
-                       Hyper_gamma_rate = 100*50,
+                       Hyper_gamma_shape = 50,
+                       Hyper_gamma_rate = 50*50,
                        Hyper_lambda_recrud_shape = 100,
                        Hyper_lambda_recrud_rate = 100*10,
-                       Hyper_AS_shape_mean = 10,
-                       Hyper_AS_shape_sd = 1,
-                       Hyper_AS_scale_mean = 23,
+                       Hyper_AS_shape_mean = 5,
+                       Hyper_AS_shape_sd = .5,
+                       Hyper_AS_scale_mean = 27,
                        Hyper_AS_scale_sd = 1,
-                       Hyper_CQ_shape_mean = 10,
-                       Hyper_CQ_shape_sd = 1,
+                       Hyper_CQ_shape_mean = 5,
+                       Hyper_CQ_shape_sd = .5,
                        Hyper_CQ_scale_mean = 45,
                        Hyper_CQ_scale_sd = 1,
                        Hyper_logit_mean_p_mean = logit(0.3),
@@ -210,11 +210,11 @@ Set up parameters for the MCMC runs.
 # remove this once models 1-2 conform with augmented data (including Censored == -1)
 Combined_Time_Data = filter(Combined_Time_Data, Censored > -1)
 # Choose as many chains as available cores
-Chains = 7
+Chains = 8
 options(mc.cores = Chains)
-IT = 10^4
+IT = 10^5
 WarmUp = .5*IT
-thin = 40
+thin = 400
 
 # put the data into stan format
 # For model 1 
@@ -265,18 +265,18 @@ Run with `{r} Chains` parallel chains. This depends on local computing power.
 
 ```{r runModels, echo=T, include=FALSE}
 if(RUN_MODELS){
-  mod1_Fit = sampling(Timing_Model1,
-                      data = c(Time_data_1, Prior_params_M1),
-                      iter = IT, warmup = WarmUp,
-                      chains=Chains, thin = thin,
-                      init = lapply(1:Chains, 
-                                    FUN = function(x,Prior_params_M1,N_noPMQ){
-                                      generate_inital_values_M1(Prior_params_M1,N_noPMQ)
-                                    }, 
-                                    Prior_params_M1 = Prior_params_M1, 
-                                    N_noPMQ = N_noPMQ))
-  save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
-  
+  # mod1_Fit = sampling(Timing_Model1,
+  #                     data = c(Time_data_1, Prior_params_M1),
+  #                     iter = IT, warmup = WarmUp,
+  #                     chains=Chains, thin = thin,
+  #                     init = lapply(1:Chains,
+  #                                   FUN = function(x,Prior_params_M1,N_noPMQ){
+  #                                     generate_inital_values_M1(Prior_params_M1,N_noPMQ)
+  #                                   },
+  #                                   Prior_params_M1 = Prior_params_M1,
+  #                                   N_noPMQ = N_noPMQ))
+  # save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
+  # 
   mod2_Fit = sampling(Timing_Model2,
                       data = c(Time_data_2, Prior_params_M2),
                       iter = IT, warmup = WarmUp,
@@ -297,7 +297,6 @@ load('../RData/LargeFiles/StanModels_mod2.RData')
 ```
 
 # Plot output
-
 
 Let's make some nice colors for the plotting
 ```{r}
@@ -340,8 +339,8 @@ par(mfrow=c(1,2))
 par(las=1)
 
 thetas_mod1 = extract(mod1_Fit)
-hist(1/thetas_mod1$lambda, main='Mean time to reinfection', xlab='lambda (1/days)')
-hist(1/thetas_mod1$gamma, main='Mean time to late reLapse', xlab='gamma (1/days)')
+hist(1/thetas_mod1$lambda, main='Mean time to reinfection', xlab='days')
+hist(1/thetas_mod1$gamma, main='Mean time to late reLapse', xlab='days')
 
 par(las=1, mfrow=c(2,2))
 
@@ -351,7 +350,7 @@ hist(inv.logit(apply(thetas_mod1$logit_p,2,mean)),
 hist(inv.logit(thetas_mod1$logit_c1_AS), 
      xlab = 'Mixing proportion recrudescence: AS', main='')
 hist(inv.logit(thetas_mod1$logit_c1_CQ), 
-     xlab = 'Mixing proportion recrudescence: AS', main='')
+     xlab = 'Mixing proportion recrudescence: CQ', main='')
 hist(inv.logit(thetas_mod1$logit_EarlyL), 
      xlab = 'Mixing proportion early vs late relapse', main='')
 ```
@@ -410,18 +409,49 @@ traceplot(mod2_Fit, c('logit_mean_p','logit_sd_p','logit_EarlyL'))
 
 
 ```{r estimated_Model2}
-par(mfrow=c(1,2))
+par(mfrow=c(1,2),las=1)
 thetas_mod2 = extract(mod2_Fit)
+parameter_names = names(generate_inital_values_M2(Prior_params_M2,10,10))
+parameter_names = parameter_names[!parameter_names %in% c('logit_p','logit_p_PMQ')]
+N_samples = 200
+thetas2_matrix = array(dim = c(N_samples, length(parameter_names)))
+colnames(thetas2_matrix) = parameter_names
+for(p in parameter_names){
+  thetas2_matrix[,which(p==parameter_names)] = sample(thetas_mod2[[p]],size = N_samples)
+}
+save(thetas2_matrix, file = '../RData/TimingModel/Posterior_theta_samples.RData')
 hist(1/thetas_mod2$lambda, xlab='Mean time to reinfection (days)', main='')
 hist(1/thetas_mod2$gamma, xlab='Mean time to late reLapse (days)', main='')
 
+par(mfrow=c(3,2),las=1)
+# distribution of individual mixing proportions
 hist(inv.logit(apply(thetas_mod2$logit_p,2,mean)),
-     xlab = 'Reinfection: no PMQ', main = '',
+     xlab = 'Reinfection: no PMQ', main = 'Individual estimates',
+     yaxt='n',ylab='')
+hist(inv.logit(apply(thetas_mod2$logit_p_PMQ,2,mean)),
+     xlab = 'Reinfection: PMQ', main = 'Individual estimates',
      yaxt='n',ylab='')
 
-hist(inv.logit(apply(thetas_mod2$logit_p_PMQ,2,mean)),
-     xlab = 'Reinfection: PMQ', main = '',
+# posterior distribution of hierachical mixing proportions
+hist(inv.logit(thetas_mod2$logit_mean_p), 
+     xlab = 'Reinfection: no PMQ hierachical parameter', main = 'Mean',
      yaxt='n',ylab='')
+round(100*quantile(inv.logit(thetas_mod2$logit_mean_p), probs = c(0.025,0.5,0.975)))
+hist(inv.logit(thetas_mod2$logit_mean_p_PMQ),
+     xlab = 'Reinfection: PMQ hierachical parameter', main = 'Mean',
+     yaxt='n',ylab='')
+round(100*quantile(inv.logit(thetas_mod2$logit_mean_p_PMQ), probs = c(0.025,0.975)))
+
+# posterior distribution of hierachical mixing proportions
+hist(inv.logit(thetas_mod2$logit_sd_p), 
+     xlab = 'Reinfection: no PMQ hierachical parameter', main = 'Standard deviation',
+     yaxt='n',ylab='')
+round(quantile(inv.logit(thetas_mod2$logit_sd_p), probs = c(0.025,0.5,0.975)),2)
+hist(inv.logit(thetas_mod2$logit_sd_p_PMQ),
+     xlab = 'Reinfection: PMQ hierachical parameter', main = 'Standard deviation',
+     yaxt='n',ylab='')
+quantile(inv.logit(thetas_mod2$logit_sd_p_PMQ), probs = c(0.025,0.975),2)
+
 # Recrudescence weights
 plot(density(100*inv.logit(thetas_mod2$logit_c1_AS)), col = drug_cols3['AS'],lwd=3,
      xlab = 'Recrudescence (%)', main='',yaxt='n',ylab='', xlim=c(0,10))
@@ -501,7 +531,7 @@ hist(thetas_mod1$lambda,freq = FALSE, main='',yaxt='n',
      xlab='reinfection rate (lambda)', ylab = '', col='grey', breaks=10)
 xs = quantile(thetas_mod1$lambda, probs = seq(0,1,by = 0.001))
 lines(xs, dgamma(x = xs,shape = Prior_params_M1$Hyper_lambda_shape, 
-            rate = Prior_params_M1$Hyper_lambda_rate),
+                 rate = Prior_params_M1$Hyper_lambda_rate),
       col='red',lwd=3)
 
 # gamma: late relapse rate
@@ -510,70 +540,70 @@ hist(thetas_mod1$gamma,freq = FALSE, main='',
      col='grey', breaks=10)
 xs = quantile(thetas_mod1$gamma, probs = seq(0,1,by = 0.001))
 lines(xs, dgamma(x = xs,shape = Prior_params_M1$Hyper_gamma_shape, 
-            rate = Prior_params_M1$Hyper_gamma_rate),
+                 rate = Prior_params_M1$Hyper_gamma_rate),
       col='red',lwd=3)
 
 # AS_shape (Weibull shape parameter for AS monotherapy)
-hist(thetas_mod1$AS_shape, xlim = c(0,5), freq = F, main='',
+hist(thetas_mod1$AS_shape, freq = F, main='',
      xlab= 'AS shape parameter', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(0,10,by=0.1), dnorm(x = seq(0,10,by=0.1),
-                              mean = Prior_params_M1$mu_AS_shape, 
-                              sd = Prior_params_M1$sigma_AS_shape),
+xs = quantile(thetas_mod1$AS_shape, probs = seq(0,1,by = 0.001))
+lines(xs, dnorm(x = xs,mean = Prior_params_M1$Hyper_AS_shape_mean, 
+                sd = Prior_params_M1$Hyper_AS_shape_sd),
       col='red',lwd=3)
 
 # AS_scale (Weibull scale parameter for AS monotherapy)
-hist(thetas_mod1$AS_scale, xlim = c(15,35), freq = F, main='',
+hist(thetas_mod1$AS_scale, freq = F, main='',
      xlab= 'AS scale parameter', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(0,50,by=1), dnorm(x = seq(0,50,by=1),
-                            mean = Prior_params_M1$mu_AS_scale, 
-                            sd = Prior_params_M1$sigma_AS_scale),
+xs = quantile(thetas_mod1$AS_scale, probs = seq(0,1,by = 0.001))
+lines(xs, dnorm(x = xs, mean = Prior_params_M1$Hyper_AS_scale_mean, 
+                sd = Prior_params_M1$Hyper_AS_scale_sd),
       col='red',lwd=3)
 
 # CQ_shape (Weibull shape parameter for CQ with or without PMQ)
-hist(thetas_mod1$CQ_shape, xlim = c(0,6), freq = F, main='',
+hist(thetas_mod1$CQ_shape,  freq = F, main='',
      xlab= 'CQ shape parameter', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(0,10,by=0.1), dnorm(x = seq(0,10,by=0.1),
-                              mean = Prior_params_M1$mu_CQ_shape, 
-                              sd = Prior_params_M1$sigma_CQ_shape),
+xs = quantile(thetas_mod1$CQ_shape, probs = seq(0,1,by = 0.001))
+lines(xs, dnorm(x = xs,mean = Prior_params_M1$Hyper_CQ_shape_mean, 
+                sd = Prior_params_M1$Hyper_CQ_shape_sd),
       col='red',lwd=3)
 
 # CQ_scale (Weibull scale parameter for CQ with or without PMQ)
-hist(thetas_mod1$CQ_scale, xlim = c(35,55), freq = F, main='',
+hist(thetas_mod1$CQ_scale, freq = F, main='',
      xlab= 'CQ scale parameter', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(30,70,by=1), dnorm(x = seq(30,70,by=1),
-                             mean = Prior_params_M1$mu_CQ_scale, 
-                             sd = Prior_params_M1$sigma_CQ_scale),
+xs = quantile(thetas_mod1$CQ_scale, probs = seq(0,1,by = 0.001))
+lines(xs, dnorm(x = xs,mean = Prior_params_M1$Hyper_CQ_scale_mean, 
+                sd = Prior_params_M1$Hyper_CQ_scale_sd),
       col='red',lwd=3)
 
 # Mean logit p (hierachical mean reinfection proportion)
-hist(thetas_mod1$logit_mean_p, xlim = c(-4,-1), freq = F, main='',
+hist(thetas_mod1$logit_mean_p, freq = F, main='',
      xlab= 'Population logit p', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(-5,3,by=.01), dnorm(x = seq(-5,3,by=.01),
-                              mean = Prior_params_M1$Hyper_logit_mean_p, 
-                              sd = Prior_params_M1$Hyper_logit_sd_p),
+xs = quantile(thetas_mod1$logit_p, probs = seq(0,1,by = 0.001))
+lines(xs, dnorm(x = xs, mean = Prior_params_M1$Hyper_logit_mean_p_mean, 
+                              sd = Prior_params_M1$Hyper_logit_mean_p_sd),
       col='red',lwd=3)
 
-# Mean c1 AS (hierachical mean early relapse)
-hist(thetas_mod1$logit_c1_AS, xlim = c(-5,-2), freq = F, main='',
-     xlab= 'Population logit c1: AS', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-                              mean = Prior_params_M1$Hyper_logit_c1_mean, 
-                              sd = Prior_params_M1$Hyper_logit_c1_sd),
-      col='red',lwd=3)
-
-# Mean c1: CQ (hierachical mean early relapse)
-hist(thetas_mod1$logit_c1_CQ,  xlim = c(-5,-2), freq = F, main='',
-     xlab= 'Population logit c1: CQ', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-                              mean = Prior_params_M1$Hyper_logit_c1_mean, 
-                              sd = Prior_params_M1$Hyper_logit_c1_sd),
-      col='red',lwd=3)
+# # Mean c1 AS (hierachical mean early relapse)
+# hist(thetas_mod1$logit_c1_AS, xlim = c(-5,-2), freq = F, main='',
+#      xlab= 'Population logit c1: AS', yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
+#                               mean = Prior_params_M1$Hyper_logit_c1_mean, 
+#                               sd = Prior_params_M1$Hyper_logit_c1_sd),
+#       col='red',lwd=3)
+# 
+# # Mean c1: CQ (hierachical mean early relapse)
+# hist(thetas_mod1$logit_c1_CQ,  xlim = c(-5,-2), freq = F, main='',
+#      xlab= 'Population logit c1: CQ', yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
+#                               mean = Prior_params_M1$Hyper_logit_c1_mean, 
+#                               sd = Prior_params_M1$Hyper_logit_c1_sd),
+#       col='red',lwd=3)
 
 # logit_EarlyL relapse 
-hist(thetas_mod1$logit_EarlyL, xlim = c(-1,1), freq = F, main='',
+hist(thetas_mod1$logit_EarlyL, freq = F, main='',
      xlab= 'logit EarlyL', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(-1,5,by=.01), dnorm(x = seq(-1,5,by=.01),
-                              mean = Prior_params_M1$Early_L_logit_mean, 
+xs = quantile(thetas_mod1$logit_EarlyL, probs = seq(0,1,by = 0.001))
+lines(xs, dnorm(x = xs, mean = Prior_params_M1$Early_L_logit_mean, 
                               sd = Prior_params_M1$Early_L_logit_sd),
       col='red',lwd=3)
 ```
@@ -581,108 +611,108 @@ lines(seq(-1,5,by=.01), dnorm(x = seq(-1,5,by=.01),
 
 
 ```{r prior_to_posterior2, fig.height=10}
-par(mfrow=c(4,3))
-# lambda: reinfection rate
-hist(thetas_mod2$lambda,freq = FALSE, main='',
-     xlab=expression(paste('Reinfection rate (' , lambda,')',sep='')), 
-     ylab = '', yaxt='n', col='grey', breaks=10)
-xs = quantile(thetas_mod1$lambda, probs = seq(0,1,by = 0.001))
-lines(xs, dgamma(x = xs,shape = Prior_params_M2$Hyper_lambda_shape, 
-            rate = Prior_params_M2$Hyper_lambda_rate),
-      col='red',lwd=3)
-
-# gamma: late relapse rate
-hist(thetas_mod2$gamma,freq = FALSE, main='',
-     xlab=expression(paste('Late relapse rate (',gamma,')',sep='')), 
-     ylab = '', yaxt='n', col='grey', breaks=10)
-xs = quantile(thetas_mod1$gamma, probs = seq(0,1,by = 0.001))
-lines(xs, dnorm(x = xs,shape = Prior_params_M2$Hyper_gamma_shape, 
-            rate = Prior_params_M2$Hyper_gamma_rate),
-      col='red',lwd=3)
-
-# AS_shape (Weibull shape parameter for AS monotherapy)
-hist(thetas_mod2$AS_shape, xlim = c(1,5), freq = F, main='',
-     xlab= expression(paste('AS shape parameter (',mu[AS],')',sep='')), 
-     yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(0,10,by=0.1), dnorm(x = seq(0,10,by=0.1),
-                              mean = Prior_params_M2$mu_AS_shape, 
-                              sd = Prior_params_M2$sigma_AS_shape),
-      col='red',lwd=3)
-
-# AS_scale (Weibill scale parameter for AS monotherapy)
-hist(thetas_mod2$AS_scale, xlim = c(15,35), freq = F, main='',
-     xlab= expression(paste('AS scale parameter (',sigma[AS],')',sep='')),
-     yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(0,50,by=1), dnorm(x = seq(0,50,by=1),
-                            mean = Prior_params_M2$mu_AS_scale, 
-                            sd = Prior_params_M2$sigma_AS_scale),
-      col='red',lwd=3)
-
-# CQ_shape (Weibull shape parameter for CQ with or without PMQ)
-hist(thetas_mod2$CQ_shape, xlim = c(0,6), freq = F, main='',
-     xlab= expression(paste('CQ shape parameter (',mu[CQ],')',sep='')), 
-     yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(0,10,by=0.1), dnorm(x = seq(0,10,by=0.1),
-                              mean = Prior_params_M2$mu_CQ_shape, 
-                              sd = Prior_params_M2$sigma_CQ_shape),
-      col='red',lwd=3)
-
-# CQ_scale (Weibull scale parameter for CQ with or without PMQ)
-hist(thetas_mod2$CQ_scale, xlim = c(35,50), freq = F, main='',
-     xlab= expression(paste('CQ scale parameter (',sigma[CQ],')',sep='')), 
-     yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(30,70,by=1), dnorm(x = seq(30,70,by=1),
-                             mean = Prior_params_M2$mu_CQ_scale, 
-                             sd = Prior_params_M2$sigma_CQ_scale),
-      col='red',lwd=3)
-
-# Mean logit p (hierachical mean reinfection proportion)
-hist(thetas_mod2$logit_mean_p, xlim = c(-4,-1), freq = F, main='',
-     xlab= 'logit(p[AS])=logit(p[CQ])', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(-5,3,by=.01), dnorm(x = seq(-5,3,by=.01),
-                              mean = Prior_params_M2$Hyper_logit_mean_p, 
-                              sd = Prior_params_M2$Hyper_logit_sd_p),
-      col='red',lwd=3)
-
-# Mean logit p_PMQ (hierachical mean reinfection proportion after PMQ)
-hist(thetas_mod2$logit_mean_p_PMQ, xlim = c(2,5), freq = F, main='',
-     xlab= 'logit(p[PMQ])', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(0,5,by=.01), dnorm(x = seq(0,5,by=.01),
-                             mean = Prior_params_M2$Hyper_logit_mean_p_PMQ, 
-                             sd = Prior_params_M2$Hyper_logit_sd_p_PMQ),
-      col='red',lwd=3)
-
-# Mean c1 AS (hierachical mean early relapse)
-hist(thetas_mod2$logit_c1_AS, xlim = c(-5,-2), freq = F, main='',
-     xlab= 'logit(c[AS])', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-                              mean = Prior_params_M2$Hyper_logit_c1_mean, 
-                              sd = Prior_params_M2$Hyper_logit_c1_sd),
-      col='red',lwd=3)
-
-# Mean c1: CQ (hierachical mean early relapse)
-hist(thetas_mod2$logit_c1_CQ,  xlim = c(-5,-2), freq = F, main='',
-     xlab= 'logit(c[CQ])', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-                              mean = Prior_params_M2$Hyper_logit_c1_mean, 
-                              sd = Prior_params_M2$Hyper_logit_c1_sd),
-      col='red',lwd=3)
-
-# Mean c1: CQ_PMQ (hierachical mean early relapse)
-hist(thetas_mod2$logit_c1_CQ_PMQ,  xlim = c(-5,-2), freq = F, main='',
-     xlab= 'logit(c[PMQ+])', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-                              mean = Prior_params_M2$Hyper_logit_c1_mean, 
-                              sd = Prior_params_M2$Hyper_logit_c1_sd),
-      col='red',lwd=3)
-
-# logit_EarlyL relapse 
-hist(thetas_mod2$logit_EarlyL, xlim = c(-1,1), freq = F, main='',
-     xlab= 'logit(q)', yaxt='n', ylab='', col='grey', breaks=10)
-lines(seq(-1,5,by=.01), dnorm(x = seq(-1,5,by=.01),
-                              mean = Prior_params_M2$Early_L_logit_mean, 
-                              sd = Prior_params_M2$Early_L_logit_sd),
-      col='red',lwd=3)
+# par(mfrow=c(4,3))
+# # lambda: reinfection rate
+# hist(thetas_mod2$lambda,freq = FALSE, main='',
+#      xlab=expression(paste('Reinfection rate (' , lambda,')',sep='')), 
+#      ylab = '', yaxt='n', col='grey', breaks=10)
+# xs = quantile(thetas_mod1$lambda, probs = seq(0,1,by = 0.001))
+# lines(xs, dgamma(x = xs,shape = Prior_params_M2$Hyper_lambda_shape, 
+#                  rate = Prior_params_M2$Hyper_lambda_rate),
+#       col='red',lwd=3)
+# 
+# # gamma: late relapse rate
+# hist(thetas_mod2$gamma,freq = FALSE, main='',
+#      xlab=expression(paste('Late relapse rate (',gamma,')',sep='')), 
+#      ylab = '', yaxt='n', col='grey', breaks=10)
+# xs = quantile(thetas_mod1$gamma, probs = seq(0,1,by = 0.001))
+# lines(xs, dnorm(x = xs,shape = Prior_params_M2$Hyper_gamma_shape, 
+#                 rate = Prior_params_M2$Hyper_gamma_rate),
+#       col='red',lwd=3)
+# 
+# # AS_shape (Weibull shape parameter for AS monotherapy)
+# hist(thetas_mod2$AS_shape, xlim = c(1,5), freq = F, main='',
+#      xlab= expression(paste('AS shape parameter (',mu[AS],')',sep='')), 
+#      yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(0,10,by=0.1), dnorm(x = seq(0,10,by=0.1),
+#                               mean = Prior_params_M2$mu_AS_shape, 
+#                               sd = Prior_params_M2$sigma_AS_shape),
+#       col='red',lwd=3)
+# 
+# # AS_scale (Weibill scale parameter for AS monotherapy)
+# hist(thetas_mod2$AS_scale, xlim = c(15,35), freq = F, main='',
+#      xlab= expression(paste('AS scale parameter (',sigma[AS],')',sep='')),
+#      yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(0,50,by=1), dnorm(x = seq(0,50,by=1),
+#                             mean = Prior_params_M2$mu_AS_scale, 
+#                             sd = Prior_params_M2$sigma_AS_scale),
+#       col='red',lwd=3)
+# 
+# # CQ_shape (Weibull shape parameter for CQ with or without PMQ)
+# hist(thetas_mod2$CQ_shape, xlim = c(0,6), freq = F, main='',
+#      xlab= expression(paste('CQ shape parameter (',mu[CQ],')',sep='')), 
+#      yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(0,10,by=0.1), dnorm(x = seq(0,10,by=0.1),
+#                               mean = Prior_params_M2$mu_CQ_shape, 
+#                               sd = Prior_params_M2$sigma_CQ_shape),
+#       col='red',lwd=3)
+# 
+# # CQ_scale (Weibull scale parameter for CQ with or without PMQ)
+# hist(thetas_mod2$CQ_scale, xlim = c(35,50), freq = F, main='',
+#      xlab= expression(paste('CQ scale parameter (',sigma[CQ],')',sep='')), 
+#      yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(30,70,by=1), dnorm(x = seq(30,70,by=1),
+#                              mean = Prior_params_M2$mu_CQ_scale, 
+#                              sd = Prior_params_M2$sigma_CQ_scale),
+#       col='red',lwd=3)
+# 
+# # Mean logit p (hierachical mean reinfection proportion)
+# hist(thetas_mod2$logit_mean_p, xlim = c(-4,-1), freq = F, main='',
+#      xlab= 'logit(p[AS])=logit(p[CQ])', yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(-5,3,by=.01), dnorm(x = seq(-5,3,by=.01),
+#                               mean = Prior_params_M2$Hyper_logit_mean_p, 
+#                               sd = Prior_params_M2$Hyper_logit_sd_p),
+#       col='red',lwd=3)
+# 
+# # Mean logit p_PMQ (hierachical mean reinfection proportion after PMQ)
+# hist(thetas_mod2$logit_mean_p_PMQ, xlim = c(2,5), freq = F, main='',
+#      xlab= 'logit(p[PMQ])', yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(0,5,by=.01), dnorm(x = seq(0,5,by=.01),
+#                              mean = Prior_params_M2$Hyper_logit_mean_p_PMQ, 
+#                              sd = Prior_params_M2$Hyper_logit_sd_p_PMQ),
+#       col='red',lwd=3)
+# 
+# # Mean c1 AS (hierachical mean early relapse)
+# hist(thetas_mod2$logit_c1_AS, xlim = c(-5,-2), freq = F, main='',
+#      xlab= 'logit(c[AS])', yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
+#                               mean = Prior_params_M2$Hyper_logit_c1_mean, 
+#                               sd = Prior_params_M2$Hyper_logit_c1_sd),
+#       col='red',lwd=3)
+# 
+# # Mean c1: CQ (hierachical mean early relapse)
+# hist(thetas_mod2$logit_c1_CQ,  xlim = c(-5,-2), freq = F, main='',
+#      xlab= 'logit(c[CQ])', yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
+#                               mean = Prior_params_M2$Hyper_logit_c1_mean, 
+#                               sd = Prior_params_M2$Hyper_logit_c1_sd),
+#       col='red',lwd=3)
+# 
+# # Mean c1: CQ_PMQ (hierachical mean early relapse)
+# hist(thetas_mod2$logit_c1_CQ_PMQ,  xlim = c(-5,-2), freq = F, main='',
+#      xlab= 'logit(c[PMQ+])', yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
+#                               mean = Prior_params_M2$Hyper_logit_c1_mean, 
+#                               sd = Prior_params_M2$Hyper_logit_c1_sd),
+#       col='red',lwd=3)
+# 
+# # logit_EarlyL relapse 
+# hist(thetas_mod2$logit_EarlyL, xlim = c(-1,1), freq = F, main='',
+#      xlab= 'logit(q)', yaxt='n', ylab='', col='grey', breaks=10)
+# lines(seq(-1,5,by=.01), dnorm(x = seq(-1,5,by=.01),
+#                               mean = Prior_params_M2$Early_L_logit_mean, 
+#                               sd = Prior_params_M2$Early_L_logit_sd),
+#       col='red',lwd=3)
 ```
 
 
@@ -743,35 +773,74 @@ Ts = 1:360
 # AS
 prob_labels_raw_AS = array(dim = c(4,length(Ts)))
 # Reinfection
-prob_labels_raw_AS[1,] = exp(mean(thetas_mod2$log_p))*dexp(Ts, rate = 1/mean(thetas_mod2$inv_lambda));
+prob_labels_raw_AS[1,] = 
+  exp(mean(thetas_mod2$log_p))*
+  dexp(Ts, rate = mean(thetas_mod2$lambda));
 # Early Relapse
-prob_labels_raw_AS[2,] = exp(mean(thetas_mod2$log_1m_p))*exp(mean(thetas_mod2$log_1m_c1_AS))*exp(mean(thetas_mod2$log_EarlyL))*dweibull(Ts , shape = mean(thetas_mod2$AS_shape), scale = mean(thetas_mod2$AS_scale))
+prob_labels_raw_AS[2,] = 
+  exp(mean(thetas_mod2$log_1m_p))*
+  exp(mean(thetas_mod2$log_1m_c1_AS))*
+  exp(mean(thetas_mod2$log_EarlyL))*
+  dweibull(Ts , shape = mean(thetas_mod2$AS_shape), scale = mean(thetas_mod2$AS_scale))
 # Late Relapse
-prob_labels_raw_AS[3,] = exp(mean(thetas_mod2$log_1m_p))*exp(mean(thetas_mod2$log_1m_c1_AS))*exp(mean(thetas_mod2$log_1m_EarlyL))*dexp(Ts, rate = 1/mean(thetas_mod2$inv_gamma))
+prob_labels_raw_AS[3,] =
+  exp(mean(thetas_mod2$log_1m_p))*
+  exp(mean(thetas_mod2$log_1m_c1_AS))*
+  exp(mean(thetas_mod2$log_1m_EarlyL))*
+  dexp(Ts, rate = mean(thetas_mod2$gamma))
 # Recrudescence
-prob_labels_raw_AS[4,] = exp(mean(thetas_mod2$log_1m_p))*exp(mean(thetas_mod2$log_c1_AS))*dweibull(Ts, shape =  mean(thetas_mod2$Recrud_shape), scale = mean(thetas_mod2$Recrud_scale))
+prob_labels_raw_AS[4,] =
+  exp(mean(thetas_mod2$log_1m_p))*
+  exp(mean(thetas_mod2$log_c1_AS))*
+  dexp(Ts, rate = mean(thetas_mod2$lambda_recrud))
 
 # CQ
 prob_labels_raw_CQ = array(dim = c(4,length(Ts)))
 # Reinfection
-prob_labels_raw_CQ[1,] = exp(mean(thetas_mod2$log_p))*dexp(Ts, rate = 1/mean(thetas_mod2$inv_lambda));
+prob_labels_raw_CQ[1,] = 
+  exp(mean(thetas_mod2$log_p))*
+  dexp(Ts, rate = mean(thetas_mod2$lambda));
 # Early Relapse
-prob_labels_raw_CQ[2,] = exp(mean(thetas_mod2$log_1m_p))*exp(mean(thetas_mod2$log_1m_c1_CQ))*exp(mean(thetas_mod2$log_EarlyL))*dweibull(Ts , shape = mean(thetas_mod2$CQ_shape), scale = mean(thetas_mod2$CQ_scale))
+prob_labels_raw_CQ[2,] =
+  exp(mean(thetas_mod2$log_1m_p))*
+  exp(mean(thetas_mod2$log_1m_c1_CQ))*
+  exp(mean(thetas_mod2$log_EarlyL))*
+  dweibull(Ts , shape = mean(thetas_mod2$CQ_shape), scale = mean(thetas_mod2$CQ_scale))
 # Late Relapse
-prob_labels_raw_CQ[3,] = exp(mean(thetas_mod2$log_1m_p))*exp(mean(thetas_mod2$log_1m_c1_CQ))*exp(mean(thetas_mod2$log_1m_EarlyL))*dexp(Ts, rate = 1/mean(thetas_mod2$inv_gamma))
+prob_labels_raw_CQ[3,] =
+  exp(mean(thetas_mod2$log_1m_p))*
+  exp(mean(thetas_mod2$log_1m_c1_CQ))*
+  exp(mean(thetas_mod2$log_1m_EarlyL))*
+  dexp(Ts, rate = mean(thetas_mod2$inv_gamma))
 # Recrudescence
-prob_labels_raw_CQ[4,] = exp(mean(thetas_mod2$log_1m_p))*exp(mean(thetas_mod2$log_c1_CQ))*dweibull(Ts, shape =  mean(thetas_mod2$Recrud_shape), scale = mean(thetas_mod2$Recrud_scale))
+prob_labels_raw_CQ[4,] =
+  exp(mean(thetas_mod2$log_1m_p))*
+  exp(mean(thetas_mod2$log_c1_CQ))*
+  dexp(Ts, rate = mean(thetas_mod2$lambda_recrud))
 
 # CQ+PMQ
 prob_labels_raw_CQPMQ = array(dim = c(4,length(Ts)))
 # Reinfection
-prob_labels_raw_CQPMQ[1,] = exp(mean(thetas_mod2$log_p_PMQ))*dexp(Ts, rate = 1/mean(thetas_mod2$inv_lambda));
+prob_labels_raw_CQPMQ[1,] = 
+  exp(mean(thetas_mod2$log_p_PMQ))*
+  dexp(Ts, rate = mean(thetas_mod2$lambda));
 # Early Relapse
-prob_labels_raw_CQPMQ[2,] = exp(mean(thetas_mod2$log_1m_p_PMQ))*exp(mean(thetas_mod2$log_1m_c1_CQ_PMQ))*exp(mean(thetas_mod2$log_EarlyL))*dweibull(Ts , shape = mean(thetas_mod2$CQ_shape), scale = mean(thetas_mod2$CQ_scale))
+prob_labels_raw_CQPMQ[2,] =
+  exp(mean(thetas_mod2$log_1m_p_PMQ))*
+  exp(mean(thetas_mod2$log_1m_c1_CQ_PMQ))*
+  exp(mean(thetas_mod2$log_EarlyL))*
+  dweibull(Ts , shape = mean(thetas_mod2$CQ_shape), scale = mean(thetas_mod2$CQ_scale))
 # Late Relapse
-prob_labels_raw_CQPMQ[3,] = exp(mean(thetas_mod2$log_1m_p_PMQ))*exp(mean(thetas_mod2$log_1m_c1_CQ_PMQ))*exp(mean(thetas_mod2$log_1m_EarlyL))*dexp(Ts, rate = 1/mean(thetas_mod2$inv_gamma))
+prob_labels_raw_CQPMQ[3,] =
+  exp(mean(thetas_mod2$log_1m_p_PMQ))*
+  exp(mean(thetas_mod2$log_1m_c1_CQ_PMQ))*
+  exp(mean(thetas_mod2$log_1m_EarlyL))*
+  dexp(Ts, rate = mean(thetas_mod2$gamma))
 # Recrudescence
-prob_labels_raw_CQPMQ[4,] = exp(mean(thetas_mod2$log_1m_p_PMQ))*exp(mean(thetas_mod2$log_c1_CQ_PMQ))*dweibull(Ts, shape =  mean(thetas_mod2$Recrud_shape), scale = mean(thetas_mod2$Recrud_scale))
+prob_labels_raw_CQPMQ[4,] =
+  exp(mean(thetas_mod2$log_1m_p_PMQ))*
+  exp(mean(thetas_mod2$log_c1_CQ_PMQ))*
+  dexp(Ts, rate = mean(thetas_mod2$lambda_recrud))
 
 for(i in 1:length(Ts)){
   prob_labels_raw_AS[,i] = prob_labels_raw_AS[,i]/sum(prob_labels_raw_AS[,i])
@@ -792,38 +861,38 @@ Label_probability = function(drug,t, thetas){
     p = inv.logit(mean(thetas$logit_p))
     c = inv.logit(mean(thetas$logit_c1_AS))
     
-    p_relapse = (1-p) * (1-c) * (q * dexp(x = t, rate = 1/mean(thetas$inv_gamma)) +
+    p_relapse = (1-p) * (1-c) * (q * dexp(x = t, rate = mean(thetas$gamma)) +
                                    (1-q) * dweibull(x = t,shape = mean(thetas$AS_shape),
                                                     scale = mean(thetas$AS_scale)))
     
-    p_recrudes = (1-p) * c * dexp(x = t,rate = 1/mean(thetas$inv_Recrud_lambda))
+    p_recrudes = (1-p) * c * dexp(x = t,rate = mean(thetas$lambda_recrud))
     
-    p_reinfect = p * dexp(x = t,rate = 1/mean(thetas$inv_lambda))
+    p_reinfect = p * dexp(x = t,rate = mean(thetas$lambda))
   }
   if(drug == 'CHQ'){
     p = inv.logit(mean(thetas$logit_p))
     c = inv.logit(mean(thetas$logit_c1_CQ))
     
-    p_relapse = (1-p) * (1-c) * (q * dexp(x = t, rate = 1/mean(thetas$inv_gamma)) +
+    p_relapse = (1-p) * (1-c) * (q * dexp(x = t, rate = mean(thetas$gamma)) +
                                    (1-q) * dweibull(x = t,shape = mean(thetas$CQ_shape),
                                                     scale = mean(thetas$CQ_scale)))
     
-    p_recrudes = (1-p) * c * dexp(x = t,rate = 1/mean(thetas$inv_Recrud_lambda))
+    p_recrudes = (1-p) * c * dexp(x = t,rate = mean(thetas$lambda_recrud))
     
-    p_reinfect = p * dexp(x = t,rate = 1/mean(thetas$inv_lambda))
+    p_reinfect = p * dexp(x = t,rate = mean(thetas$lambda))
     
   }
   if(drug == 'PMQ+'){
     p = inv.logit(mean(thetas$logit_p_PMQ))
     c = inv.logit(mean(thetas$logit_c1_CQ_PMQ))
     
-    p_relapse = (1-p) * (1-c) * (q * dexp(x = t, rate = 1/mean(thetas$inv_gamma)) +
+    p_relapse = (1-p) * (1-c) * (q * dexp(x = t, rate = mean(thetas$gamma)) +
                                    (1-q) * dweibull(x = t,shape = mean(thetas$CQ_shape),
                                                     scale = mean(thetas$CQ_scale)))
     
-    p_recrudes = (1-p) * c * dexp(x = t,rate = 1/mean(thetas$inv_Recrud_lambda))
+    p_recrudes = (1-p) * c * dexp(x = t,rate = mean(thetas$lambda_recrud))
     
-    p_reinfect = p * dexp(x = t,rate = 1/mean(thetas$inv_lambda))
+    p_reinfect = p * dexp(x = t,rate = mean(thetas$lambda))
     
   }
   probs = data.frame(p_relapse=p_relapse,p_recrudes=p_recrudes,p_reinfect=p_reinfect)
@@ -1072,10 +1141,11 @@ lines(log10(Combined_Time_Data$Relapse_mean_theta[ind]),
 df = data.frame(time=Combined_Time_Data$Time_to_event[ind],
                 uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
                   log10(Combined_Time_Data$Relapse_025_theta[ind]))
+ymax = max(df$uncertainty)
 plot(df$time,df$uncertainty,  xaxt='n',
      ylab = expression('Log'[10]*' uncertainty'), panel.first = grid(),
      col = drug_cols2[as.integer(Combined_Time_Data$arm_num[ind] == 'CHQ/PMQ') + 2],
-     pch=20, xlab='', main = 'No PMQ')
+     pch=20, xlab='', main = 'No PMQ', ylim=c(0,ymax))
 axis(1, at = seq(0,360, by = 60), labels = seq(0,360,by=60)/30)
 f = loess(uncertainty ~ time, df)
 lines(0:400, predict(f, data.frame(time=0:400)),lwd=2)
@@ -1106,7 +1176,7 @@ df = data.frame(time=Combined_Time_Data$Time_to_event[ind],
                   log10(Combined_Time_Data$Relapse_025_theta[ind]))
 plot(df$time, df$uncertainty,  
      ylab = expression('Log'[10]*' uncertainty'), panel.first = grid(),
-     col = drug_cols2[3], xaxt='n',
+     col = drug_cols2[3], xaxt='n',ylim=c(0,ymax),
      pch=20, xlab='', main = 'PMQ+')
 axis(1, at = seq(0,360, by = 60), labels = seq(0,360,by=60)/30)
 mtext(text = 'Months from last episode',side = 1, line = 3)

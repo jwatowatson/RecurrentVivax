@@ -457,3 +457,13 @@ for(p in params_interest){
 #      xlab='True PMQ failure rate', ylab = 'Estimated PMQ failure rate')
 # lines(c(0,1),c(0,1))
 ```
+
+
+# Posterior predictive p-values
+
+In this section we simulate data from the posterior predictive for Model 2. We then apply a qualitative model check by comparing summary statistics from the posterior predicitive with the true data summary statistics.
+
+```{r}
+load('../RData/TimingModel/Posterior_theta_samples.RData')
+```
+
