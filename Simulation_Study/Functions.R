@@ -29,13 +29,19 @@ generate_reinfection_time = function(params, Study_Period=NA){
   return(next_event)
 }
 
-generate_reinfection_time_seasonal = function(params, week_time, seasonal_sampling_vector){
-  # readjust the seasonal sampling distribution to reflect current episode time of year
+generate_reinfection_time_seasonal = function(params, week_time, 
+                                              seasonal_sampling_vector, Study_Period){
+  if(!is.na(Study_Period) & Study_Period==2) {
+    lambda = params$lambda*params$rate_decrease
+  } else {
+    lambda = params$lambda
+  }
+  # re-adjust the seasonal sampling distribution to reflect current episode time of year
   seasonal_sampling_vector=seasonal_sampling_vector-week_time
   ind = seasonal_sampling_vector<0
   seasonal_sampling_vector[ind]=seasonal_sampling_vector[ind]+52
   # sample new event by sampling the year and then adding the weeks
-  next_event = floor(rexp(1, rate = params$lambda)/360)*360 +
+  next_event = floor(rexp(1, rate = lambda)/360)*360 +
     7*sample(seasonal_sampling_vector,1)
   next_event = round(next_event)
   return(next_event)
@@ -290,7 +296,7 @@ generate_patient_data_Model2 = function(params, follow_up=360, drug, ID=1,
 ##************ Model 1 assumptions for generating data with additional seasonality **********
 # modify the simulation routine under the assumptions of model 1 to include seasonal reinfection
 generate_patient_data_Model1_Seasonal = function(params, follow_up=360, drug, ID=1,
-                                                 seasonal_sampling_vector){
+                                                 seasonal_sampling_vector, Study_Period){
   time_events = c()
   censor_status = c()
   true_event_type = c()
@@ -307,13 +313,15 @@ generate_patient_data_Model1_Seasonal = function(params, follow_up=360, drug, ID
       # primaquine: 100% efficacy, reinfection is the only option
       next_event = generate_reinfection_time_seasonal(params = params, 
                                                       week_time=week_time, 
-                                                      seasonal_sampling_vector)
+                                                      seasonal_sampling_vector,
+                                                      Study_Period=Study_Period)
       R_event = 'Reinfection'
     } else if (drug %in% c('CHQ','AS')){
       if(runif(1) < p){
         next_event = generate_reinfection_time_seasonal(params = params, 
                                                         week_time=week_time, 
-                                                        seasonal_sampling_vector)
+                                                        seasonal_sampling_vector,
+                                                        Study_Period=Study_Period)
         R_event = 'Reinfection'
       } else {
         if(runif(1) < c1){ 
@@ -351,7 +359,7 @@ generate_patient_data_Model1_Seasonal = function(params, follow_up=360, drug, ID
 
 ##************ Model 2 assumptions for generating data with seasonality **********
 generate_patient_data_Model2_Seasonal = function(params, follow_up=360, 
-                                                 drug, ID=1,
+                                                 drug, ID=1, Study_Period,
                                                  seasonal_sampling_vector){
   time_events = c()
   censor_status = c()
@@ -374,7 +382,8 @@ generate_patient_data_Model2_Seasonal = function(params, follow_up=360,
       true_p = p_PMQ
       if(runif(1) < p_PMQ){ #reinfection
         next_event = generate_reinfection_time_seasonal(params,week_time = week_time,
-                                                        seasonal_sampling_vector = seasonal_sampling_vector)
+                                                        seasonal_sampling_vector = seasonal_sampling_vector,
+                                                        Study_Period=Study_Period)
         R_event = 'Reinfection'
       } else {
         if(runif(1) < c1){ # recrudescence
@@ -391,7 +400,8 @@ generate_patient_data_Model2_Seasonal = function(params, follow_up=360,
       true_p = p
       if(runif(1) < p){ #reinfection
         next_event = generate_reinfection_time_seasonal(params,week_time = week_time,
-                                                        seasonal_sampling_vector = seasonal_sampling_vector)
+                                                        seasonal_sampling_vector = seasonal_sampling_vector,
+                                                        Study_Period=Study_Period)
         R_event = 'Reinfection'
       } else {
         if(runif(1) < c1){ #recrudescence
@@ -798,13 +808,15 @@ full_shebang = function(simulation_patient_function,
                         init_values_function, 
                         N_AS, N_CQ, N_PMQ,
                         Prior_params, IT, WarmUp, Chains, thin,
-                        params_interest,seasonal_sampling_vector=NA){
+                        params_interest,seasonal_sampling_vector=NA,
+                        Study_Period){
   
   # simulate data
   out = simulate_dataset(N_PMQ = N_PMQ, N_CQ = N_CQ, 
                          N_AS = N_AS,FUP_time = FUP_time,
                          data_generation_function = simulation_patient_function,
                          params = params,
+                         Study_Period = Study_Period,
                          seasonal_sampling_vector=seasonal_sampling_vector)
   
   Simdata_Model = out$Simdata

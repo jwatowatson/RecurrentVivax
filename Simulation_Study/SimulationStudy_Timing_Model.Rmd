@@ -28,23 +28,24 @@ source('Functions.R')
 # Note that recompilation is necessary on different platforms
 RECOMPILE_MODELS = F
 # Running the full stan models can take several days
-RUN_MODELS = F
+RUN_MODELS = T
 ```
 
 Global options for stan model runs
 ```{r}
-Chains = 3
+Chains = 4
 options(mc.cores = Chains)
 IT = 10^4
 WarmUp = .5*IT
 thin = 40
+Sim_Iterations = 50
 ```
 
 Global simulation sample sizes and follow-up time
 ```{r}
 N_PMQ = 800
-N_AS = 220
-N_CQ = 220
+N_AS = 200
+N_CQ = 200
 FUP_time = 300
 ```
 
@@ -166,9 +167,8 @@ plot_output_model1(thetas_mod1,Simulation_truth1,
 #### Multiple random simulations to assess systematic bias 
 
 ```{r, include=FALSE}
-params_interest = c('lambda','gamma','logit_mean_p',
+params_interest = c('lambda','gamma','logit_mean_p','rate_decrease',
                     'logit_sd_p','logit_EarlyL')
-Sim_Iterations = 100
 if(RUN_MODELS){
   
   comparison_matrix = array(dim = c(Sim_Iterations,length(params_interest),2))
@@ -182,7 +182,8 @@ if(RUN_MODELS){
                            N_AS = N_AS, N_CQ = N_CQ, N_PMQ = N_PMQ,
                            Prior_params = Prior_params_M1,
                            IT = IT,WarmUp = WarmUp,Chains = 1,thin = thin,
-                           params_interest = params_interest)
+                           params_interest = params_interest,
+                           Study_Period = c(rep(1,N_PMQ/2),rep(2,N_PMQ/2 + N_AS + N_CQ)))
     
     # record results: mean estimated value and true simulation value
     for(p in params_interest){
@@ -301,7 +302,6 @@ classification_mod2 = apply(thetas_mod2$prob_labels,c(2,3),quantile, probs=0.025
 ```{r, include=FALSE}
 params_interest = c('lambda','gamma','logit_mean_p','logit_mean_p_PMQ',
                     'logit_sd_p','logit_EarlyL')
-Sim_Iterations = 100
 if(RUN_MODELS){
   
   comparison_matrix = array(dim = c(Sim_Iterations,length(params_interest),2))
@@ -316,7 +316,8 @@ if(RUN_MODELS){
                            N_AS = N_AS, N_CQ = N_CQ, N_PMQ = N_PMQ,
                            Prior_params = Prior_params_M2,
                            IT = IT,WarmUp = WarmUp,Chains = Chains,thin = thin,
-                           params_interest = params_interest)
+                           params_interest = params_interest,
+                           Study_Period = c(rep(1,N_PMQ/2),rep(2,N_PMQ/2 + N_AS + N_CQ)))
     
     # record results: mean estimated value and true simulation value
     for(p in params_interest){
@@ -363,11 +364,11 @@ seasonal_sampling_vector = Combined_Time_Data$WeekTime
 Generate patient data under the assumptions of model 1 with the additional assumption of seasonality for reinfection.
 ```{r}
 # test to show this does the right thing
-set.seed(76576)
+set.seed(7576)
 ys = sapply(1:1000, FUN = function(x, seasonal_sampling_vector){
   generate_reinfection_time_seasonal(params_M1,0,seasonal_sampling_vector)
 }, seasonal_sampling_vector)
-hist(ys, breaks = seq(0,10000,by=14), xlim = c(0,3*360), 
+hist(ys, breaks = seq(0,20000,by=14), xlim = c(0,3*360), 
      main='Reinfection times',
      xlab='days from 1st January')
 ```
@@ -376,11 +377,14 @@ hist(ys, breaks = seq(0,10000,by=14), xlim = c(0,3*360),
 Generate data with these parameters:
 ```{r}
 set.seed(87678)
+tic()
 out3 = simulate_dataset(N_PMQ = N_PMQ, N_CQ = N_CQ, 
                         N_AS = N_AS,FUP_time = FUP_time,
                         data_generation_function = generate_patient_data_Model2_Seasonal,
                         params = params_M2,
-                        seasonal_sampling_vector = seasonal_sampling_vector)
+                        seasonal_sampling_vector = seasonal_sampling_vector,
+                        Study_Period = c(rep(1,N_PMQ/2),rep(2,N_PMQ/2 + N_AS + N_CQ)))
+toc()
 Simdata_Model_Seasonal = out3$Simdata
 Simulation_truth_Seasonal = out3$Simulation_truth
 ```
@@ -418,11 +422,11 @@ plot_output_model1(thetas_mod_seasonal,Simulation_truth_Seasonal,
 
 
 ```{r, include=FALSE}
-params_interest = c('lambda','gamma','logit_mean_p',
+params_interest = c('lambda','gamma','logit_mean_p','rate_decrease',
                     'logit_sd_p','logit_EarlyL')
-Sim_Iterations = 100
 if(RUN_MODELS){
   comparison_matrix = array(dim = c(Sim_Iterations,length(params_interest),2))
+  failure_matrix = array(dim = c(Sim_Iterations, 2))
   for(sim in 1:Sim_Iterations){
     results = full_shebang(simulation_patient_function = 
                              generate_patient_data_Model2_Seasonal,
@@ -434,12 +438,14 @@ if(RUN_MODELS){
                            Prior_params = Prior_params_M2,
                            IT = IT, WarmUp = WarmUp, Chains = Chains, thin = thin,
                            params_interest = params_interest,
-                           seasonal_sampling_vector=seasonal_sampling_vector)
+                           seasonal_sampling_vector=seasonal_sampling_vector,
+                           Study_Period = c(rep(1,N_PMQ/2),rep(2,N_PMQ/2 + N_AS + N_CQ)))
     
     # record results: mean estimated value and true simulation value
     for(p in params_interest){
       comparison_matrix[sim,which(p==params_interest),] = results$summary_parameters[[p]]
     }
+    failure_matrix[sim,] = results$summary_stats
   }
   
   save(comparison_matrix,
@@ -459,10 +465,10 @@ for(p in params_interest){
   abline(v=unique(comparison_matrix[,which(p==params_interest),2]),col='red',lwd=3)
 }
 
-# plot(100*simulation_full_results_mod2$failure_matrix[,1],
-#      100*simulation_full_results_mod2$failure_matrix[,2],
-#      xlab='True PMQ failure rate', ylab = 'Estimated PMQ failure rate')
-# lines(c(0,1),c(0,1))
+plot(100*failure_matrix[,1],
+     100*failure_matrix[,2],
+     xlab='True PMQ failure rate', ylab = 'Estimated PMQ failure rate')
+lines(c(0,100),c(0,100))
 ```
 
 
@@ -491,7 +497,7 @@ N_PMQ_BPD = sum(Combined_Time_Data$arm_num=='CHQ/PMQ'&
                   Combined_Time_Data$Study_Period==2 &
                   !duplicated(Combined_Time_Data$patientid))
 
-set.seed(45758)
+set.seed(4543758)
 params_M2_posterior = list()
 i = sample(1:nrow(thetas2_matrix),1)
 for(p in names(params_M2)){
@@ -519,7 +525,7 @@ PMQ_ind = dat_posterior$Simdata$Drug==2 & dat_posterior$Simdata$Censored==0
 PMQ_ind_true = Combined_Time_Data$arm_num=='CHQ/PMQ'&
   Combined_Time_Data$Censored==0
 
-par(las=1, mfrow=c(1,2))
+par(las=1, mfrow=c(1,3))
 #** Artesunate monotherapy: posterior predictive versus true data **
 hist(Combined_Time_Data$Time_to_event[AS_ind_true], 
      main = 'AS monotherapy', 
@@ -528,30 +534,12 @@ hist(Combined_Time_Data$Time_to_event[AS_ind_true],
 hist(dat_posterior$Simdata$Durations[AS_ind],
      add=T, breaks = seq(0,700,by=7), col=alpha('red',alpha = .4))
 
-plot.ecdf(Combined_Time_Data$Time_to_event[AS_ind_true],
-          col='blue',verticals = T, xlab='Days from last episode',
-          main='Time to recurrence after AS monotherapy')
-plot.ecdf(dat_posterior$Simdata$Durations[AS_ind],
-          add=T,col='red',verticals = T)
-legend('right',col=c('red','blue'),
-       legend = c('Simulated data from posterior predictive',
-                  'Observed trial data'),lwd=2, inset = 0.01)
-
 #** Chloroquine monotherapy: posterior predictive versus true data **
 hist(Combined_Time_Data$Time_to_event[CQ_ind_true], main = 'CQ monotherapy', 
      xlab='days from last episode', col=alpha('blue',alpha = .4), 
      breaks = seq(0,700,by=7), xlim = c(0,300))
 hist(dat_posterior$Simdata$Durations[CQ_ind],
      add=T, breaks = seq(0,700,by=7), col=alpha('red',alpha = .4))
-
-plot.ecdf(Combined_Time_Data$Time_to_event[CQ_ind_true],
-          col='blue',verticals = T, xlab='Days from last episode',
-          main='Time to recurrence after CQ monotherapy')
-plot.ecdf(dat_posterior$Simdata$Durations[CQ_ind],
-          add=T,col='red',verticals = T)
-legend('right',col=c('red','blue'),
-       legend = c('Simulated data from posterior predictive',
-                  'Observed trial data'),lwd=2, inset = 0.01)
 
 #** Primaquine+ : posterior predictive versus true data **
 hist(Combined_Time_Data$Time_to_event[PMQ_ind_true], main = 'PMQ+', 
@@ -560,17 +548,34 @@ hist(Combined_Time_Data$Time_to_event[PMQ_ind_true], main = 'PMQ+',
 hist(dat_posterior$Simdata$Durations[PMQ_ind],
      add=T, breaks = seq(0,700,by=7), col=alpha('red',alpha = .4))
 
+
+
+# *************** Empirical cdfs **************
+par(las=1, mfrow=c(1,3))
+plot.ecdf(Combined_Time_Data$Time_to_event[AS_ind_true],
+          col='blue',verticals = T, xlab='Days from last episode',
+          main='Recurrence after AS monotherapy')
+plot.ecdf(dat_posterior$Simdata$Durations[AS_ind],
+          add=T,col='red',verticals = T)
+
+plot.ecdf(Combined_Time_Data$Time_to_event[CQ_ind_true],
+          col='blue',verticals = T, xlab='Days from last episode',
+          main='Recurrence after CQ monotherapy')
+plot.ecdf(dat_posterior$Simdata$Durations[CQ_ind],
+          add=T,col='red',verticals = T)
+
+
 plot.ecdf(Combined_Time_Data$Time_to_event[PMQ_ind_true],
           col='blue',verticals = T, xlab='Days from last episode',
-          main='Time to recurrence after PMQ+')
+          main='Recurrence after PMQ+')
 plot.ecdf(dat_posterior$Simdata$Durations[PMQ_ind],
           add=T,col='red',verticals = T)
-legend('right',col=c('red','blue'),
-       legend = c('Simulated data from posterior predictive',
+legend('bottomright',col=c('red','blue'),
+       legend = c('Posterior predictive \n(simulated)',
                   'Observed trial data'),lwd=2, inset = 0.01)
 ```
 
-```{r posterior_pred_pvalues}
+```{r }
 Sim_Iterations = 200
 res = array(dim = c(Sim_Iterations,3))
 pb = txtProgressBar(min=1, max = Sim_Iterations,style = 3)
@@ -607,21 +612,21 @@ for(Sim in 1:Sim_Iterations){
 }
 ```
 
-```{r}
+```{r posterior_pred_pvalues}
 par(mfrow=c(1,3))
 hist(res[,1], xlab = 'Recurrences per person (%)', main = 'Artesunate monotherapy')
 true_stat_AS = length(Combined_Time_Data$Time_to_event[AS_ind_true])/
-    (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='AS'])/360)
+  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='AS'])/360)
 abline(v = true_stat_AS, col='blue',lwd=3)
 
 hist(res[,2], xlab = 'Recurrences per person (%)', main = 'Chloroquine monotherapy')
 true_stat_CQ = length(Combined_Time_Data$Time_to_event[CQ_ind_true])/
-    (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ'])/360)
+  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ'])/360)
 abline(v = true_stat_CQ,  col='blue',lwd=3)
 
 hist(res[,3], xlab = 'Recurrences per person (%)', main = 'Primaquine+')
 true_stat_PMQ = length(Combined_Time_Data$Time_to_event[PMQ_ind_true])/
-    (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'])/360)
+  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'])/360)
 abline(v = true_stat_PMQ,col='blue',lwd=3)
 
 PP_pval_AS = 1-sum(res[,1]>true_stat_AS)/Sim_Iterations
