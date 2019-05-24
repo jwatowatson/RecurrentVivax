@@ -5,18 +5,19 @@
 # # Can we collapse the following checks? 
 # Max_Eps = 3, 
 # Max_Tot_Vtx = 6,
-# UpperComplexity = 10^6 # Is this redundant
+# UpperComplexity = 10^6 # Is this redundant?
 
-post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infections)
+post_prob_CLI = function(MSdata, # MS data 
                          Fs, # MS population frequencies 
                          p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3), # Uniform prior over C, L, I
                          alpha = 0, # Additive inbreeding constant
-                         cores = 4, 
-                         Max_Eps = 3, # Limit is due to test_Rn_compatible 
-                         Max_Tot_Vtx = 6,
+                         cores = 4, # Number of cores for parallel computation
+                         Max_Eps = 3, # Limit on number of episodes (due to test_Rn_compatible) 
+                         Max_Tot_Vtx = 6, # Limit on number of vertices = cumulative COI
                          Max_Haplotypes = 50, # Need to discuss this with Aimee: hack insert
                          UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
-                         verbose = FALSE){
+                         verbose = FALSE){ # Set to true to return all messages
+  
   #==========================================================================
   # Check the MSdata and p have the correct structures
   #========================================================================== 
@@ -24,9 +25,9 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
     stop('MSdata needs to include the following columns: ID,Episode,Episode_Identifier,MOI_id')
   }
   
-  #--------------------------------------------------------------------------
+  #==========================================================================
   # Reformat the data s.t. there are no NA gaps in mixed infections
-  #--------------------------------------------------------------------------
+  #==========================================================================
   MSdata = reformat_MSdata(MSdata = MSdata, MSs=names(Fs))
   
   # Make sure that the data are sorted correctly
@@ -85,7 +86,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
   # Create Post_probs store with length = num. of all infections inc. those without recurrence
   #==========================================================================
   all_infections = unique(MSdata$Episode_Identifier)
-
+  
   #==========================================================================
   # Extract microsatellites, related quantities and calculate log pop prior
   #==========================================================================
@@ -114,8 +115,9 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
   # It is important that IDs_all is a character vector since id used to index
   #==========================================================================
   IDs_all = as.character(unique(MSdata$ID)) # Character vector
-  yns = lapply(IDs_all, function(x){yn = filter(MSdata, ID == x)}) # transform into list data
-  names(yns) = IDs_all
+  # yns = lapply(IDs_all, function(x){yn = filter(MSdata, ID == x)}) # transform into list data
+  yns = dlply(MSdata, 'ID') # transform into a list
+  
   
   #==========================================================================
   # Extract COIs (cns) and num. of infections (Tns) for each individual
@@ -123,7 +125,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
   #==========================================================================
   cns = lapply(yns, function(x){cn = table(x$Episode_Identifier)})
   sum_cns = sapply(cns, sum) # Size of graph = sum(cnt) for check below
-  Tns = lapply(cns, length) # Also used in check below
+  Tns = lapply(cns, length) # Number of episodes (also used in check below)
   Tns_chr = lapply(Tns, as.character) # Character version needed for indexes in do.par
   
   #==========================================================================
@@ -204,24 +206,20 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
   })
   
   #==========================================================================
-  # log_Pr_G_Rn: matrix with rows per Gnb and cols per Rnt
+  # log_Pr_G_Rn: matrix with rows per Gnb and cols per Rnt 
+  # (haplotype-unlabelled graphs)
   #==========================================================================
   log_Pr_G_Rns = lapply(unique_vtx_count_str, function(x){
     load(sprintf('../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all Gnb for given vtx_count_str
     G_Rn_comp = sapply(graph_lookup, test_Rn_compatible, Rns) # For each Gnb, test compatibility with Rn
-    cn = as.numeric(strsplit(x, split = '_')[[1]]) # Reconstruct cn 
-    Tn_chr = as.character(length(cn)) # Reconstruct Tn_chr
-    Rn = Rns[[Tn_chr]] # Extract Rn 
-    log_Pr_Rn = log_Pr_Rns[[Tn_chr]] # Extract log Pr( Rn | p)
     log_Pr_G_Rn = log(t(G_Rn_comp*(1/rowSums(G_Rn_comp)))) # log Pr( Gnb | Rn ) = 1 / B in matrix
-    # Set -Inf due to log(0) and NAN due to division by 0 to NA
-    log_Pr_G_Rn[is.infinite(log_Pr_G_Rn) | is.nan(log_Pr_G_Rn)] = NA 
+    log_Pr_G_Rn[is.infinite(log_Pr_G_Rn) | is.nan(log_Pr_G_Rn)] = NA# Set -Inf due to log(0) and NAN due to division by 0 to NA  
     return(log_Pr_G_Rn)
   })
   names(log_Pr_G_Rns) = unique_vtx_count_str
   
   # #===================================================
-  # # Aside: uncomment when manually log_Pr_G_Rns make sense
+  # # Aside: uncomment when manually checking log_Pr_G_Rns make sense
   # x = unique_vtx_count_str[10]
   # load(sprintf('../../RData/graph_lookup/graph_lookup_%s.Rdata', x)) # loads all Gnb for given vtx_count_str
   # G_Rn_comp = sapply(graph_lookup, test_Rn_compatible, Rns)
@@ -237,6 +235,29 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
   # If cores=1 then this does normal sequential computation
   if(cores>1) registerDoParallel(cores = cores)
   
+  
+  
+  #==========================================================================
+  # Identify samples with too many compatable haplotypes to phase
+  # Since warnings do not work inside %dopar% 
+  # Added by Aimee May 24th
+  #==========================================================================
+  n_haps_per_episode = lapply(yns, function(yn){ # For a given individual
+    ynts = dlply(yn, 'Episode_Identifier') # Break into episodes
+    sapply(ynts, function(ynt){ # For a given episode
+      ynmt = ynt[,MSs,drop = FALSE] # Extract microsatellite data 
+      ynmt_size = apply(ynmt, 2, function(x){length(unique(x))})  
+      num_haplotypes = prod(ynmt_size) # Calculate the number of haplotypes
+    })
+  })
+  names(n_haps_per_episode) = NULL # Remove IDs since episode ID sufficient 
+  n_haps_per_episode = unlist(n_haps_per_episode) # Convert to vector and then string
+  if(any(n_haps_per_episode > Max_Haplotypes)){ # If there are any too complex, print names to screen
+    episodes_with_too_many_haplotypes_to_phase = paste0(names(which(n_haps_per_episode > Max_Haplotypes)), collapse = ', ')
+    writeLines(sprintf('Hack used on the following epsisodes with more than %s haplotypes: \n %s',
+                       Max_Haplotypes,episodes_with_too_many_haplotypes_to_phase))
+  }
+
   #***********************************************
   # Computation of per-individual values
   #***********************************************
@@ -256,6 +277,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
     # set id = 'BPD_402' for vtx_counts_str = "4_1_0" when checking by hand
     id = IDs[i] 
+    
     #==========================================================================
     # Extract data and processed data for the nth individual
     #==========================================================================
@@ -278,23 +300,22 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
     Haplotypes_and_combinations = vector('list', length = 0)
     
     for(inf in infections){
+      
       # Extract data for the tth infection
       ynt = filter(yn, Episode_Identifier == inf)[,MSs,drop = FALSE] 
-      # All haplotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
-      Hnt = expand.grid((lapply(ynt, unique)))
-      # Indices of all combinations of nrow(Hnt) choose cn[inf] haplotypes for the tth infection, inf 
       
-      # ****** The combinations line is causing a bug with highly complex infections *******#
-      # Added a hack line - need some warnings/thinking
-      # This will break the code when sum(scores)==0, i.e. no valid haplotypes are subsampled 
-      KK = nrow(Hnt)
-      if(KK > Max_Haplotypes) {
-        Hnt = Hnt[sample(x = 1:KK,size = Max_Haplotypes,replace = F),]
-        writeLines(sprintf('\nIntroduced hack solution, subsampled %s of a possible %s haplotypes',
-                           Max_Haplotypes,KK))}
-      Vt_Hnt_inds = combinations(nrow(Hnt), r = cn[inf], v = 1:nrow(Hnt))       
       # Summarise data for compatibility check below 
       Y = apply(ynt, 2, function(x){sort(unique(x[!is.na(x)]))}) 
+      
+      # All haplotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
+      Hnt = expand.grid((lapply(ynt, unique)))
+
+      # Hack line for highly complex infections
+      if(nrow(Hnt) > Max_Haplotypes) {Hnt = ynt} 
+      
+      # Indices of all combinations of nrow(Hnt) choose cn[inf] haplotypes for the tth infection, inf 
+      Vt_Hnt_inds = combinations(nrow(Hnt), r = cn[inf], v = 1:nrow(Hnt))  
+      
       # Check each combination to see if compatible with ynt 
       # (this is a bit like an ABC step with epsilon = 0)
       scores = apply(Vt_Hnt_inds, 1, function(x, Y){ 
@@ -302,15 +323,16 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
         score = identical(X,Y) # Test that they are the same
         return(score)
       }, Y)
+      
       # Extract only those indices that are compatible 
       Vt_Hnt_inds_comp = Vt_Hnt_inds[scores,,drop = FALSE]
+      
       # Convert to character since used to index 
       Hnt_chr = matrix(sapply(Hnt, as.character), ncol = M)
       colnames(Hnt_chr) = MSs
       # Return all possible haplotypes and indices of compatible combinations of haplotypes 
       Haplotypes_and_combinations[[inf]] = list(Hnt = Hnt_chr, Vt_Hnt_inds_comp = Vt_Hnt_inds_comp)
     }
-    
     
     # Extract the number of compatible combinations for each infection
     num_comp_combs_Vt = lapply(Haplotypes_and_combinations, function(x){1:nrow(x$Vt_Hnt_inds_comp)})
@@ -427,7 +449,7 @@ post_prob_CLI = function(MSdata, # MS data (assumes no NA gaps in mixed infectio
       Post_probs # return vector
     }
   }
-
+  
   # # Store to check relationship between problem complexity and time
   # complexity_time = array(NA, c(N,2), dimnames = list(IDs, c('Number of graphs in viable graph space', 
   #                                                            'Run time (ms) per graph')))
