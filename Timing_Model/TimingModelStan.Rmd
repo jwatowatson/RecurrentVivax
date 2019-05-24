@@ -29,7 +29,8 @@ tic()
 ```{r, echo=FALSE}
 # Note that recompilation is necessary on different platforms
 RECOMPILE_MODELS = F
-# Running the full stan models can take several days
+# Running stan model 1 under the current parameterisation takes approximately 1 hour 
+# Running stan model 2 under the current parameterisation takes approximately 18 hours
 RUN_MODELS = T
 # load some useful functions written to simulate data
 source('../Simulation_Study/Functions.R')
@@ -262,17 +263,17 @@ Run with ```{r} Chains``` parallel chains. The choice of this number depends on 
 
 ```{r runModels, echo=T, include=FALSE}
 if(RUN_MODELS){
-  mod1_Fit = sampling(Timing_Model1,
-                      data = c(Time_data_1, Prior_params_M1),
-                      iter = IT, warmup = WarmUp,
-                      chains=Chains, thin = thin,
-                      init = lapply(1:Chains,
-                                    FUN = function(x,Prior_params_M1,N_noPMQ){
-                                      generate_inital_values_M1(Prior_params_M1,N_noPMQ)
-                                    },
-                                    Prior_params_M1 = Prior_params_M1,
-                                    N_noPMQ = N_noPMQ))
-  save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
+  # mod1_Fit = sampling(Timing_Model1,
+  #                     data = c(Time_data_1, Prior_params_M1),
+  #                     iter = IT, warmup = WarmUp,
+  #                     chains=Chains, thin = thin,
+  #                     init = lapply(1:Chains,
+  #                                   FUN = function(x,Prior_params_M1,N_noPMQ){
+  #                                     generate_inital_values_M1(Prior_params_M1,N_noPMQ)
+  #                                   },
+  #                                   Prior_params_M1 = Prior_params_M1,
+  #                                   N_noPMQ = N_noPMQ))
+  # save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
 
   mod2_Fit = sampling(Timing_Model2,
                       data = c(Time_data_2, Prior_params_M2),
@@ -609,22 +610,6 @@ xs = quantile(thetas_mod1$logit_p, probs = seq(0,1,by = 0.001))
 lines(xs, dnorm(x = xs, mean = Prior_params_M1$Hyper_logit_mean_p_mean, 
                 sd = Prior_params_M1$Hyper_logit_mean_p_sd),
       col='red',lwd=3)
-
-# # Mean c1 AS (hierachical mean early relapse)
-# hist(thetas_mod1$logit_c1_AS, xlim = c(-5,-2), freq = F, main='',
-#      xlab= 'Population logit c1: AS', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-#                               mean = Prior_params_M1$Hyper_logit_c1_mean, 
-#                               sd = Prior_params_M1$Hyper_logit_c1_sd),
-#       col='red',lwd=3)
-# 
-# # Mean c1: CQ (hierachical mean early relapse)
-# hist(thetas_mod1$logit_c1_CQ,  xlim = c(-5,-2), freq = F, main='',
-#      xlab= 'Population logit c1: CQ', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-#                               mean = Prior_params_M1$Hyper_logit_c1_mean, 
-#                               sd = Prior_params_M1$Hyper_logit_c1_sd),
-#       col='red',lwd=3)
 
 # logit_EarlyL relapse 
 hist(thetas_mod1$logit_EarlyL, freq = F, main='',
