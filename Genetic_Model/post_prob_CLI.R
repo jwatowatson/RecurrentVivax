@@ -258,6 +258,7 @@ post_prob_CLI = function(MSdata, # MS data
                        Max_Haplotypes,episodes_with_too_many_haplotypes_to_phase))
   }
 
+  
   #***********************************************
   # Computation of per-individual values
   #***********************************************
@@ -309,12 +310,21 @@ post_prob_CLI = function(MSdata, # MS data
       
       # All haplotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
       Hnt = expand.grid((lapply(ynt, unique)))
-
+      total_haps_count = nrow(Hnt)
+      
       # Hack line for highly complex infections
-      if(nrow(Hnt) > Max_Haplotypes) {Hnt = ynt} 
+      if(total_haps_count > Max_Haplotypes){Hnt = ynt} 
       
       # Indices of all combinations of nrow(Hnt) choose cn[inf] haplotypes for the tth infection, inf 
-      Vt_Hnt_inds = combinations(nrow(Hnt), r = cn[inf], v = 1:nrow(Hnt))  
+      # Vt_Hnt_inds = combinations(nrow(Hnt), r = cn[inf], v = 1:nrow(Hnt))  
+      Vt_Hnt_inds = array(dim = c(choose(total_haps_count, cn[inf]), cn[inf]))
+      vector_haps_count = 1:total_haps_count
+      count = 1
+      for(i in 1:(total_haps_count-2)){
+        for(j in (i+1):(total_haps_count-1)){
+          for(k in (j+1):(total_haps_count-0)){
+            Vt_Hnt_inds[count,] = c(vector_haps_count[i], vector_haps_count[j], vector_haps_count[k])
+            count = count + 1}}}
       
       # Check each combination to see if compatible with ynt 
       # (this is a bit like an ABC step with epsilon = 0)
