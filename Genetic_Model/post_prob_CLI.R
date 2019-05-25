@@ -1,11 +1,15 @@
+##############################################################################################
 # Notation matches manuscript aside from Tn, which counts from 1 here and 0 in the notation
 # Variables names: conditioning bar is represented by an underscore while 'and' is explicit
 # e.g. log_Pr_yn_Rn denotes log Pr(yn | Rn) while log_Pr_yn_and_Rn denotes log Pr(yn, Rn)
-
-# # Can we collapse the following checks? 
-# Max_Eps = 3, 
-# Max_Tot_Vtx = 6,
-# UpperComplexity = 10^6 # Is this redundant?
+#
+# Currently, we have set various limits (Max_Eps, Max_Tot_Vtx, Max_Hap_genotypes, UpperComplexity)
+# allowing us to analyses and interpret the data with which we are working. Ultimately, we aim 
+# to generalise the model to accommodate different data types and release it for general use. 
+# The general-purpose release will likely retain the same statistical framework, but with more
+# computationally sophistication, i.e. packaged as software versus statistical model code, e.g
+# in optimal code upperComplexity = 10^6 may be redundant
+##############################################################################################
 
 post_prob_CLI = function(MSdata, # MS data 
                          Fs, # MS population frequencies 
@@ -14,9 +18,31 @@ post_prob_CLI = function(MSdata, # MS data
                          cores = 4, # Number of cores for parallel computation
                          Max_Eps = 3, # Limit on number of episodes (due to test_Rn_compatible) 
                          Max_Tot_Vtx = 6, # Limit on number of vertices = cumulative COI
-                         Max_Haplotypes = 50, # Need to discuss this with Aimee: hack insert
+                         Max_Hap_genotypes = 50, # Need to discuss this with Aimee: hack insert
                          UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
                          verbose = FALSE){ # Set to true to return all messages
+  
+  
+  #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  # Simulate code for internal checks. Comment when not doing internal checks
+  # Ultimate goal: integrate into unit test
+  set.seed(1)
+  sim_output = BuildSimData(COIs = c(3,1), # COI from settings
+                            M = 6, # Number of markers from settings
+                            N = 2, # Number of individuals
+                            N_alleles = 4,
+                            relatedness = 'Clone')
+  MSdata = sim_output$MS_data_sim # MS data
+  Fs = sim_output$FS # MS population frequencies
+  p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3) # Uniform prior over C, L, I
+  alpha = 0 # Additive inbreeding constant
+  cores = 4 # Number of cores for parallel computation
+  Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible) 
+  Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
+  Max_Hap_genotypes = 100 # Need to discuss this with Aimee: hack insert
+  UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
+  verbose = FALSE
+  #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
   #==========================================================================
   # Check the MSdata and p have the correct structures
@@ -115,9 +141,7 @@ post_prob_CLI = function(MSdata, # MS data
   # It is important that IDs_all is a character vector since id used to index
   #==========================================================================
   IDs_all = as.character(unique(MSdata$ID)) # Character vector
-  # yns = lapply(IDs_all, function(x){yn = filter(MSdata, ID == x)}) # transform into list data
   yns = dlply(MSdata, 'ID') # transform into a list
-  
   
   #==========================================================================
   # Extract COIs (cns) and num. of infections (Tns) for each individual
@@ -232,13 +256,8 @@ post_prob_CLI = function(MSdata, # MS data
     writeLines('\nIn the following viable graphs include only those with sufficient numbers of vertices 
                and appropriate vertex labels to fully represent each individual\'s data.')}
   
-  # If cores=1 then this does normal sequential computation
-  if(cores>1) registerDoParallel(cores = cores)
-  
-  
-  
   #==========================================================================
-  # Identify samples with too many compatable haplotypes to phase
+  # Identify samples with too many compatable haploid genotypes 
   # Since warnings do not work inside %dopar% 
   # Added by Aimee May 24th
   #==========================================================================
@@ -247,15 +266,15 @@ post_prob_CLI = function(MSdata, # MS data
     sapply(ynts, function(ynt){ # For a given episode
       ynmt = ynt[,MSs,drop = FALSE] # Extract microsatellite data 
       ynmt_size = apply(ynmt, 2, function(x){length(unique(x))})  
-      num_haplotypes = prod(ynmt_size) # Calculate the number of haplotypes
+      num_haps = prod(ynmt_size) # Calculate the number of haploid genotypes
     })
   })
   names(n_haps_per_episode) = NULL # Remove IDs since episode ID sufficient 
   n_haps_per_episode = unlist(n_haps_per_episode) # Convert to vector and then string
-  if(any(n_haps_per_episode > Max_Haplotypes)){ # If there are any too complex, print names to screen
-    episodes_with_too_many_haplotypes_to_phase = paste0(names(which(n_haps_per_episode > Max_Haplotypes)), collapse = ', ')
-    writeLines(sprintf('Hack used on the following epsisodes with more than %s haplotypes: \n %s',
-                       Max_Haplotypes,episodes_with_too_many_haplotypes_to_phase))
+  if(any(n_haps_per_episode > Max_Hap_genotypes)){ # If there are any too complex, print names to screen
+    episodes_with_too_many_hap_to_phase = paste0(names(which(n_haps_per_episode > Max_Hap_genotypes)), collapse = ', ')
+    writeLines(sprintf('Hack will be used on the following epsisodes with more than %s haploid genotypes: \n %s',
+                       Max_Hap_genotypes,episodes_with_too_many_hap_to_phase))
   }
 
   
@@ -264,7 +283,7 @@ post_prob_CLI = function(MSdata, # MS data
   #***********************************************
   # dopar in Windows needs the packages and functions explicitly passed to foreach command
   # otherwise it doesn't work for more than one core. This is still compatible with Mac
-  # print(IDs[113])
+  if(cores>1) registerDoParallel(cores = cores) # If cores=1 then this does normal sequential computation
   Post_probs = foreach(i=1:N, .combine = rbind, 
                        .packages = c('dplyr','igraph','gtools',
                                      'matrixStats','Matrix','tictoc'), 
@@ -273,7 +292,6 @@ post_prob_CLI = function(MSdata, # MS data
   ) %dopar%
   {
     
-    # id = 'BPD_221'
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
     # set id = 'BPD_402' for vtx_counts_str = "4_1_0" when checking by hand
@@ -297,8 +315,7 @@ post_prob_CLI = function(MSdata, # MS data
     #==========================================================================          
     # Generate all possible vertex haplotype label mappings of data onto a graph 
     #==========================================================================
-    # Store for haplotypes and indeces of compatible combinations thereof
-    Haplotypes_and_combinations = vector('list', length = 0)
+    Haplotype_combinations_new = vector('list', length = 0) # Store of haploid genotype combinations 
     
     for(inf in infections){
       
@@ -308,7 +325,7 @@ post_prob_CLI = function(MSdata, # MS data
       # Summarise data for compatibility check below 
       Y = apply(ynt, 2, function(x){sort(unique(x[!is.na(x)]))}) 
       
-      # All haplotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
+      # All haploid genotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
       Hnt = expand.grid((lapply(ynt, unique)))
       total_haps_count = nrow(Hnt)
       
@@ -316,19 +333,10 @@ post_prob_CLI = function(MSdata, # MS data
       if(total_haps_count < cn[inf]){Hnt = ynt} 
         
       # Hack line for highly complex infections
-      if(total_haps_count > Max_Haplotypes){Hnt = ynt} 
+      if(total_haps_count > Max_Hap_genotypes){Hnt = ynt} 
       
-      # Indices of all combinations of nrow(Hnt) choose cn[inf] haplotypes for the tth infection, inf 
+      # Indices of all combinations of nrow(Hnt) choose cn[inf] haploid genotypes for the tth infection, inf 
       Vt_Hnt_inds = combinations(nrow(Hnt), r = cn[inf], v = 1:nrow(Hnt))  
-      
-      # Vt_Hnt_inds = array(dim = c(choose(nrow(Hnt), cn[inf]), cn[inf]))
-      # vector_haps_count = 1:nrow(Hnt)
-      # count = 1
-      # for(i in 1:(nrow(Hnt)-2)){
-      #   for(j in (i+1):(nrow(Hnt)-1)){
-      #     for(k in (j+1):(nrow(Hnt)-0)){
-      #       Vt_Hnt_inds[count,] = c(vector_haps_count[i], vector_haps_count[j], vector_haps_count[k])
-      #       count = count + 1}}}
       
       # Check each combination to see if compatible with ynt 
       # (this is a bit like an ABC step with epsilon = 0)
@@ -344,32 +352,34 @@ post_prob_CLI = function(MSdata, # MS data
       # Convert to character since used to index 
       Hnt_chr = matrix(sapply(Hnt, as.character), ncol = M)
       colnames(Hnt_chr) = MSs
-      # Return all possible haplotypes and indices of compatible combinations of haplotypes 
-      Haplotypes_and_combinations[[inf]] = list(Hnt = Hnt_chr, Vt_Hnt_inds_comp = Vt_Hnt_inds_comp)
+      
+      # Return all possible compatible combinations of haploid genotypes as a list (apply returns array)
+      Haplotype_combinations[[inf]] = alply(Vt_Hnt_inds_comp,1,function(i){Hnt_chr[i,,drop = F]})
     }
     
-    # Extract the number of compatible combinations for each infection
-    num_comp_combs_Vt = lapply(Haplotypes_and_combinations, function(x){1:nrow(x$Vt_Hnt_inds_comp)})
+
+    # Extract vector of compatible combinations for each episode
+    num_comp_combs_Vt = lapply(Haplotype_combinations, function(x){1:length(x)})
+     
     # Create a matrix of inds to create all possible Gna for a given Gn
     labelled_G_ind = as.matrix(expand.grid(num_comp_combs_Vt))
+    
     # Total number of possible mappings, A (same as prod(sapply(num_comp_combs_Vt, length)))
     A = nrow(labelled_G_ind)
     log_A = log(A) # Needed for log domain calculation
+    
     # From labelled_G_ind create all Gna 
     Gabs = vector('list', A) # store in list
+    
     for(label_ind in 1:nrow(labelled_G_ind)){ # labelled_G_ind inc. compatible labelled graphs only
       # For each labbeling in labelled_G_ind extract vertex data matrix 
       x <- labelled_G_ind[label_ind, ,drop=FALSE]
       vertex_data_matrix = array(dim = c(sum_cn, M))
-      for(t in 1:Tn){ # Since each infection has its own Hnt and Vt_Hnt_inds_comp need to loop over infections
-        Z = Haplotypes_and_combinations[[infections[t]]] 
-        # Extract haplotypes from Hnt in compatible combinations whose indices are listed in Vt_Hnt_inds_comp
-        labels = as.matrix(Z$Hnt[Z$Vt_Hnt_inds_comp[x[t],,drop=FALSE],,drop=FALSE]) 
-        vertex_data_matrix[cumsum(c(1,cn))[t]:cumsum(cn)[t], ] = labels 
+      for(t in 1:Tn){ # Since each infection has its own haplotype combinations need to loop over infections
+        vertex_data_matrix[cumsum(c(1,cn))[t]:cumsum(cn)[t], ] = Haplotype_combinations[[infections[t]]][[x[t]]] 
       }
       Gabs[[label_ind]] = vertex_data_matrix # Characters since used to extract allele frequ. 
     }
-    
     
     #==========================================================================          
     # Load all Gnb and check complexity
@@ -467,7 +477,7 @@ post_prob_CLI = function(MSdata, # MS data
   # # Store to check relationship between problem complexity and time
   # complexity_time = array(NA, c(N,2), dimnames = list(IDs, c('Number of graphs in viable graph space', 
   #                                                            'Run time (ms) per graph')))
-  
+  #
   ## Uncomment for doParallel
   # Post_probs[names(Post_probs)] = Post_probs
   # Aimee I'm saving this so plot can be generated outside of function
