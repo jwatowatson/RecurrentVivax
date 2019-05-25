@@ -1,8 +1,8 @@
 #================================================================================================
 # Function to independently verify the code in compute_theta_reLapse() via example calculation
 # Verification is not exhaustive: restricted to examples that are easily independently calculable 
-# Ideally we need this to be a stand alone script using a test data set that is run each time
-# we make a change or install R package.
+# Ideally, we would make this into a unit test that is run each time we make a change or 
+# install R package.
 #================================================================================================
 pass_unit_test = function(MS_data_reformated, Fs, 
                           id_input = c('54', '103'), 
@@ -48,8 +48,11 @@ pass_unit_test = function(MS_data_reformated, Fs,
   #===========================================================================
   # Check example ids conform to 1_2_0 expectation
   #===========================================================================
-  writeLines('Please be aware, function assumes input ID (if any) are for individuals who experience a monoclonal primary infection followed by a single recurrence with complexity of infection (COI) equal to two and two sets of viable vertex haplotype labels.')
-  if(!all(sapply(id_input, function(id)all(cns[[id]] == c(1,2))))){stop('Assumption of input ID having primary infection with COI = 1 followed by a single recurrence with COI = 2 not met.')}
+  writeLines('Please be aware, function assumes input ID (if any) are for individuals \n
+             who experience a monoclonal primary infection followed by a single recurrence \n
+             with complexity of infection (COI) equal to two and two sets of viable vertex haplotype labels.')
+  if(!all(sapply(id_input, function(id)all(cns[[id]] == c(1,2))))){stop('Assumption of input ID having primary infection with COI = 1 \n
+                                                                        followed by a single recurrence with COI = 2 not met.')}
   
   #===========================================================================
   # Test 1: all 1_1_0 cases 
@@ -59,7 +62,7 @@ pass_unit_test = function(MS_data_reformated, Fs,
   Thetas_1_1_0 = array(dim = c(length(IDs_1_1_0), 2), dimnames = list(IDs_1_1_0, c('by_hand', 'by_model'))) # Create store
   G_1_1_0 = array(dim = c(length(IDs_1_1_0), 3), dimnames = list(IDs_1_1_0, c('G_str', 'G_sib', 'G_clo')))
     
-  # Calculate thetas without using the model and thus without using the log-domain 
+  # Calculate thetas without using the model nor log-domain 
   for(id in IDs_1_1_0){
     
     yn = yns[[id]] # Extract data
