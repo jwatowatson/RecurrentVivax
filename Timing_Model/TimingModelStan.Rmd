@@ -31,7 +31,7 @@ tic()
 RECOMPILE_MODELS = F
 # Running stan model 1 under the current parameterisation takes approximately 1 hour 
 # Running stan model 2 under the current parameterisation takes approximately 18 hours
-RUN_MODELS = T
+RUN_MODELS = F
 # load some useful functions written to simulate data
 source('../Simulation_Study/Functions.R')
 ```
@@ -263,17 +263,17 @@ Run with ```{r} Chains``` parallel chains. The choice of this number depends on 
 
 ```{r runModels, echo=T, include=FALSE}
 if(RUN_MODELS){
-  # mod1_Fit = sampling(Timing_Model1,
-  #                     data = c(Time_data_1, Prior_params_M1),
-  #                     iter = IT, warmup = WarmUp,
-  #                     chains=Chains, thin = thin,
-  #                     init = lapply(1:Chains,
-  #                                   FUN = function(x,Prior_params_M1,N_noPMQ){
-  #                                     generate_inital_values_M1(Prior_params_M1,N_noPMQ)
-  #                                   },
-  #                                   Prior_params_M1 = Prior_params_M1,
-  #                                   N_noPMQ = N_noPMQ))
-  # save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
+  mod1_Fit = sampling(Timing_Model1,
+                      data = c(Time_data_1, Prior_params_M1),
+                      iter = IT, warmup = WarmUp,
+                      chains=Chains, thin = thin,
+                      init = lapply(1:Chains,
+                                    FUN = function(x,Prior_params_M1,N_noPMQ){
+                                      generate_inital_values_M1(Prior_params_M1,N_noPMQ)
+                                    },
+                                    Prior_params_M1 = Prior_params_M1,
+                                    N_noPMQ = N_noPMQ))
+  save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
 
   mod2_Fit = sampling(Timing_Model2,
                       data = c(Time_data_2, Prior_params_M2),
@@ -428,8 +428,8 @@ save(thetas2_matrix, file = '../RData/TimingModel/Posterior_theta_samples.RData'
 
 ```{r estimated_Model2}
 par(mfrow=c(1,3),las=1)
-hist((1/thetas_mod2$lambda)/360, xlab='Mean time to reinfection in VHX (years)', main='')
-hist((1/(thetas_mod2$lambda*thetas_mod2$rate_decrease))/360, 
+hist((1/thetas_mod2$lambda)/365, xlab='Mean time to reinfection in VHX (years)', main='')
+hist((1/(thetas_mod2$lambda*thetas_mod2$rate_decrease))/365, 
      xlab='Mean time to reinfection in BPD (years)', main='')
 hist((1/thetas_mod2$gamma), xlab='Mean time to late reLapse (days)', main='')
 
@@ -516,18 +516,18 @@ writeLines(sprintf('The estimated decrease in reinfection rate from the VHX to B
                    ))
 
 writeLines(sprintf('The mean time to reinfection in the VHX study is estimated as %s years (95 CI %s-%s)',
-                   round((1/quantile(thetas_mod2$lambda,probs = .5))/360,1),
-                   round((1/quantile(thetas_mod2$lambda,probs = .975))/360,1),
-                   round((1/quantile(thetas_mod2$lambda,probs = .025))/360,1)
+                   round((1/quantile(thetas_mod2$lambda,probs = .5))/365,1),
+                   round((1/quantile(thetas_mod2$lambda,probs = .975))/365,1),
+                   round((1/quantile(thetas_mod2$lambda,probs = .025))/365,1)
                    ))
 
 writeLines(sprintf('The mean time to reinfection in the BPD study is estimated as %s years (95 CI %s-%s)',
                    round((1/quantile(thetas_mod2$lambda*thetas_mod2$rate_decrease,
-                                     probs = .5))/360,1),
+                                     probs = .5))/365,1),
                    round((1/quantile(thetas_mod2$lambda*thetas_mod2$rate_decrease,
-                                     probs = .975))/360,1),
+                                     probs = .975))/365,1),
                    round((1/quantile(thetas_mod2$lambda*thetas_mod2$rate_decrease,
-                                     probs = .025))/360,1)
+                                     probs = .025))/365,1)
                    ))
 ```
 
@@ -553,71 +553,127 @@ The simpler model (model 1) has higher predictive accuracy.
 ## Prior to Posterior plots
 
 ```{r prior_to_posterior1, fig.height=10}
-par(mfrow=c(4,3))
-# lambda: reinfection rate
+par(mfrow=c(4,4))
+# lambda: reinfection rate in VHX
 hist(thetas_mod1$lambda,freq = FALSE, main='',yaxt='n',
-     xlab='reinfection rate (lambda)', ylab = '', col='grey', breaks=10)
+     xlab=expression(lambda), ylab = '', col='grey', breaks=10)
 xs = quantile(thetas_mod1$lambda, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$lambda),lwd=3,col='blue')
 lines(xs, dgamma(x = xs,shape = Prior_params_M1$Hyper_lambda_shape, 
                  rate = Prior_params_M1$Hyper_lambda_rate),
-      col='red',lwd=3)
+      col='black',lwd=3)
+
+# delta: decrease in reinfection rate in BPD
+hist(thetas_mod1$rate_decrease,freq = FALSE, main='',yaxt='n',
+     xlab=expression(delta), ylab = '', col='grey', breaks=10)
+xs = quantile(thetas_mod1$rate_decrease, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$rate_decrease),lwd=3,col='blue')
+lines(xs, dnorm(x = xs,mean = Prior_params_M1$Hyper_mean_rate_decrease, 
+                sd = Prior_params_M1$Hyper_sd_rate_decrease),
+      col='black',lwd=3)
 
 # gamma: late relapse rate
 hist(thetas_mod1$gamma,freq = FALSE, main='',
-     xlab='Late relapse rate (gamma)', ylab = '', yaxt='n', 
+     xlab=expression(gamma), ylab = '', yaxt='n', 
      col='grey', breaks=10)
 xs = quantile(thetas_mod1$gamma, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$gamma),lwd=3,col='blue')
 lines(xs, dgamma(x = xs,shape = Prior_params_M1$Hyper_gamma_shape, 
                  rate = Prior_params_M1$Hyper_gamma_rate),
-      col='red',lwd=3)
+      col='black',lwd=3)
 
-# AS_shape (Weibull shape parameter for AS monotherapy)
-hist(thetas_mod1$AS_shape, freq = F, main='',
-     xlab= 'AS shape parameter', yaxt='n', ylab='', col='grey', breaks=10)
-xs = quantile(thetas_mod1$AS_shape, probs = seq(0,1,by = 0.001))
-lines(xs, dnorm(x = xs,mean = Prior_params_M1$Hyper_AS_shape_mean, 
-                sd = Prior_params_M1$Hyper_AS_shape_sd),
-      col='red',lwd=3)
+# lambda_RC:recrudescence rate
+hist(thetas_mod1$lambda_recrud,freq = FALSE, main='',
+     xlab=expression(lambda[RC]), ylab = '', yaxt='n', 
+     col='grey', breaks=10)
+xs = quantile(thetas_mod1$lambda_recrud, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$lambda_recrud),lwd=3,col='blue')
+lines(xs, dgamma(x = xs,shape = Prior_params_M1$Hyper_lambda_recrud_shape, 
+                 rate = Prior_params_M1$Hyper_lambda_recrud_rate),
+      col='black',lwd=3)
+
+# mixing weight: early versus late relapse
+hist(thetas_mod1$logit_EarlyL, freq = F, main='',
+     xlab= 'logit(q)', yaxt='n', ylab='', col='grey', breaks=10)
+xs = quantile(thetas_mod1$logit_EarlyL, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$logit_EarlyL),lwd=3,col='blue')
+lines(xs, dnorm(x = xs, mean = Prior_params_M1$Early_L_logit_mean, 
+                sd = Prior_params_M1$Early_L_logit_sd),
+      col='black',lwd=3)
 
 # AS_scale (Weibull scale parameter for AS monotherapy)
 hist(thetas_mod1$AS_scale, freq = F, main='',
-     xlab= 'AS scale parameter', yaxt='n', ylab='', col='grey', breaks=10)
+     xlab= expression(mu[AS]), yaxt='n', ylab='', col=drug_cols3['AS'], breaks=10)
 xs = quantile(thetas_mod1$AS_scale, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$AS_scale),lwd=3,col='blue')
 lines(xs, dnorm(x = xs, mean = Prior_params_M1$Hyper_AS_scale_mean, 
                 sd = Prior_params_M1$Hyper_AS_scale_sd),
-      col='red',lwd=3)
-
-# CQ_shape (Weibull shape parameter for CQ with or without PMQ)
-hist(thetas_mod1$CQ_shape,  freq = F, main='',
-     xlab= 'CQ shape parameter', yaxt='n', ylab='', col='grey', breaks=10)
-xs = quantile(thetas_mod1$CQ_shape, probs = seq(0,1,by = 0.001))
-lines(xs, dnorm(x = xs,mean = Prior_params_M1$Hyper_CQ_shape_mean, 
-                sd = Prior_params_M1$Hyper_CQ_shape_sd),
-      col='red',lwd=3)
+      col='black',lwd=3)
 
 # CQ_scale (Weibull scale parameter for CQ with or without PMQ)
 hist(thetas_mod1$CQ_scale, freq = F, main='',
-     xlab= 'CQ scale parameter', yaxt='n', ylab='', col='grey', breaks=10)
+     xlab= expression(mu[CQ]), yaxt='n', ylab='', col=drug_cols3['CHQ'], breaks=10)
 xs = quantile(thetas_mod1$CQ_scale, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$CQ_scale),lwd=3,col='blue')
 lines(xs, dnorm(x = xs,mean = Prior_params_M1$Hyper_CQ_scale_mean, 
                 sd = Prior_params_M1$Hyper_CQ_scale_sd),
-      col='red',lwd=3)
+      col='black',lwd=3)
 
-# Mean logit p (hierachical mean reinfection proportion)
+# AS_shape (Weibull shape parameter for AS monotherapy)
+hist(thetas_mod1$AS_shape, freq = F, main='',
+     xlab= expression(k[AS]), yaxt='n', ylab='', col=drug_cols3['AS'], breaks=10)
+xs = quantile(thetas_mod1$AS_shape, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$AS_shape),lwd=3,col='blue')
+lines(xs, dnorm(x = xs,mean = Prior_params_M1$Hyper_AS_shape_mean, 
+                sd = Prior_params_M1$Hyper_AS_shape_sd),
+      col='black',lwd=3)
+
+# CQ_shape (Weibull shape parameter for CQ with or without PMQ)
+hist(thetas_mod1$CQ_shape,  freq = F, main='',
+     xlab= expression(k[CQ]), yaxt='n', ylab='', col=drug_cols3['CHQ'], breaks=10)
+xs = quantile(thetas_mod1$CQ_shape, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$CQ_shape),lwd=3,col='blue')
+lines(xs, dnorm(x = xs,mean = Prior_params_M1$Hyper_CQ_shape_mean, 
+                sd = Prior_params_M1$Hyper_CQ_shape_sd),
+      col='black',lwd=3)
+
+# Mean logit p (hierachical mean reinfection proportion): no PMQ
 hist(thetas_mod1$logit_mean_p, freq = F, main='',
-     xlab= 'Population logit p', yaxt='n', ylab='', col='grey', breaks=10)
-xs = quantile(thetas_mod1$logit_p, probs = seq(0,1,by = 0.001))
+     xlab= expression(p[AS/CQ]^mu), yaxt='n', ylab='', col=drug_cols2['AS'], breaks=10)
+xs = quantile(thetas_mod1$logit_mean_p, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$logit_mean_p),lwd=3,col='blue')
 lines(xs, dnorm(x = xs, mean = Prior_params_M1$Hyper_logit_mean_p_mean, 
                 sd = Prior_params_M1$Hyper_logit_mean_p_sd),
-      col='red',lwd=3)
+      col='black',lwd=3)
 
-# logit_EarlyL relapse 
-hist(thetas_mod1$logit_EarlyL, freq = F, main='',
-     xlab= 'logit EarlyL', yaxt='n', ylab='', col='grey', breaks=10)
-xs = quantile(thetas_mod1$logit_EarlyL, probs = seq(0,1,by = 0.001))
-lines(xs, dnorm(x = xs, mean = Prior_params_M1$Early_L_logit_mean, 
-                sd = Prior_params_M1$Early_L_logit_sd),
-      col='red',lwd=3)
+
+# SD logit p (hierachical sd reinfection proportion): no PMQ
+hist(thetas_mod1$logit_sd_p, freq = F, main='',
+     xlab= expression(p[AS/CQ]^sigma), yaxt='n', ylab='', col=drug_cols2['AS'], breaks=10)
+xs = quantile(thetas_mod1$logit_sd_p, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$logit_sd_p),lwd=3,col='blue')
+lines(xs, dexp(x = xs, rate = Prior_params_M1$Hyper_logit_sd_p_lambda),
+      col='black',lwd=3)
+
+
+# Mean c1 AS : mixing weight for recrudescence following AS
+hist(thetas_mod1$logit_c1_AS, freq = F, main='',
+     xlab= 'c(AS)', yaxt='n', ylab='', col=drug_cols3['AS'], breaks=10)
+xs = quantile(thetas_mod1$logit_c1_AS, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$logit_c1_AS),lwd=3,col='blue')
+lines(xs, dnorm(x = xs, mean = Prior_params_M1$Hyper_logit_c1_mean,
+                sd = Prior_params_M1$Hyper_logit_c1_sd),
+      col='black',lwd=3)
+
+# Mean c1 CQ : mixing weight for recrudescence following CQ
+hist(thetas_mod1$logit_c1_CQ, freq = F, main='',
+     xlab= 'c(CQ)', yaxt='n', ylab='', col=drug_cols3['CHQ'], breaks=10)
+xs = quantile(thetas_mod1$logit_c1_CQ, probs = seq(0,1,by = 0.001))
+abline(v=mean(thetas_mod1$logit_c1_CQ),lwd=3,col='blue')
+lines(xs, dnorm(x = xs, mean = Prior_params_M1$Hyper_logit_c1_mean,
+                sd = Prior_params_M1$Hyper_logit_c1_sd),
+      col='black',lwd=3)
+
 ```
 
 
@@ -767,6 +823,82 @@ abline(v=mean(thetas_mod2$logit_c1_CQ_PMQ),lwd=3,col='blue')
 lines(xs, dnorm(x = xs, mean = Prior_params_M2$Hyper_logit_c1_mean,
                 sd = Prior_params_M2$Hyper_logit_c1_sd),
       col='black',lwd=3)
+```
+
+### Posterior summaries of parameters
+
+Model 2 posterior median values with 95% CIs:
+```{r}
+writeLines(sprintf('lambda: %s [%s;%s]', round(median(thetas_mod2$lambda),5),
+                   round(quantile(thetas_mod2$lambda, 0.025),5),
+                   round(quantile(thetas_mod2$lambda, 0.975),5)))
+writeLines(sprintf('delta: %s [%s;%s]', round(median(thetas_mod2$rate_decrease),2),
+                   round(quantile(thetas_mod2$rate_decrease, 0.025),2),
+                   round(quantile(thetas_mod2$rate_decrease, 0.975),2)))
+
+writeLines(sprintf('gamma: %s [%s;%s]', round(median(thetas_mod2$gamma),4),
+                   round(quantile(thetas_mod2$gamma, 0.025),4),
+                   round(quantile(thetas_mod2$gamma, 0.975),4)))
+
+writeLines(sprintf('lambda_RC: %s [%s;%s]', round(median(thetas_mod2$lambda_recrud),3),
+                   round(quantile(thetas_mod2$lambda_recrud, 0.025),3),
+                   round(quantile(thetas_mod2$lambda_recrud, 0.975),3)))
+
+writeLines(sprintf('logit(q): %s [%s;%s]', round(median(thetas_mod2$logit_EarlyL),2),
+                   round(quantile(thetas_mod2$logit_EarlyL, 0.025),2),
+                   round(quantile(thetas_mod2$logit_EarlyL, 0.975),2)))
+
+writeLines(sprintf('mu_AS: %s [%s;%s]', round(median(thetas_mod2$AS_scale),0),
+                   round(quantile(thetas_mod2$AS_scale, 0.025),0),
+                   round(quantile(thetas_mod2$AS_scale, 0.975),0)))
+
+writeLines(sprintf('mu_CQ: %s [%s;%s]', round(median(thetas_mod2$CQ_scale),0),
+                   round(quantile(thetas_mod2$CQ_scale, 0.025),0),
+                   round(quantile(thetas_mod2$CQ_scale, 0.975),0)))
+
+writeLines(sprintf('k_AS: %s [%s;%s]', round(median(thetas_mod2$AS_shape),1),
+                   round(quantile(thetas_mod2$AS_shape, 0.025),1),
+                   round(quantile(thetas_mod2$AS_shape, 0.975),1)))
+
+writeLines(sprintf('k_CQ: %s [%s;%s]', round(median(thetas_mod2$CQ_shape),1),
+                   round(quantile(thetas_mod2$CQ_shape, 0.025),1),
+                   round(quantile(thetas_mod2$CQ_shape, 0.975),1)))
+
+writeLines(sprintf('p_n: %s [%s;%s]', round(median(apply(thetas_mod2$logit_p,1,median)),1),
+                   round(median(apply(thetas_mod2$logit_p,1,quantile, probs=0)),1),
+                   round(median(apply(thetas_mod2$logit_p,1,quantile, probs=1)),1)))
+
+writeLines(sprintf('pPMQ_n: %s [%s;%s]', round(median(apply(thetas_mod2$logit_p_PMQ,1,median)),1),
+                   round(median(apply(thetas_mod2$logit_p_PMQ,1,quantile, probs=0)),1),
+                   round(median(apply(thetas_mod2$logit_p_PMQ,1,quantile, probs=1)),1)))
+
+writeLines(sprintf('p^mu_AS/CQ: %s [%s;%s]', round(median(thetas_mod2$logit_mean_p),1),
+                   round(quantile(thetas_mod2$logit_mean_p, 0.025),1),
+                   round(quantile(thetas_mod2$logit_mean_p, 0.975),1)))
+
+writeLines(sprintf('p^mu_PMQ: %s [%s;%s]', round(median(thetas_mod2$logit_mean_p_PMQ),1),
+                   round(quantile(thetas_mod2$logit_mean_p_PMQ, 0.025),1),
+                   round(quantile(thetas_mod2$logit_mean_p_PMQ, 0.975),1)))
+
+writeLines(sprintf('p^sigma_AS/CQ: %s [%s;%s]', round(median(thetas_mod2$logit_sd_p),1),
+                   round(quantile(thetas_mod2$logit_sd_p, 0.025),1),
+                   round(quantile(thetas_mod2$logit_sd_p, 0.975),1)))
+
+writeLines(sprintf('p^sigma_PMQ: %s [%s;%s]', round(median(thetas_mod2$logit_sd_p_PMQ),1),
+                   round(quantile(thetas_mod2$logit_sd_p_PMQ, 0.025),1),
+                   round(quantile(thetas_mod2$logit_sd_p_PMQ, 0.975),1)))
+
+writeLines(sprintf('c1_AS: %s [%s;%s]', round(median(thetas_mod2$logit_c1_AS),1),
+                   round(quantile(thetas_mod2$logit_c1_AS, 0.025),1),
+                   round(quantile(thetas_mod2$logit_c1_AS, 0.975),1)))
+
+writeLines(sprintf('c1_CQ: %s [%s;%s]', round(median(thetas_mod2$logit_c1_CQ),1),
+                   round(quantile(thetas_mod2$logit_c1_CQ, 0.025),1),
+                   round(quantile(thetas_mod2$logit_c1_CQ, 0.975),1)))
+
+writeLines(sprintf('c1_PMQ: %s [%s;%s]', round(median(thetas_mod2$logit_c1_CQ_PMQ),1),
+                   round(quantile(thetas_mod2$logit_c1_CQ_PMQ, 0.025),1),
+                   round(quantile(thetas_mod2$logit_c1_CQ_PMQ, 0.975),1)))
 ```
 
 
@@ -1220,31 +1352,53 @@ Some rough calculations to make sure we're not completely off track with the mod
 ```{r, echo=FALSE}
 #Follow up time in PMQ individuals
 FU_pmq = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'])/365
+FU_pmqVHX = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'&
+                                                   Combined_Time_Data$Study_Period==1])/365
+FU_pmqBPD = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'&
+                                                   Combined_Time_Data$Study_Period==2])/365
+FU_AS = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='AS'])/365
+FU_CQ = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ'])/365
 FU_Nopmq = sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num!='CHQ/PMQ'])/365
 
 NumEps_pmq = sum(Combined_Time_Data$arm_num=='CHQ/PMQ' & !Combined_Time_Data$Censored)
 NumEps_Nopmq = sum(Combined_Time_Data$arm_num!='CHQ/PMQ' & !Combined_Time_Data$Censored)
 
+# We sum over the observed recurrences
+indAS = which(Mod2_ThetaEstimates$arm_num=='AS' & !Mod2_ThetaEstimates$Censored)
+indCQ = which(Mod2_ThetaEstimates$arm_num=='CHQ' & !Mod2_ThetaEstimates$Censored)
+indPMQ = which(Mod2_ThetaEstimates$arm_num=='CHQ/PMQ' & !Mod2_ThetaEstimates$Censored)
+indPMQ_VHX = which(Mod2_ThetaEstimates$arm_num=='CHQ/PMQ' & 
+                     !Mod2_ThetaEstimates$Censored &
+                     Mod2_ThetaEstimates$Study_Period==1)
+indPMQ_BPD = which(Mod2_ThetaEstimates$arm_num=='CHQ/PMQ' & 
+                     !Mod2_ThetaEstimates$Censored &
+                     Mod2_ThetaEstimates$Study_Period==2)
+
 writeLines(paste('No radical cure: episodes per year: ',round(NumEps_Nopmq/FU_Nopmq,2)))
 writeLines(paste('Radical cure: episodes per year: ',round(NumEps_pmq/FU_pmq,2)))
+
+writeLines(sprintf('AS patients had a total follow-up of %s years and %s observed recurrences',round(FU_AS), length(indAS)))
+writeLines(sprintf('CQ patients had a total follow-up of %s years and %s observed recurrences',round(FU_CQ), length(indCQ)))
+writeLines(sprintf('PMQ+ patients had a total follow-up of %s years and %s observed recurrences',round(FU_pmq), length(indPMQ)))
+writeLines(sprintf('PMQ+ patients in VHX had a total follow-up of %s years and %s observed recurrences',
+                   round(FU_pmqVHX), length(indPMQ_VHX)))
+writeLines(sprintf('PMQ+ patients in BPD had a total follow-up of %s years and %s observed recurrences',
+                   round(FU_pmqBPD),length(indPMQ_BPD)))
 ```
 
 
 We look at weighted averages of relapses, recrudescences and reinfections.
 We pick 500 random draws from the posterior to calculate credible intervals.
 ```{r,echo=FALSE}
-# We sum over the observed recurrences
-indAS = which(Mod2_ThetaEstimates$arm_num=='AS' & !Mod2_ThetaEstimates$Censored)
-indCQ = which(Mod2_ThetaEstimates$arm_num=='CHQ' & !Mod2_ThetaEstimates$Censored)
-indPMQ = which(Mod2_ThetaEstimates$arm_num=='CHQ/PMQ' & !Mod2_ThetaEstimates$Censored)
-
 labels = extract(mod2_Fit, 'prob_labels')$prob_labels
 
 K = 500
-res_estimates = as.data.frame(array(dim = c(K, 9)))
+res_estimates = as.data.frame(array(dim = c(K, 15)))
 colnames(res_estimates) = c('AS_L','AS_I','AS_C',
                             'CQ_L','CQ_I','CQ_C',
-                            'PQ_L','PQ_I','PQ_C')
+                            'PQ_L','PQ_I','PQ_C',
+                            'PQ_VHX_L','PQ_VHX_I','PQ_VHX_C',
+                            'PQ_BPD_L','PQ_BPD_I','PQ_BPD_C')
 Nsamples = length(thetas_mod2$lambda)
 for(i in 1:K){
   j = sample(1:Nsamples,1)
@@ -1259,8 +1413,17 @@ for(i in 1:K){
   res_estimates$PQ_L[i] = sum(labels[j,indPMQ,2]+labels[j,indPMQ,3])/length(indPMQ)
   res_estimates$PQ_I[i] = sum(labels[j,indPMQ,1])/length(indPMQ)
   res_estimates$PQ_C[i] = sum(labels[j,indPMQ,4])/length(indPMQ)
+  
+  res_estimates$PQ_VHX_L[i] =
+    sum(labels[j,indPMQ_VHX,2]+labels[j,indPMQ_VHX,3])/length(indPMQ_VHX)
+  res_estimates$PQ_VHX_I[i] = sum(labels[j,indPMQ_VHX,1])/length(indPMQ_VHX)
+  res_estimates$PQ_VHX_C[i] = sum(labels[j,indPMQ_VHX,4])/length(indPMQ_VHX)
+  
+  res_estimates$PQ_BPD_L[i] =
+    sum(labels[j,indPMQ_BPD,2]+labels[j,indPMQ_BPD,3])/length(indPMQ_BPD)
+  res_estimates$PQ_BPD_I[i] = sum(labels[j,indPMQ_BPD,1])/length(indPMQ_BPD)
+  res_estimates$PQ_BPD_C[i] = sum(labels[j,indPMQ_BPD,4])/length(indPMQ_BPD)
 }
-
 ```
 
 
@@ -1269,17 +1432,17 @@ The labels on the observed recurrences along with 95% credible intervals:
 ```{r MeanEstimates, echo=FALSE}
 #************ AS monotherapy **************
 writeLines(paste('Relapses are approximately ',
-                 round(100*mean(res_estimates$AS_L),2),'(', 
+                 round(100*mean(res_estimates$AS_L),1),'(', 
                  round(100*quantile(res_estimates$AS_L, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$AS_L, probs = 0.975),1),')',
                  '% of recurrences after AS'))
 writeLines(paste('Recrudescences are approximately ',
-                 round(100*mean(res_estimates$AS_C),2),'(', 
+                 round(100*mean(res_estimates$AS_C),1),'(', 
                  round(100*quantile(res_estimates$AS_C, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$AS_C, probs = 0.975),1),')',
                  '% of recurrences after AS'))
 writeLines(paste('Reinfections are approximately ',
-                 round(100*mean(res_estimates$AS_I),2),'(', 
+                 round(100*mean(res_estimates$AS_I),1),'(', 
                  round(100*quantile(res_estimates$AS_I, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$AS_I, probs = 0.975),1),')',
                  '% of recurrences after AS'))
@@ -1292,12 +1455,12 @@ writeLines(paste('Relapses are approximately ',
                  round(100*quantile(res_estimates$CQ_L, probs = 0.975),1),')',
                  '% of recurrences after CQ'))
 writeLines(paste('Recrudescences are approximately ',
-                 round(100*mean(res_estimates$CQ_C),2),'(', 
+                 round(100*mean(res_estimates$CQ_C),1),'(', 
                  round(100*quantile(res_estimates$CQ_C, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$CQ_C, probs = 0.975),1),')',
                  '% of recurrences after CQ'))
 writeLines(paste('Reinfections are approximately ',
-                 round(100*mean(res_estimates$CQ_I),2),'(', 
+                 round(100*mean(res_estimates$CQ_I),1),'(', 
                  round(100*quantile(res_estimates$CQ_I, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$CQ_I, probs = 0.975),1),')',
                  '% of recurrences after CQ'))
@@ -1314,9 +1477,43 @@ writeLines(paste('Recrudescences are approximately ',
                  round(100*quantile(res_estimates$PQ_C, probs = 0.975),2),')',
                  '% of recurrences after PMQ+'))
 writeLines(paste('Reinfections are approximately ',
-                 round(100*mean(res_estimates$PQ_I),2),'(', 
+                 round(100*mean(res_estimates$PQ_I),1),'(', 
                  round(100*quantile(res_estimates$PQ_I, probs = 0.025),1),'-',
                  round(100*quantile(res_estimates$PQ_I, probs = 0.975),1),')',
+                 '% of recurrences after PMQ+'))
+
+#******** PMQ+ VHX ***************
+writeLines(paste('\nVHX: Relapses are approximately ',
+                 round(100*mean(res_estimates$PQ_VHX_L),1),'(', 
+                 round(100*quantile(res_estimates$PQ_VHX_L, probs = 0.025),1),'-',
+                 round(100*quantile(res_estimates$PQ_VHX_L, probs = 0.975),1),')',
+                 '% of recurrences after PMQ+'))
+writeLines(paste('VHX: Recrudescences are approximately ',
+                 round(100*mean(res_estimates$PQ_VHX_C),2),'(', 
+                 round(100*quantile(res_estimates$PQ_VHX_C, probs = 0.025),2),'-',
+                 round(100*quantile(res_estimates$PQ_VHX_C, probs = 0.975),2),')',
+                 '% of recurrences after PMQ+'))
+writeLines(paste('VHX: Reinfections are approximately ',
+                 round(100*mean(res_estimates$PQ_VHX_I),1),'(', 
+                 round(100*quantile(res_estimates$PQ_VHX_I, probs = 0.025),1),'-',
+                 round(100*quantile(res_estimates$PQ_VHX_I, probs = 0.975),1),')',
+                 '% of recurrences after PMQ+'))
+
+#******** PMQ+ BPD ***************
+writeLines(paste('BPD: Relapses are approximately ',
+                 round(100*mean(res_estimates$PQ_BPD_L),1),'(', 
+                 round(100*quantile(res_estimates$PQ_BPD_L, probs = 0.025),1),'-',
+                 round(100*quantile(res_estimates$PQ_BPD_L, probs = 0.975),1),')',
+                 '% of recurrences after PMQ+'))
+writeLines(paste('BPD: Recrudescences are approximately ',
+                 round(100*mean(res_estimates$PQ_BPD_C),2),'(', 
+                 round(100*quantile(res_estimates$PQ_BPD_C, probs = 0.025),2),'-',
+                 round(100*quantile(res_estimates$PQ_BPD_C, probs = 0.975),2),')',
+                 '% of recurrences after PMQ+'))
+writeLines(paste('BPD: Reinfections are approximately ',
+                 round(100*mean(res_estimates$PQ_BPD_I),1),'(', 
+                 round(100*quantile(res_estimates$PQ_BPD_I, probs = 0.025),1),'-',
+                 round(100*quantile(res_estimates$PQ_BPD_I, probs = 0.975),1),')',
                  '% of recurrences after PMQ+'))
 ```
 

@@ -432,7 +432,7 @@ Set up parameters for the MCMC runs.
 # remove this once models 1-2 conform with augmented data (including Censored == -1)
 Combined_Time_Data = filter(Combined_Time_Data, Censored > -1)
 # Choose as many chains as available cores
-Chains = 6
+Chains = 8
 options(mc.cores = Chains)
 IT = 10^5
 WarmUp = .5*IT
@@ -702,7 +702,7 @@ round(100*quantile(inv.logit(thetas_mod2$logit_mean_p), probs = c(0.025,0.5,0.97
 
 ```
 ##  2.5%   50% 97.5% 
-##     7    12    16
+##     6    10    16
 ```
 
 ```r
@@ -727,7 +727,7 @@ round(quantile(inv.logit(thetas_mod2$logit_sd_p), probs = c(0.025,0.5,0.975)),2)
 
 ```
 ##  2.5%   50% 97.5% 
-##  0.83  0.91  0.96
+##  0.84  0.93  0.97
 ```
 
 ```r
@@ -744,7 +744,7 @@ quantile(inv.logit(thetas_mod2$logit_sd_p_PMQ), probs = c(0.025,0.975),2)
 
 ```
 ##      2.5%     97.5% 
-## 0.5051648 0.6335034
+## 0.5131797 0.6582314
 ```
 
 ```r
@@ -800,6 +800,47 @@ axis(1, at = seq(0, 420, by= 60), labels = seq(0, 420, by=60)/30)
 ![](TimingModelStan_files/figure-html/plotmodel2_labels-1.png)<!-- -->
 
 
+```r
+writeLines(sprintf('The estimated decrease in reinfection rate from the VHX to BPD studies is %s%% (95 CI %s%%-%s%%)',
+                   round(100-100*quantile(thetas_mod2$rate_decrease,probs = .5)),
+                   round(100-100*quantile(thetas_mod2$rate_decrease,probs = .975)),
+                   round(100-100*quantile(thetas_mod2$rate_decrease,probs = 0.025))
+                   ))
+```
+
+```
+## The estimated decrease in reinfection rate from the VHX to BPD studies is 53% (95 CI 37%-64%)
+```
+
+```r
+writeLines(sprintf('The mean time to reinfection in the VHX study is estimated as %s years (95 CI %s-%s)',
+                   round((1/quantile(thetas_mod2$lambda,probs = .5))/360,1),
+                   round((1/quantile(thetas_mod2$lambda,probs = .975))/360,1),
+                   round((1/quantile(thetas_mod2$lambda,probs = .025))/360,1)
+                   ))
+```
+
+```
+## The mean time to reinfection in the VHX study is estimated as 2.9 years (95 CI 2.4-3.6)
+```
+
+```r
+writeLines(sprintf('The mean time to reinfection in the BPD study is estimated as %s years (95 CI %s-%s)',
+                   round((1/quantile(thetas_mod2$lambda*thetas_mod2$rate_decrease,
+                                     probs = .5))/360,1),
+                   round((1/quantile(thetas_mod2$lambda*thetas_mod2$rate_decrease,
+                                     probs = .975))/360,1),
+                   round((1/quantile(thetas_mod2$lambda*thetas_mod2$rate_decrease,
+                                     probs = .025))/360,1)
+                   ))
+```
+
+```
+## The mean time to reinfection in the BPD study is estimated as 6.2 years (95 CI 5.1-7.7)
+```
+
+
+
 # Model Evaluation
 
 ## Model Comparison
@@ -841,7 +882,7 @@ loo::compare(loo_1,loo_2)
 
 ```
 ## elpd_diff        se 
-##      -3.3       3.4
+##      -4.0       3.3
 ```
 
 The simpler model (model 1) has higher predictive accuracy.
@@ -908,22 +949,6 @@ xs = quantile(thetas_mod1$logit_p, probs = seq(0,1,by = 0.001))
 lines(xs, dnorm(x = xs, mean = Prior_params_M1$Hyper_logit_mean_p_mean, 
                 sd = Prior_params_M1$Hyper_logit_mean_p_sd),
       col='red',lwd=3)
-
-# # Mean c1 AS (hierachical mean early relapse)
-# hist(thetas_mod1$logit_c1_AS, xlim = c(-5,-2), freq = F, main='',
-#      xlab= 'Population logit c1: AS', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-#                               mean = Prior_params_M1$Hyper_logit_c1_mean, 
-#                               sd = Prior_params_M1$Hyper_logit_c1_sd),
-#       col='red',lwd=3)
-# 
-# # Mean c1: CQ (hierachical mean early relapse)
-# hist(thetas_mod1$logit_c1_CQ,  xlim = c(-5,-2), freq = F, main='',
-#      xlab= 'Population logit c1: CQ', yaxt='n', ylab='', col='grey', breaks=10)
-# lines(seq(-5,5,by=.01), dnorm(x = seq(-5,5,by=.01),
-#                               mean = Prior_params_M1$Hyper_logit_c1_mean, 
-#                               sd = Prior_params_M1$Hyper_logit_c1_sd),
-#       col='red',lwd=3)
 
 # logit_EarlyL relapse 
 hist(thetas_mod1$logit_EarlyL, freq = F, main='',
@@ -1575,31 +1600,31 @@ The labels on the observed recurrences along with 95% credible intervals:
 
 
 ```
-## Relapses are approximately  96.41 ( 95 - 97.6 ) % of recurrences after AS
+## Relapses are approximately  96 ( 94.4 - 97.3 ) % of recurrences after AS
 ```
 
 ```
-## Recrudescences are approximately  0.29 ( 0.2 - 0.4 ) % of recurrences after AS
+## Recrudescences are approximately  0.3 ( 0.2 - 0.5 ) % of recurrences after AS
 ```
 
 ```
-## Reinfections are approximately  3.3 ( 2.1 - 4.7 ) % of recurrences after AS
+## Reinfections are approximately  3.72 ( 2.4 - 5.3 ) % of recurrences after AS
 ```
 
 ```
-## Relapses are approximately  95.3 ( 93.3 - 97 ) % of recurrences after CQ
+## Relapses are approximately  95 ( 93 - 96.6 ) % of recurrences after CQ
 ```
 
 ```
-## Recrudescences are approximately  0.2 ( 0.1 - 0.3 ) % of recurrences after CQ
+## Recrudescences are approximately  0.22 ( 0.1 - 0.4 ) % of recurrences after CQ
 ```
 
 ```
-## Reinfections are approximately  4.51 ( 2.9 - 6.6 ) % of recurrences after CQ
+## Reinfections are approximately  4.82 ( 3.2 - 6.8 ) % of recurrences after CQ
 ```
 
 ```
-## Relapses are approximately  12.4 ( 9.6 - 15.5 ) % of recurrences after PMQ+
+## Relapses are approximately  12.2 ( 8.8 - 15.5 ) % of recurrences after PMQ+
 ```
 
 ```
@@ -1607,7 +1632,7 @@ The labels on the observed recurrences along with 95% credible intervals:
 ```
 
 ```
-## Reinfections are approximately  87.57 ( 84.5 - 90.4 ) % of recurrences after PMQ+
+## Reinfections are approximately  87.81 ( 84.5 - 91.2 ) % of recurrences after PMQ+
 ```
 
 
@@ -1617,5 +1642,5 @@ toc()
 ```
 
 ```
-## 55.948 sec elapsed
+## 85.153 sec elapsed
 ```
