@@ -1,7 +1,11 @@
 ############################################################################
 # This script defines a function that returns probablistic phasing combinations 
-# compatible with the observed data
+# compatible with the observed data (hap_combinations_probabilistic); a function
+# that returns all possible phasing combinations compatible with the observed data 
+# (hap_combinations_deterministhap_combinations_probabilisticic) and a function that returns NAs if the data are 
+# missing (hap_combinations_missing_data)
 # 
+# hap_combinations_probabilistic: 
 # When a polyclonal infection is compatible with more than Max_Hap_genotypes, 
 # we avoid using the deterministic approach, i.e. combinations() followed by scores, 
 # where score = T for a combination of haploid genotypes (phasing) that is 
@@ -32,29 +36,28 @@
 # but is not efficient since many combinations are not compatible. 
 #
 # Future iterations of the model with likely adopt the probablistic approach.
-# Could also move deterministic process here so all phasing in one place.
 ############################################################################
 
-Hap_combinations_probabilistic = function(Max_Hap_comb, cn = cn[inf], ynt, Y){
-
+hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
+  
   names(Y) = colnames(ynt) # S.t. return combinations have names
   diff_unique = c(1,1,1) # Set a trio of non-zero differences s.t. while loop starts
   num_unique = 0 # Number of initial combinations 
   nrep = 1000 # We don't know how many are needed to capture most unique combinations, 
   # so...
-  # either repeat until the last three nrep increases resulted in no change, or if number
-  # unique exceeds Max_Hap_comb
+  # either repeat until the last three nrep increases resulted in no change, 
+  # or if number unique exceeds Max_Hap_comb
   while(!all(diff_unique[1:3] %in% 0) & num_unique < Max_Hap_comb){ 
     
     nrep_comp = lapply(1:nrep, function(i){sapply(Y, function(as){
       num_obs = length(as) # Number of alleles at m-th marker
-      if(num_obs > 1 & num_obs < cn){ # if het but not saturated, bootstrap...
-        extra = sample(as, cn - num_obs, replace = T) 
+      if(num_obs > 1 & num_obs < cnt){ # if het but not saturated, bootstrap...
+        extra = sample(as, cnt - num_obs, replace = T) 
         return(c(as, extra))}
-      if(num_obs == cn){ # if het and saturated, permute
-        return(sample(as, cn, replace = F))}
+      if(num_obs == cnt){ # if het and saturated, permute
+        return(sample(as, cnt, replace = F))}
       if(num_obs == 1){ # Otherwise, return only value observed
-        return(rep(as,cn))}
+        return(rep(as,cnt))}
     })})
     
     # Second, remove duplicates (can take a while for a long list)
@@ -64,9 +67,49 @@ Hap_combinations_probabilistic = function(Max_Hap_comb, cn = cn[inf], ynt, Y){
     diff_unique = c(length(unique_comp) - num_unique, diff_unique)
     if(diff_unique[1] < 0){next()} # If the current attempt is worse than before, try again
     num_unique = length(unique_comp) # update number that are unique
-    nrep = nrep + 500 # increase number of comp to try
+    nrep = nrep + 1000 # increase number of comp to try
+    print(c(num_unique, nrep))
   }
   return(unique_comp)
 }
 
+
+hap_combinations_deterministic = function(Hnt, cnt, ynt, Y, MSs, M){
+  
+  # Indices of all combinations of nrow(Hnt) choose cn[inf] haploid genotypes for the tth infection, inf 
+  Vt_Hnt_inds = combinations(nrow(Hnt), r = cnt, v = 1:nrow(Hnt))  
+  
+  # Check each combination to see if compatible with ynt 
+  # (this is a bit like an ABC step with epsilon = 0)
+  scores = apply(Vt_Hnt_inds, 1, function(x, Y){ 
+    X = alply(Hnt[x,,drop=FALSE], 2, function(x){sort(unique(x[!is.na(x)]))}) 
+    score = identical(X,Y) # Test that they are the same
+    return(score)
+  }, Y)
+  
+  # Extract only those indices that are compatible 
+  Vt_Hnt_inds_comp = Vt_Hnt_inds[scores,,drop = FALSE]
+  
+  # Convert to character since used to index 
+  Hnt_chr = matrix(sapply(Hnt, as.character), ncol = M)
+  colnames(Hnt_chr) = MSs
+  
+  # Return all possible compatible combinations of haploid genotypes as a list (apply returns array)
+  all_comp = alply(Vt_Hnt_inds_comp,1,function(i){Hnt_chr[i,,drop = F]})
+  
+  return(all_comp)
+}
+
+
+hap_combinations_missing_data = function(ynt, MSs, M){
+  
+  # Convert to character since used to index 
+  Hnt_chr = matrix(sapply(ynt, as.character), ncol = M)
+  colnames(Hnt_chr) = MSs
+  
+  # Return data as a list
+  only_comp = list(Hnt_chr)
+  
+  return(only_comp)
+}
 
