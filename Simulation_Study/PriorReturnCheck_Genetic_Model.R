@@ -20,9 +20,10 @@ source('../Genetic_Model/iGraph_functions.R')
 source('../Genetic_Model/Likelihood_function.R')
 source('../Genetic_Model/Data_functions.R')
 source('../Genetic_Model/test_Rn_compatible.R')
+source('../Genetic_Model/hap_combinations.R')
 source('BuildSimData.R')
 
-RUN_MODELS = F # Set to true to run model
+RUN_MODELS = T # Set to true to run model
 
 # Specify but irrelevant
 M = 6 # Number of markers
@@ -46,6 +47,7 @@ settings$COI_pattern <- apply(settings, 1, function(x){paste(x[1:3], collapse = 
 jobs = nrow(settings) # Number of simulations jobs
 
 if(RUN_MODELS){
+  
   thetas_all = foreach(job = 1:jobs, .combine = rbind, # iterate over jobs parameter settings
                        .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
   ) %do% { # parallisation happening inside the function
@@ -59,14 +61,12 @@ if(RUN_MODELS){
       COIs = c(settings$COI_1[job], settings$COI_2[job],  settings$COI_3[job])
     }
     
-    sim_output = BuildSimData(Tn,COIs, M, N, N_alleles, relatedness) # Simulated data 
+    sim_output = BuildSimData(Tn, COIs, M, N, N_alleles, relatedness) # Simulated data 
     MSnames = paste0('MS',1:M,sep = '') # Reconstruct microsatellite names
     sim_output$MS_data_sim[,MSnames] = NA # Replace all data with NA 
-    ID_ind = sim_output$MS_data_sim$ID == unique(sim_output$MS_data_sim$ID)[1]
-    MSdata = sim_output$MS_data_sim[ID_ind,] # Keep one example only
     
     # Run the model on the data using default uniform prior over states
-    TH = post_prob_CLI(MSdata, Fs = sim_output$FS)
+    TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, Fs = sim_output$FS)
     TH$COI_pattern = settings$COI_pattern[job]
     
     TH$Episode_ID = rownames(TH) # Record the episode ID
@@ -78,6 +78,7 @@ if(RUN_MODELS){
   # Save 
   save(thetas_all, file ='SimulationOutputs/Sim_Genetic_Results/PriorReturnCheck.RData')
 }
+
 
 # Not that recrudescence has zero probability when diversity excceds
 # that of previous infection, hence some COI patterns have zero probability
