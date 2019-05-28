@@ -34,6 +34,7 @@ source('../Genetic_Model/Likelihood_function.R')
 source('../Genetic_Model/Data_functions.R')
 source('../Genetic_Model/test_Rn_compatible.R')
 source('../Genetic_Model/post_prob_CLI.R')
+source('../Genetic_Model/hap_combinations.R')
 source('BuildSimData.R')
 ```
 
@@ -295,22 +296,6 @@ for(relationship in c("Sibling", "Stranger")){ # Evidence of IBS is always one f
 }
 ```
 
-```{r}
-# Aside, what happens when data are NAs?
-# load data
-load(sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
-             cardinality, settings$M[job], settings$COI_pattern[job], relationship))
-
-sim_output$MS_data_sim[,3:5] = NA # Can now accept NA data thus return prior   
-
-######################################################################
-# Run the model on the data using default uniform prior over states
-######################################################################
-TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, cores = 7, Fs = sim_output$FS, verbose = F)
-TH$setting = job # Add setting number for plotting
-TH # return results
-```
-
 
 
 ```{r}
@@ -327,13 +312,10 @@ if(RUN_MODELS){
         load(sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
                      cardinality, settings$M[job], settings$COI_pattern[job], relationship))
         
-        MSnames = paste0('MS',1:settings$M[job],sep = '') # Reconstruct microsatellite names
-        sim_output$MS_data_sim[,MSnames] = NA # Can now accept NA data thus return prior   
-        
         ######################################################################
         # Run the model on the data using default uniform prior over states
         ######################################################################
-        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, cores = 7, Fs = sim_output$FS, verbose = F)
+        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, Fs = sim_output$FS) 
         TH$setting = job # Add setting number for plotting
         TH # return results
         
