@@ -19,20 +19,20 @@ post_prob_CLI = function(MSdata, # MS data
                          Max_Eps = 3, # Limit on number of episodes (due to test_Rn_compatible) 
                          Max_Tot_Vtx = 6, # Limit on number of vertices = cumulative COI
                          Max_Hap_genotypes = 50, # This is a limit on deterministic phasing 
-                         Max_Hap_comb = 5000, # Ideally exceeds that of an episide whose hap count < Max_Hap_genotypes
+                         Max_Hap_comb = 1000, # Number of probablistically phased graphs considered
                          UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
                          verbose = FALSE){ # Set to true to return all messages
   
+
   
-  source('../Genetic_Model/Hap_combinations_probabilistic.R')
-  
-  # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  # # Simulate code for internal checks. Comment when not doing internal checks
-  # # Ultimate goal: integrate into unit test
+  #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  # Simulate code for internal checks. Comment when not doing internal checks
+  # Ultimate goal: integrate into unit test
   # set.seed(1)
-  # sim_output = BuildSimData(COIs = c(3,1), # COI from settings
+  # sim_output = BuildSimData(Tn = 3, 
+  #                           COIs = c(1,2,3), # COI from settings
   #                           M = 6, # Number of markers from settings
-  #                           N = 2, # Number of individuals
+  #                           N = 1, # Number of individuals
   #                           N_alleles = 4,
   #                           relatedness = 'Clone')
   # MSdata = sim_output$MS_data_sim # MS data
@@ -40,10 +40,10 @@ post_prob_CLI = function(MSdata, # MS data
   # p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3) # Uniform prior over C, L, I
   # alpha = 0 # Additive inbreeding constant
   # cores = 4 # Number of cores for parallel computation
-  # Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible) 
+  # Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
   # Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
-  # Max_Hap_genotypes = 50 # Need to discuss this with Aimee: hack insert
-  # Max_Hap_comb = 5000 
+  # Max_Hap_genotypes = 10 # Need to discuss this with Aimee: hack insert
+  # Max_Hap_comb = 10
   # UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
   # verbose = FALSE
   # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -293,8 +293,7 @@ post_prob_CLI = function(MSdata, # MS data
                                      'matrixStats','Matrix','tictoc'), 
                        .export = c('Log_Pr_yn_Gab','Log_Pr_yn_Gnb_unnormalised',
                                    'test_Rn_compatible','test_cln_incompatible')
-  ) %dopar%
-  {
+  ) %dopar% {
     
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
@@ -319,7 +318,8 @@ post_prob_CLI = function(MSdata, # MS data
     #==========================================================================          
     # Generate all possible vertex haploid genotype label mappings of data onto a graph 
     #==========================================================================
-    Hap_combinations = vector('list', length = 0) # Store of haploid genotype combinations 
+    Hap_combinations = vector('list', length = length(infections)) # Store of haploid genotype combinations 
+    names(Hap_combinations) = infections
     
     for(inf in infections){
       
@@ -333,38 +333,18 @@ post_prob_CLI = function(MSdata, # MS data
       # All haploid genotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
       Hnt = expand.grid((lapply(ynt, unique)))
       total_haps_count = nrow(Hnt)
-      
-      # This line allows the model to process entirely NA data 
-      if(total_haps_count < cn[inf]){Hnt = ynt} 
-      
+
       # If very many compatible haploid genotypes, adopt probablistic phasing approach
       if(total_haps_count > Max_Hap_genotypes){ 
-        Hap_combinations[[inf]] = Hap_combinations_probabilistic(Max_Hap_comb, cn[inf], ynt, Y)}
+        Hap_combinations[[inf]] = hap_combinations_probabilistic(Max_Hap_comb, cnt = cn[inf], ynt, Y)}
       
       # If moderate haploid genotypes, adopt deterministic phasing approach
-      if(total_haps_count >= cn[inf] & total_haps_count <= Max_Hap_genotypes){  
-        
-        # Indices of all combinations of nrow(Hnt) choose cn[inf] haploid genotypes for the tth infection, inf 
-        Vt_Hnt_inds = combinations(nrow(Hnt), r = cn[inf], v = 1:nrow(Hnt))  
-        
-        # Check each combination to see if compatible with ynt 
-        # (this is a bit like an ABC step with epsilon = 0)
-        scores = apply(Vt_Hnt_inds, 1, function(x, Y){ 
-          X = alply(Hnt[x,,drop=FALSE], 2, function(x){sort(unique(x[!is.na(x)]))}) 
-          score = identical(X,Y) # Test that they are the same
-          return(score)
-        }, Y)
-        
-        # Extract only those indices that are compatible 
-        Vt_Hnt_inds_comp = Vt_Hnt_inds[scores,,drop = FALSE]
-        
-        # Convert to character since used to index 
-        Hnt_chr = matrix(sapply(Hnt, as.character), ncol = M)
-        colnames(Hnt_chr) = MSs
-        
-        # Return all possible compatible combinations of haploid genotypes as a list (apply returns array)
-        Hap_combinations[[inf]] = alply(Vt_Hnt_inds_comp,1,function(i){Hnt_chr[i,,drop = F]})
-      }
+      if(total_haps_count >= cn[inf] & total_haps_count <= Max_Hap_genotypes){ 
+        Hap_combinations[[inf]] = hap_combinations_deterministic(Hnt, cn[inf], ynt, Y, MSs, M)}
+      
+      # This line allows the model to process entirely NA data 
+      if(total_haps_count < cn[inf]){
+        Hap_combinations[[inf]] = hap_combinations_missing_data(ynt, MSs, M)}
     }
     
     
@@ -428,10 +408,11 @@ post_prob_CLI = function(MSdata, # MS data
       
       #==========================================================================          
       # Calculate Pr(yn | Gnb) = sum from a = 1 to A over Pr(yn | Gnab) and record run time
+      # This bit can take a long time
       #==========================================================================
       tic() # Start clock to calculate time take per graph
       
-      # Calculate probabilities of Gnb summed over all Gnab 
+      # Calculate probabilities of Gnb summed over all Gnab  
       log_Pr_yn_Gnbs_unnormalised = sapply(graph_lookup, Log_Pr_yn_Gnb_unnormalised, 
                                            Gabs=Gabs, cn=cn, Tn=Tn, 
                                            log_Fs=log_Fs, MSs=MSs, alpha_terms=alpha_terms) 
@@ -477,7 +458,7 @@ post_prob_CLI = function(MSdata, # MS data
         Post_probs = data.frame(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
                                 L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
                                 I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
-        rownames(Post_probs) = recurrences
+        #rownames(Post_probs) = recurrences
       }
       
       Post_probs # return vector
