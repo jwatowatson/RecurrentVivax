@@ -21,10 +21,9 @@
 # some arbitarily high cut off, Max_Hap_comb. Without the cut off, the while loop 
 # is liable to go on forever for very complex infections. 
 #
-# Ideally, the arbitary cute off should exceed the number of combinations compatible
-# with infections whose haploid genotype count < Max_Hap_genotypes. Based on two simulated 
-# infections whose number of total_haps_count = 74 and 96, the number of combinations, 
-# nrow(Vt_Hnt_inds_comp) = 1296 and 7776, respectively (obtained setting Max_Hap_genotypes = 100)
+# Ideally, the arbitary cut off, Max_Hap_comb, should exceed the number of combinations 
+# compatible with infections whose haploid genotype count < Max_Hap_genotypes. We choose 
+# Max_Hap_genotypes and Max_Hap_comb in Setting_Max_Hap_genotypes_comb
 # 
 # Specifically, we permute saturated het. markers (markers with num. alleles obs. = COI)
 # and bootstrap markers with reduncancy (markers with num. alleles observed < COI)
