@@ -43,7 +43,8 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
   names(Y) = colnames(ynt) # S.t. return combinations have names
   diff_unique = c(1,1,1) # Set a trio of non-zero differences s.t. while loop starts
   num_unique = 0 # Number of initial combinations 
-  nrep = 1000 # We don't know how many are needed to capture most unique combinations, 
+  nrep = Max_Hap_comb # We don't know how many are needed to capture most unique combinations, set to Max_Hap_comb so that 
+  # the unique_comp returned doesn't vastly exceed Max_Hap_comb
   # so...
   # either repeat until the last three nrep increases resulted in no change, 
   # or if number unique exceeds Max_Hap_comb
@@ -67,7 +68,7 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
     diff_unique = c(length(unique_comp) - num_unique, diff_unique)
     if(diff_unique[1] < 0){next()} # If the current attempt is worse than before, try again
     num_unique = length(unique_comp) # update number that are unique
-    nrep = nrep + 1000 # increase number of comp to try
+    nrep = nrep + 0.5*Max_Hap_comb # increase (0.5*Max_Hap_comb s.t. unique_comp doesn't vastly exceed Max_Hap_comb)
     print(c(num_unique, nrep))
   }
   return(unique_comp)
