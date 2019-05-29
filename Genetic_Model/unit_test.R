@@ -118,20 +118,14 @@ eps_chr = sapply(yns, function(x){paste(sort(unique(x$Episode)), collapse = '_')
 cns_chr = sapply(cns, paste, collapse = "_")
 MSdata_1_1_0 = filter(MS_pooled, ID %in% names(which(cns_chr == "1_1" & eps_chr == "1_2"))) # Keep individuals with two monoclonal episodes only
 
-By_hand_alpha0 = by_hand(MSdata = MSdata_1_1_0, Fs = Fs_Combined, alpha = 0)
-By_model_alpha0 = post_prob_CLI(MSdata = MSdata_1_1_0, Fs = Fs, alpha = 0)
+By_hand = by_hand(MSdata = MSdata_1_1_0, Fs, alpha = 0.21)
+By_model = post_prob_CLI(MSdata = MSdata_1_1_0, Fs, alpha = 0.21)
 
+# All the same if alpha = 0 or otherwise
 par(mfrow = c(2,2))
-plot(By_model_alpha0$C, By_hand_alpha0$C)
-plot(By_model_alpha0$L, By_hand_alpha0$L)
-plot(By_model_alpha0$I, By_hand_alpha0$I)
-
-# Appears to be one that's different! VHX_607
-rbind(By_model_alpha0[61,],By_hand_alpha0[61,])
-yns$VHX_607 # Looks like a clone, but with some missing data. 
-# Model appears to be treating missing as different does the model think its a relapse?!
-
-
+plot(By_model$C, By_hand$C)
+plot(By_model$L, By_hand$L)
+plot(By_model$I, By_hand$I)
 
 
 
