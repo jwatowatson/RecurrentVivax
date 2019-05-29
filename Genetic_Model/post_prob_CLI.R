@@ -41,8 +41,8 @@ post_prob_CLI = function(MSdata, # MS data
   # cores = 4 # Number of cores for parallel computation
   # Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
   # Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
-  # Max_Hap_genotypes = 20 # Limit on deterministic phasing  
-  # Max_Hap_comb = 200 # Limit on probablistically phased graphs 
+  # Max_Hap_genotypes = 20 # Limit on deterministic phasing
+  # Max_Hap_comb = 200 # Limit on probablistically phased graphs
   # UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
   # verbose = TRUE
   # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -275,16 +275,12 @@ post_prob_CLI = function(MSdata, # MS data
   names(n_haps_per_episode) = NULL # Remove IDs since episode ID sufficient 
   n_haps_per_episode = unlist(n_haps_per_episode) # Convert to vector and then string
   
-  if(verbose){
-    writeLines(sprintf('95th percentile of no. of haploid genotypes per episode: %s \n',
-                       quantile(n_haps_per_episode, probs = 0.95)))
-    
     if(any(n_haps_per_episode > Max_Hap_genotypes)){ # If there are any too complex, print names to screen
       episodes_with_too_many_hap_to_phase = paste0(names(which(n_haps_per_episode > Max_Hap_genotypes)), collapse = ', ')
       writeLines(sprintf('Hack will be used on the following epsisodes with more than %s haploid genotypes: \n %s',
                          Max_Hap_genotypes,episodes_with_too_many_hap_to_phase))
     }
-  }
+  
   
   
   
