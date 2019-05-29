@@ -182,8 +182,9 @@ test_cln_incompatible = function(A, vertex_data_matrix){
   if(num_cln_edges == 0){ # If there are no clones, return FALSE
     return(FALSE) 
   } else { # For each clonal edge
-    for(i in 1:nrow(cln_edges)){ 
-      score = !identical(vertex_data_matrix[cln_edges[i,'row'],],vertex_data_matrix[cln_edges[i,'col'],]) 
+    for(i in 1:nrow(cln_edges)){
+      score = !all(vertex_data_matrix[cln_edges[i,'row'],] == vertex_data_matrix[cln_edges[i,'col'],], 
+                  na.rm = T) # Doesn't count NAs as different 
       if(score){break()} # as soon as different, fail and break
     }
     return(score)
@@ -206,8 +207,8 @@ Log_Pr_yn_Gnb_unnormalised = function(G, Gabs, cn, Tn, log_Fs, MSs, alpha_terms)
   A[upper.tri(A, diag = TRUE)] = NA # Work with lower triangular only
   
   # Sum over all Gna given adjacency matrix for Gnb
-  log_Pr_yn_Gabs = sapply(Gabs, function(x){ # labelled_G_ind inc. compatible labelled graphs only
-    Log_Pr_yn_Gab(G, log_Fs, MSs, Z = alpha_terms, A = A, vertex_data_matrix = x) # Pass Gn to Log_Pr_yn_Gab
+  log_Pr_yn_Gabs = sapply(Gabs, function(vertex_data_matrix){ # labelled_G_ind inc. compatible labelled graphs only
+    Log_Pr_yn_Gab(G, log_Fs, MSs, Z = alpha_terms, A = A, vertex_data_matrix) # Pass Gn to Log_Pr_yn_Gab
   })
   
   log_pr_yn_Gb_unnormalised = logSumExp(log_Pr_yn_Gabs, na.rm = TRUE) 
