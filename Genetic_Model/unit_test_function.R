@@ -1,18 +1,16 @@
 #================================================================================================
-# Independently verify the code in compute_theta_reLapse() via example calculation
-# Verification is not exhaustive: restricted to examples that are easily independently calculable 
-# Ideally, we would make this into a unit test that is run each time we make a change or 
-# install R package.
-# Could be adapted for use with sim data also
+# Independently verify the code in compute_theta_reLapse() via example calculation of monoclonal
+# single recurrence (easiest case)
+# Ideally, we will expand to less simple cases, perhaps using simulated data and would make this
+# into a unit test that is run each time we make a change or install R package.
 #================================================================================================
-
 rm(list = ls())
 load('../RData/RPackages_List.RData')
-# new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
-# if(length(new.pkg) > 0){ # Install using .R script
-#   stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
-#     sapply(pkgs, require, character.only = TRUE) # Load all packages
-#   }
+new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
+if(length(new.pkg) > 0){ # Install using .R script
+  stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
+    sapply(pkgs, require, character.only = TRUE) # Load all packages
+  }
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData') # For MS_pooled
 load('../RData/Data_for_relatedness.RData') # For Fs_Combined
 source('./iGraph_functions.R')
@@ -21,7 +19,6 @@ source('./Data_functions.R')
 source('./test_Rn_compatible.R')
 source('./post_prob_CLI.R')
 source('./hap_combinations.R')
-
 
 #================================================================================================
 # Function to calculate cases where two monoclonal episodes
@@ -46,9 +43,9 @@ by_hand = function(MSdata, Fs, alpha = 0, Max_Eps = 3){
   #===========================================================================
   # Summarise data 
   #===========================================================================
-  MSdata = reformat_MSdata(MSdata = MSdata, MSs=names(Fs)) # Reformat the data s.t. there are no NA gaps 
-  MSdata = arrange(MSdata, ID, Episode, MOI_id) # Make sure that the data are sorted correctly
   MSs = names(Fs)
+  MSdata = reformat_MSdata(MSdata = MSdata, MSs) # Reformat the data s.t. there are no NA gaps 
+  MSdata = arrange(MSdata, ID, Episode, MOI_id) # Make sure that the data are sorted correctly
   M = length(MSs) # Number of microsatellites
   IDs = as.character(unique(MSdata$ID)) # Character vector for indexing
   yns = lapply(IDs, function(x){yn = filter(MSdata, ID == x)})
@@ -63,7 +60,7 @@ by_hand = function(MSdata, Fs, alpha = 0, Max_Eps = 3){
   #===========================================================================
   # Test 1: all 1_1_0 cases 
   #===========================================================================
-  Thetas_1_1_0 = array(dim = length(IDs), dimnames = list(IDs)) # Create store
+  Thetas_1_1_0 = array(dim = c(length(IDs),3), dimnames = list(IDs, c("C","L","I"))) # Create store
   G_1_1_0 = array(dim = c(length(IDs), 3), dimnames = list(IDs, c('G_str', 'G_sib', 'G_clo')))
   
   # Calculate thetas without using the model nor log-domain 
@@ -102,31 +99,37 @@ by_hand = function(MSdata, Fs, alpha = 0, Max_Eps = 3){
     p_yn_C = G_clo # Probability of data given recrudesence 
     p_yn_L = (1/3) * (G_clo + G_str + G_sib)
     p_yn = (1/3) * (p_yn_I + p_yn_C + p_yn_L)
-    P_L_yn = (p_yn_L/3)/p_yn
-    
-    Thetas_1_1_0[id] = P_L_yn
+
+    Thetas_1_1_0[id, "C"] = (p_yn_C/3)/p_yn
+    Thetas_1_1_0[id, "L"] = (p_yn_L/3)/p_yn
+    Thetas_1_1_0[id, "I"] = (p_yn_I/3)/p_yn
   }
-  return(Thetas_1_1_0)
+  return(as.data.frame(Thetas_1_1_0))
 }
 
 # Recover allele frequencies
 load('../RData/Data_for_relatedness.RData') # For Fs_Combined
 Fs = Fs_Combined
 
-
-
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData') # For MS_pooled
 yns = dlply(MS_pooled, 'ID') # transform into a list
 cns = lapply(yns, function(x){cn = table(x$Episode_Identifier)})
+eps_chr = sapply(yns, function(x){paste(sort(unique(x$Episode)), collapse = '_')})
 cns_chr = sapply(cns, paste, collapse = "_")
-MSdata_1_1_0 = filter(MS_pooled, ID %in% names(which(cns_chr == "1_1"))) # Keep individuals with two monoclonal episodes only
+MSdata_1_1_0 = filter(MS_pooled, ID %in% names(which(cns_chr == "1_1" & eps_chr == "1_2"))) # Keep individuals with two monoclonal episodes only
 
-by_hand(MSdata = MSdata_1_1_0, Fs = Fs_Combined, alpha = 0)
+By_hand_alpha0 = by_hand(MSdata = MSdata_1_1_0, Fs = Fs_Combined, alpha = 0)
+By_model_alpha0 = post_prob_CLI(MSdata = MSdata_1_1_0, Fs = Fs, alpha = 0)
 
-post_prob_CLI(MSdata = MSdata_1_1_0, Fs = Fs, alpha = 0)[,'L']
+par(mfrow = c(2,2))
+plot(By_model_alpha0$C, By_hand_alpha0$C)
+plot(By_model_alpha0$L, By_hand_alpha0$L)
+plot(By_model_alpha0$I, By_hand_alpha0$I)
 
-
-
+# Appears to be one that's different! VHX_607
+rbind(By_model_alpha0[61,],By_hand_alpha0[61,])
+yns$VHX_607 # Looks like a clone, but with some missing data. 
+# Model appears to be treating missing as different does the model think its a relapse?!
 
 
 
