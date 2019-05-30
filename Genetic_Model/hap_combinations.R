@@ -1,8 +1,8 @@
 ############################################################################
-# This script defines a function that returns probablistic phasing combinations 
+# This script defines a function that returns probabilistic phasing combinations 
 # compatible with the observed data (hap_combinations_probabilistic); a function
 # that returns all possible phasing combinations compatible with the observed data 
-# (hap_combinations_deterministhap_combinations_probabilisticic) and a function that returns NAs if the data are 
+# (hap_combinations_deterministic) and a function that returns NAs if the data are 
 # missing (hap_combinations_missing_data)
 # 
 # hap_combinations_probabilistic: 
@@ -17,16 +17,16 @@
 # Instead we permute and bootstrap the observed data to create combinations that 
 # are guaranteed compatible with the data. Since this is a probablistic approach
 # some of the combinations are duplicates. Rather than generating a fixed number of 
-# combinations, we repeat until either the number found stabalises or exceeds
-# some arbitarily high cut off, Max_Hap_comb. Without the cut off, the while loop 
-# is liable to go on forever for very complex infections. 
+# combinations, we repeat until either the number found stabilises or exceeds
+# some arbitarily high cut-off, Max_Hap_comb. Without the cut-off, the while loop 
+# could be close to infinite for highly complex infections. 
 #
-# Ideally, the arbitary cut off, Max_Hap_comb, should exceed the number of combinations 
+# Ideally, the arbitary cut-off, Max_Hap_comb, should exceed the number of combinations 
 # compatible with infections whose haploid genotype count < Max_Hap_genotypes. We choose 
 # Max_Hap_genotypes and Max_Hap_comb in Setting_Max_Hap_genotypes_comb
 # 
 # Specifically, we permute saturated het. markers (markers with num. alleles obs. = COI)
-# and bootstrap markers with reduncancy (markers with num. alleles observed < COI)
+# and bootstrap markers with redundancy (markers with num. alleles observed < COI)
 #
 # Using the probablistic approach, we are likely to some over all possible phasings 
 # if the number of compatable haploid genotypes is small, but with no guarantee. 

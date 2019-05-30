@@ -4,10 +4,10 @@
 # e.g. log_Pr_yn_Rn denotes log Pr(yn | Rn) while log_Pr_yn_and_Rn denotes log Pr(yn, Rn)
 #
 # Currently, we have set various limits (Max_Eps, Max_Tot_Vtx, Max_Hap_genotypes, UpperComplexity)
-# allowing us to analyses and interpret the data with which we are working. Ultimately, we aim 
+# allowing us to analyse and interpret the data with which we are working. Ultimately, we aim 
 # to generalise the model to accommodate different data types and release it for general use. 
 # The general-purpose release will likely retain the same statistical framework, but with more
-# computationally sophistication, i.e. packaged as software versus statistical model code, e.g
+# computational sophistication, i.e. packaged as software versus statistical model code, e.g
 # in optimal code upperComplexity = 10^6 may be redundant 
 ##############################################################################################
 
@@ -277,7 +277,7 @@ post_prob_CLI = function(MSdata, # MS data
   
     if(any(n_haps_per_episode > Max_Hap_genotypes)){ # If there are any too complex, print names to screen
       episodes_with_too_many_hap_to_phase = paste0(names(which(n_haps_per_episode > Max_Hap_genotypes)), collapse = ', ')
-      writeLines(sprintf('Hack will be used on the following epsisodes with more than %s haploid genotypes: \n %s',
+      writeLines(sprintf('A hack solution will be used on the following episodes with more than %s haploid genotypes: \n %s',
                          Max_Hap_genotypes,episodes_with_too_many_hap_to_phase))
     }
   
