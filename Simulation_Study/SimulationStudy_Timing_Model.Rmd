@@ -2,7 +2,9 @@
 title: "Simulation Study for Timing Model"
 author: "James Watson"
 date: "07/05/2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -10,7 +12,7 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
                       echo = TRUE, include = TRUE, 
                       fig.width = 7, fig.height = 7,
                       fig.pos = 'H', 
-                      dev = c('pdf','png'), dpi = 300)
+                      dev = c('png'), dpi = 300)
 
 load('../RData/RPackages_List.RData')
 new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
@@ -28,7 +30,7 @@ source('Functions.R')
 # Note that recompilation is necessary on different platforms
 RECOMPILE_MODELS = F
 # Running the full stan models can take several days
-RUN_MODELS = T
+RUN_MODELS = F
 ```
 
 Global options for stan model runs
@@ -366,7 +368,10 @@ Generate patient data under the assumptions of model 1 with the additional assum
 # test to show this does the right thing
 set.seed(7576)
 ys = sapply(1:1000, FUN = function(x, seasonal_sampling_vector){
-  generate_reinfection_time_seasonal(params_M1,0,seasonal_sampling_vector)
+  generate_reinfection_time_seasonal(params = params_M1,
+                                     week_time = 0,
+                                     seasonal_sampling_vector = seasonal_sampling_vector,
+                                     Study_Period = 1)
 }, seasonal_sampling_vector)
 hist(ys, breaks = seq(0,20000,by=14), xlim = c(0,3*360), 
      main='Reinfection times',
@@ -447,8 +452,8 @@ if(RUN_MODELS){
     }
     failure_matrix[sim,] = results$summary_stats
   }
-  
-  save(comparison_matrix,
+  res = list(comparison_matrix=comparison_matrix, failure_matrix=failure_matrix)
+  save(res,
        file = '../RData/TimingModel/simulation_full_results_mod_seasonal.RData')
 } else {
   load('../RData/TimingModel/simulation_full_results_mod_seasonal.RData')
@@ -457,17 +462,16 @@ if(RUN_MODELS){
 
 
 
-```{r full_shebang_results_mod2}
+```{r full_shebang_results_mod_seasonal}
 for(p in params_interest){
-  writeLines(sprintf('For parameter %s, %s%% are below the true parameter',p,100*sum(comparison_matrix[,which(p==params_interest),1]<
-                                                                                       unique(comparison_matrix[,which(p==params_interest),2]))/Sim_Iterations))
-  hist(comparison_matrix[,which(p==params_interest),1], main=p)
-  abline(v=unique(comparison_matrix[,which(p==params_interest),2]),col='red',lwd=3)
+  writeLines(sprintf('For parameter %s, %s%% are below the true parameter',p,100*sum(res$comparison_matrix[,which(p==params_interest),1]<
+                                                                                       unique(res$comparison_matrix[,which(p==params_interest),2]))/Sim_Iterations))
+  hist(res$comparison_matrix[,which(p==params_interest),1], main=p)
+  abline(v=unique(res$comparison_matrix[,which(p==params_interest),2]),col='red',lwd=3)
 }
 
-plot(100*failure_matrix[,1],
-     100*failure_matrix[,2],
-     xlab='True PMQ failure rate', ylab = 'Estimated PMQ failure rate')
+plot(100*res$failure_matrix[,1],100*res$failure_matrix[,2],
+     xlab='True PMQ failure rate',ylab = 'Estimated PMQ failure rate')
 lines(c(0,100),c(0,100))
 ```
 

@@ -30,7 +30,8 @@ generate_reinfection_time = function(params, Study_Period=NA){
 }
 
 generate_reinfection_time_seasonal = function(params, week_time, 
-                                              seasonal_sampling_vector, Study_Period){
+                                              seasonal_sampling_vector, 
+                                              Study_Period){
   if(!is.na(Study_Period) & Study_Period==2) {
     lambda = params$lambda*params$rate_decrease
   } else {
