@@ -19,11 +19,11 @@ post_prob_CLI = function(MSdata, # MS data
                          Max_Eps = 3, # Limit on number of episodes (due to test_Rn_compatible) 
                          Max_Tot_Vtx = 6, # Limit on number of vertices = cumulative COI
                          Max_Hap_genotypes = 20, # Limit on deterministic phasing 
-                         Max_Hap_comb = 200, # Limit on probablistically phased graphs 
+                         Max_Hap_comb = 200, # Limit on probabilistically phased graphs 
                          UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
                          verbose = FALSE){ # Set to true to return all messages
   
-
+  
   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   # Simulate code for internal checks. Comment when not doing internal checks
   # Ultimate goal: integrate into unit test
@@ -275,11 +275,11 @@ post_prob_CLI = function(MSdata, # MS data
   names(n_haps_per_episode) = NULL # Remove IDs since episode ID sufficient 
   n_haps_per_episode = unlist(n_haps_per_episode) # Convert to vector and then string
   
-    if(any(n_haps_per_episode > Max_Hap_genotypes)){ # If there are any too complex, print names to screen
-      episodes_with_too_many_hap_to_phase = paste0(names(which(n_haps_per_episode > Max_Hap_genotypes)), collapse = ', ')
-      writeLines(sprintf('A hack solution will be used on the following episodes with more than %s haploid genotypes: \n %s',
-                         Max_Hap_genotypes,episodes_with_too_many_hap_to_phase))
-    }
+  if(any(n_haps_per_episode > Max_Hap_genotypes)){ # If there are any too complex, print names to screen
+    episodes_with_too_many_hap_to_phase = paste0(names(which(n_haps_per_episode > Max_Hap_genotypes)), collapse = ', ')
+    writeLines(sprintf('A hack solution will be used on the following episodes with more than %s haploid genotypes: \n %s',
+                       Max_Hap_genotypes,episodes_with_too_many_hap_to_phase))
+  }
   
   
   
@@ -290,6 +290,7 @@ post_prob_CLI = function(MSdata, # MS data
   # dopar in Windows needs the packages and functions explicitly passed to foreach command
   # otherwise it doesn't work for more than one core. This is still compatible with Mac
   if(cores>1) registerDoParallel(cores = cores) # If cores=1 then this does normal sequential computation
+  
   Post_probs = foreach(i=1:N, .combine = rbind, 
                        .packages = c('dplyr','igraph','gtools',
                                      'matrixStats','Matrix','tictoc'), 
@@ -300,7 +301,7 @@ post_prob_CLI = function(MSdata, # MS data
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
     # set id = 'BPD_402' for vtx_counts_str = "4_1_0" when checking by hand
-        
+    
     id = IDs[i] 
     
     #==========================================================================
@@ -325,7 +326,7 @@ post_prob_CLI = function(MSdata, # MS data
     names(Hap_combinations) = infections
     
     
-      
+    
     for(inf in infections){
       
       # Extract data for the tth infection
@@ -341,17 +342,21 @@ post_prob_CLI = function(MSdata, # MS data
       
       # If very many compatible haploid genotypes, adopt probablistic phasing approach
       if(total_haps_count > Max_Hap_genotypes){ 
-        Hap_combinations[[inf]] = hap_combinations_probabilistic(Max_Hap_comb, cnt = cn[inf], ynt, Y)}
+        Hap_combinations[[inf]] = hap_combinations_probabilistic(Max_Hap_comb, cnt = cn[inf], ynt, Y)
+      }
       
       # If moderate haploid genotypes, adopt deterministic phasing approach
       if(total_haps_count >= cn[inf] & total_haps_count <= Max_Hap_genotypes){ 
-        Hap_combinations[[inf]] = hap_combinations_deterministic(Hnt, cn[inf], ynt, Y, MSs, M)}
+        Hap_combinations[[inf]] = hap_combinations_deterministic(Hnt, cn[inf], ynt, Y, MSs, M)
+      }
       
       # This line allows the model to process entirely NA data 
       if(total_haps_count < cn[inf]){
-        Hap_combinations[[inf]] = hap_combinations_missing_data(ynt, MSs, M)}
+        Hap_combinations[[inf]] = hap_combinations_missing_data(ynt, MSs, M)
+      }
+      
     }
-    
+
     # Extract vector of compatible combinations for each episode
     num_comp_combs_Vt = lapply(Hap_combinations, function(x){1:length(x)})
     
@@ -366,10 +371,13 @@ post_prob_CLI = function(MSdata, # MS data
     Gabs = vector('list', A) # store in list
     
     for(label_ind in 1:nrow(labelled_G_ind)){ # labelled_G_ind inc. compatible labelled graphs only
-      # For each labbeling in labelled_G_ind extract vertex data matrix 
+      writeLines(sprintf('label_ind is %s', label_ind))
+      # For each labelling in labelled_G_ind extract vertex data matrix 
       x <- labelled_G_ind[label_ind, ,drop=FALSE]
       vertex_data_matrix = array(dim = c(sum_cn, M))
       for(t in 1:Tn){ # Since each infection has its own set of combinations, we need to loop over infections
+        writeLines(sprintf('t is %s', t)) # This is to help debug....
+        ###*************** Bug happening here: seems because of the data type return by the hap_functions **********
         vertex_data_matrix[cumsum(c(1,cn))[t]:cumsum(cn)[t], ] = Hap_combinations[[infections[t]]][[x[t]]] 
       }
       Gabs[[label_ind]] = vertex_data_matrix # Characters since used to extract allele frequ. 

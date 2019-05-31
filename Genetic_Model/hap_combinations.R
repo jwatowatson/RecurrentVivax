@@ -37,12 +37,15 @@
 # Future iterations of the model with likely adopt the probablistic approach.
 ############################################################################
 
+
+### Why does this function not take as argument MSs??? The others do (e.g. deterministic one)
 hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
   
   names(Y) = colnames(ynt) # S.t. return combinations have names
   diff_unique = c(1,1,1) # Set a trio of non-zero differences s.t. while loop starts
   num_unique = 0 # Number of initial combinations 
-  nrep = Max_Hap_comb # We don't know how many are needed to capture most unique combinations, set to Max_Hap_comb so that 
+  nrep = Max_Hap_comb # We don't know how many are needed to capture most unique combinations, 
+  # set to Max_Hap_comb so that 
   # the unique_comp returned doesn't vastly exceed Max_Hap_comb
   # so...
   # either repeat until the last three nrep increases resulted in no change, 

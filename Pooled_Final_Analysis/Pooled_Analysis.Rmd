@@ -879,7 +879,7 @@ writeLines(sprintf('Number of pairwise probabilities of recurrence states betwee
 ```{r, include=FALSE}
 lowerCI=0.05
 upperCI=0.95
-
+Ksamples = 1
 if(RUN_MODELS_FULL_POSTERIOR_INFLATED){  
   
   all_rec_eps_ind = !duplicated(MS_inflated$Episode_Identifier) & MS_inflated$Episode==2
@@ -887,7 +887,7 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
   P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
   colnames(P_matrix) = c('Episode_Identifier','C','I','L')
   P_matrix$Episode_Identifier = all_rec_eps
-  Ksamples = length(grep('C',colnames(Post_samples_matrix)))
+  Ksamples = min(Ksamples, length(grep('C',colnames(Post_samples_matrix))))
   
   K_results = sum(!duplicated(MS_inflated$Episode_Identifier[MS_inflated$Episode>1]))
   
@@ -897,14 +897,18 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
     # draw a random distribution over the allele frequencies from posterior
     Fs_random = lapply(Alpha_Posteriors, rdirichlet, n=1)
     
-    # Name allele: important since we use the haplotype labels to extract allele frequencies in Log_Pr_yn_Gab
-    for(i in 1:length(Fs_random)){names(Fs_random[[i]]) = 1:length(Fs_random[[i]])}
+    # Name allele: important since we use the haplotype labels to 
+    # extract allele frequencies in Log_Pr_yn_Gab
+    for(i in 1:length(Fs_random)) {
+      names(Fs_random[[i]]) = 1:length(Fs_random[[i]])
+    }
     
     # take the ss sample from the time prior
     rec_states = c('C','L','I')
     indices = c(grep(rec_states[1],colnames(Post_samples_matrix))[ss],
                 grep(rec_states[2],colnames(Post_samples_matrix))[ss],
                 grep(rec_states[3],colnames(Post_samples_matrix))[ss])
+    
     for(ep in all_rec_eps){
       i = which(P_matrix$Episode_Identifier==ep)
       j = which(MS_inflated$Episode_Identifier==ep)[1]
@@ -914,13 +918,14 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
                         sep='_'))
       P_matrix[i,rec_states] = Post_samples_matrix[k,indices]
     }
+    writeLines(sprintf('\n ****** on iteration %s ****** \n',ss))
     # This is about 6 minutes per run
     Res = post_prob_CLI(MSdata = MS_inflated, 
                         Fs = Fs_random, 
                         p = P_matrix,
                         UpperComplexity = 10^6, 
                         verbose = F,
-                        cores = 7)
+                        cores = Ncores)
     Res
   }
   save(Res_total, file = '../RData/LargeFiles/FullPosterior_INF.bigRData') # save for safety
