@@ -61,6 +61,8 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
         return(sample(as, cnt, replace = F))}
       if(num_obs == 1){ # Otherwise, return only value observed
         return(rep(as,cnt))}
+      if(num_obs == 0){ # Otherwise, return only value observed
+        return(rep(NA,cnt))}
     })})
     
     # Second, remove duplicates (can take a while for a long list)
@@ -85,7 +87,7 @@ hap_combinations_deterministic = function(Hnt, cnt, ynt, Y, MSs, M){
   # Check each combination to see if compatible with ynt 
   # (this is a bit like an ABC step with epsilon = 0)
   scores = apply(Vt_Hnt_inds, 1, function(x, Y){ 
-    X = alply(Hnt[x,,drop=FALSE], 2, function(x){sort(unique(x[!is.na(x)]))}) 
+    X = alply(Hnt[x,,drop=FALSE], 2, function(x){as.character(sort(unique(x[!is.na(x)])))})
     score = identical(X,Y) # Test that they are the same
     return(score)
   }, Y)
@@ -98,7 +100,7 @@ hap_combinations_deterministic = function(Hnt, cnt, ynt, Y, MSs, M){
   colnames(Hnt_chr) = MSs
   
   # Return all possible compatible combinations of haploid genotypes as a list (apply returns array)
-  all_comp = alply(Vt_Hnt_inds_comp,1,function(i){Hnt_chr[i,,drop = F]})
+  all_comp = lapply(apply(Vt_Hnt_inds_comp,1,function(i){list(Hnt_chr[i,,drop = F])}), function(x) x[[1]])
   
   return(all_comp)
 }

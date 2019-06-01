@@ -79,7 +79,9 @@ all_rec_eps = MS_inflated$Episode_Identifier[all_rec_eps_ind]
 P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
 colnames(P_matrix) = c('Episode_Identifier','C','I','L')
 P_matrix$Episode_Identifier = all_rec_eps
-Ksamples = min(Ksamples, length(grep('C',colnames(Post_samples_matrix))))
+
+# AT: not sure what to do with this line but Ksamples doesn't appear to feature elsewhere
+# Ksamples = min(Ksamples, length(grep('C',colnames(Post_samples_matrix)))
 
 K_results = sum(!duplicated(MS_inflated$Episode_Identifier[MS_inflated$Episode>1]))
 
