@@ -37,16 +37,16 @@ post_prob_CLI = function(MSdata, # MS data
   #                           relatedness = 'Clone')
   # MSdata = sim_output$MS_data_sim # MS data
   # Fs = sim_output$FS # MS population frequencies
-  p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3) # Uniform prior over C, L, I
-  alpha = 0 # Additive inbreeding constant
-  cores = 4 # Number of cores for parallel computation
-  Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
-  Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
-  Max_Hap_genotypes = 20 # Limit on deterministic phasing
-  Max_Hap_comb = 200 # Limit on probablistically phased graphs
-  UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
-  verbose = TRUE
-  # # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  # p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3) # Uniform prior over C, L, I
+  # alpha = 0 # Additive inbreeding constant
+  # cores = 4 # Number of cores for parallel computation
+  # Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
+  # Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
+  # Max_Hap_genotypes = 20 # Limit on deterministic phasing
+  # Max_Hap_comb = 200 # Limit on probablistically phased graphs
+  # UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
+  # verbose = TRUE
+  # # # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
   #==========================================================================
   # Check the MSdata and p have the correct structures
@@ -63,7 +63,7 @@ post_prob_CLI = function(MSdata, # MS data
   # Make sure that the data are sorted correctly
   MSdata = arrange(MSdata, ID, Episode, MOI_id)
   
-  if(verbose) writeLines('Setting up parameters to do computation....')
+  if(verbose){writeLines('Setting up parameters to do computation....')}
   
   #==========================================================================
   # Retrieve population prior and recurrent eps identifiers
@@ -76,8 +76,8 @@ post_prob_CLI = function(MSdata, # MS data
   #==========================================================================
   if(is.null(dim(p)) & length(p) == 3){
     p_pop_ind = TRUE
-    writeLines('Using population prior probabilities of recurrence states')
-    if(sum(p) != 1) stop('Population prior probabilities do not sum to one')
+    if(verbose){writeLines('Using population prior probabilities of recurrence states')}
+    if(sum(p) != 1)stop('Population prior probabilities do not sum to one')
     
   } else {
     p_pop_ind = FALSE
@@ -466,7 +466,7 @@ post_prob_CLI = function(MSdata, # MS data
         Post_probs = data.frame(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
                                 L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
                                 I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
-        #rownames(Post_probs) = recurrences
+        rownames(Post_probs) = recurrences
       }
       
       Post_probs # return vector
