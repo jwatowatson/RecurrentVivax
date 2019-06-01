@@ -38,21 +38,21 @@ post_prob_CLI = function(MSdata, # MS data
   # MSdata = sim_output$MS_data_sim # MS data
   # Fs = sim_output$FS # MS population frequencies
   # p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3) # Uniform prior over C, L, I
-  # alpha = 0 # Additive inbreeding constant
-  # cores = 4 # Number of cores for parallel computation
-  # Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
-  # Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
-  # Max_Hap_genotypes = 20 # Limit on deterministic phasing
-  # Max_Hap_comb = 200 # Limit on probablistically phased graphs
-  # UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
-  # verbose = TRUE
+  alpha = 0 # Additive inbreeding constant
+  cores = 4 # Number of cores for parallel computation
+  Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
+  Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
+  Max_Hap_genotypes = 20 # Limit on deterministic phasing
+  Max_Hap_comb = 200 # Limit on probablistically phased graphs
+  UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
+  verbose = TRUE
   # # # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
   #==========================================================================
   # Check the MSdata and p have the correct structures
   #========================================================================== 
   if(any(!c('Episode','ID','Episode_Identifier','MOI_id') %in% colnames(MSdata))){
-    stop('MSdata needs to include the following columns: ID,Episode,Episode_Identifier,MOI_id')
+    stop('\nMSdata needs to include the following columns: ID,Episode,Episode_Identifier,MOI_id')
   }
   
   #==========================================================================
@@ -63,7 +63,7 @@ post_prob_CLI = function(MSdata, # MS data
   # Make sure that the data are sorted correctly
   MSdata = arrange(MSdata, ID, Episode, MOI_id)
   
-  if(verbose){writeLines('Setting up parameters to do computation....')}
+  if(verbose){writeLines('\nSetting up parameters to do computation....')}
   
   #==========================================================================
   # Retrieve population prior and recurrent eps identifiers
@@ -76,39 +76,38 @@ post_prob_CLI = function(MSdata, # MS data
   #==========================================================================
   if(is.null(dim(p)) & length(p) == 3){
     p_pop_ind = TRUE
-    if(verbose){writeLines('Using population prior probabilities of recurrence states')}
-    if(sum(p) != 1)stop('Population prior probabilities do not sum to one')
+    if(verbose){writeLines('\nUsing population prior probabilities of recurrence states')}
+    if(sum(p) != 1)stop('\nPopulation prior probabilities do not sum to one')
     
   } else {
     p_pop_ind = FALSE
+    if(verbose){writeLines('\nUsing time-to-event prior probabilities of recurrence states')}
     p = arrange(p, Episode_Identifier)
     # make sure p contains the correct columns
     if(any(!c('Episode_Identifier','C','L','I') %in% names(p))){
-      stop('p needs to include the following columns: Episode_Identifier,C,L,I')
+      stop('\np needs to include the following columns: Episode_Identifier,C,L,I')
     }
-    
-    writeLines('Using time-to-event prior probabilities of recurrence states')
     recurrent_eps_no_prior = recurrent_eps[which(!recurrent_eps %in% p$Episode_Identifier)]
     prior_with_genetic_ind = p$Episode_Identifier %in% recurrent_eps
     prior_no_genetic = p$Episode_Identifier[!prior_with_genetic_ind]
     if(length(prior_no_genetic) > 0){
-      writeLines(sprintf('No genetic data for following time-to-event priors (thus removed): %s', 
+      writeLines(sprintf('\nNo genetic data for following episodes with time-to-event priors thus removed: %s', 
                          paste(prior_no_genetic, collapse = ', ')))
       p = p[prior_with_genetic_ind, ]
     }
     num_recurrent_eps_no_prior = length(recurrent_eps_no_prior)
     if(num_recurrent_eps_no_prior == 0){
-      writeLines('Using time-to-event prior probabilities for all recurrent infections with genetic data')
+      writeLines('\nUsing time-to-event prior probabilities for all recurrent infections with genetic data')
     } else {
-      writeLines(sprintf('Using time-to-event prior probabilities but for the 
-                         following for which population prior probabilities are used: %s', 
+      writeLines(sprintf('\nUsing time-to-event prior probabilities except for the 
+                         following episodes for which population prior probabilities are used: %s', 
                          paste(recurrent_eps_no_prior, collapse = ', ')))
       # Add to episodes based on the prior to the top of the list
       for(x in recurrent_eps_no_prior){p = rbind(c(x, p_pop), p)} 
     }
     # check time-to-event and genetic now agree
     if(!all(p$Episode_Identifier %in% recurrent_eps) & all(recurrent_eps %in% p$Episode_Identifier)){
-      stop('Disagreement between epsiodes with available time-to-event and genetic data')
+      stop('\nDisagreement between epsiodes with available time-to-event and genetic data')
     }
   }
   
@@ -161,9 +160,8 @@ post_prob_CLI = function(MSdata, # MS data
   #==========================================================================
   complex = (Tns > Max_Eps) | (sum_cns > Max_Tot_Vtx)
   if(any(complex)){
-    writeLines(sprintf('\nSkipping ID: %s, which are too complex either because they 
-                       have more than %s episodes or more than %s vertices, sorry.', 
-                       paste(IDs_all[complex], collapse = ', '), Max_Eps, Max_Tot_Vtx))}
+    writeLines(sprintf('\nSkipping the following IDs because they are too complex either due to %s or more episodes or cumulative COI greater than %s: \n %s', 
+                       Max_Eps+1, Max_Tot_Vtx, paste(IDs_all[complex], collapse = ', ')))}
   
   #==========================================================================
   # Check for individuals that have Tn = 1 (no recurrence)
@@ -181,7 +179,7 @@ post_prob_CLI = function(MSdata, # MS data
   #==========================================================================
   IDs = IDs_all[(!complex & !no_recurrence)]
   N = length(IDs) # N is the number of individuals for whom post. probs. are calculable
-  if(N == 0) {stop('No infections with calculable posterior probabilities')
+  if(N == 0) {stop('\nNo infections with calculable posterior probabilities')
   } else {
     writeLines(sprintf('\nTotal number of IDs with calculable posterior probabilities: %s', N))
   } 
@@ -228,7 +226,7 @@ post_prob_CLI = function(MSdata, # MS data
   #==========================================================================
   graph_lookup_check = sapply(unique_vtx_count_str, function(x){
     if(!file.exists(sprintf('../RData/graph_lookup/graph_lookup_%s.Rdata', x))){
-      stop(sprintf('graph_lookup %s does not exist', x))} else {
+      stop(sprintf('\ngraph_lookup %s does not exist', x))} else {
         'graph lookup exists...'
       }
   })
@@ -255,17 +253,14 @@ post_prob_CLI = function(MSdata, # MS data
   # par(mfrow = c(6,3), mar = c(1,1,1,1))
   # sapply(RR_comp_Gs, function(z) plot_Vivax_model(graph_lookup[[z]]))
   # #===================================================
-  
-  if(verbose){
-    writeLines('\nIn the following viable graphs include only those with sufficient numbers of vertices 
-               and appropriate vertex labels to fully represent each individual\'s data.')}
+
   
   #==========================================================================
   # Identify samples with too many compatable haploid genotypes 
   # Since warnings do not work inside %dopar% 
   # Added by Aimee May 24th
   #==========================================================================
-  n_haps_per_episode = lapply(yns, function(yn){ # For a given individual
+  n_haps_per_episode = lapply(yns[IDs], function(yn){ # For a given individual
     ynts = dlply(yn, 'Episode_Identifier') # Break into episodes
     sapply(ynts, function(ynt){ # For a given episode
       ynmt = ynt[,MSs,drop = FALSE] # Extract microsatellite data 
@@ -278,7 +273,7 @@ post_prob_CLI = function(MSdata, # MS data
   
   if(any(n_haps_per_episode > Max_Hap_genotypes)){ # If there are any too complex, print names to screen
     episodes_with_too_many_hap_to_phase = paste0(names(which(n_haps_per_episode > Max_Hap_genotypes)), collapse = ', ')
-    writeLines(sprintf('A hack solution will be used on the following episodes with more than %s haploid genotypes: \n %s',
+    writeLines(sprintf('\nThe following episodes compatible with more than %s haploid genotypes will be phased probabilistically: \n %s',
                        Max_Hap_genotypes,episodes_with_too_many_hap_to_phase))
   }
   
@@ -292,13 +287,14 @@ post_prob_CLI = function(MSdata, # MS data
   # otherwise it doesn't work for more than one core. This is still compatible with Mac
   if(cores>1) registerDoParallel(cores = cores) # If cores=1 then this does normal sequential computation
   
-  Post_probs = foreach(i=1:N, .combine = rbind, 
+
+  Post_probs = foreach(i=1:N, .combine = rbind,
                        .packages = c('dplyr','igraph','gtools',
-                                     'matrixStats','Matrix','tictoc'), 
+                                     'matrixStats','Matrix','tictoc'),
                        .export = c('Log_Pr_yn_Gab','Log_Pr_yn_Gnb_unnormalised',
                                    'test_Rn_compatible','test_cln_incompatible')
   ) %dopar% {
-    
+   
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
     # set id = 'BPD_402' for vtx_counts_str = "4_1_0" when checking by hand
@@ -324,9 +320,9 @@ post_prob_CLI = function(MSdata, # MS data
     # Generate all possible vertex haploid genotype label mappings of data onto a graph 
     #==========================================================================
     Hap_combinations = vector('list', length = length(infections)) # Store of haploid genotype combinations 
-    names(Hap_combinations) = infections
-  
-    
+    Phased = vector('character', length = length(infections)) # Store record of phasing method
+    names(Hap_combinations) = names(Phased) = infections
+      
     for(inf in infections){
       
       # Extract data for the tth infection
@@ -343,16 +339,19 @@ post_prob_CLI = function(MSdata, # MS data
       # If very many compatible haploid genotypes, adopt probablistic phasing approach
       if(total_haps_count > Max_Hap_genotypes){ 
         Hap_combinations[[inf]] = hap_combinations_probabilistic(Max_Hap_comb, cnt = cn[inf], ynt, Y)
+        Phased[inf] = 'P'
       }
       
       # If moderate haploid genotypes, adopt deterministic phasing approach
       if(total_haps_count >= cn[inf] & total_haps_count <= Max_Hap_genotypes){ 
         Hap_combinations[[inf]] = hap_combinations_deterministic(Hnt, cnt = cn[inf], ynt, Y, MSs, M)
+        Phased[inf] = 'D'
       }
       
       # This line allows the model to process entirely NA data 
       if(total_haps_count < cn[inf]){
         Hap_combinations[[inf]] = hap_combinations_missing_data(ynt, MSs, M)
+        Phased[inf] = 'U'
       }
     }
 
@@ -391,14 +390,16 @@ post_prob_CLI = function(MSdata, # MS data
       writeLines(sprintf('\nComplexity of problem, ID: 
                          %s\nThe number of different viable vertex labeled graphs is: 
                          %s\nThe number of different viable edge labeled graphs is: 
-                         %s\nThe number of graphs in viable graph space is therefore: %s', 
+                         %s\nThe number of graphs in viable graph space is therefore: 
+                         %s', 
                          id, A, length_graph_lookup, complexity_problem))
     }
     
-    # Create recurrences names (avoid infections[-1] incase misordered)
-    # I've added an `arrange` line at the start of the function so shouldn't be a problem
-    inf_no = yn$Episode[!duplicated(yn$Episode_Identifier)] #do.call(rbind, strsplit(infections, split = '_'))[,3]
-    recurrences = paste(id, inf_no[inf_no > 1], sep = '_')
+    # Create recurrences names (do not use infections[-1] incase misordered)
+    inf_no = yn$Episode[!duplicated(yn$Episode_Identifier)] 
+    initial = paste(id, 1, sep = '_') # Initial infection name
+    recurrences = paste(id, inf_no[inf_no > 1], sep = '_') # Recurrence names
+    
     # We do a complexity check - need to work out what an OK upper limit should be
     # Aimee: Rather than having two complexity checks, I wonder if we might do this check
     # outside do.par/forloop 
@@ -407,7 +408,8 @@ post_prob_CLI = function(MSdata, # MS data
       writeLines(sprintf('\nSkipping this problem (ID %s), too complex (%s).', id, complexity_problem))
       Post_probs = data.frame(C=rep(NA,length(recurrences)),
                               L=rep(NA,length(recurrences)),
-                              I=rep(NA,length(recurrences)))
+                              I=rep(NA,length(recurrences)), 
+                              Phased = NA)
       rownames(Post_probs) = recurrences
       # return NA vector of Post_probs
       Post_probs
@@ -429,8 +431,8 @@ post_prob_CLI = function(MSdata, # MS data
       ms_per_graph_space = 1000*(z$toc-z$tic) # Total time taken
       ms_per_graph = ms_per_graph_space/complexity_problem # Time taken per graph
       
-      if(verbose){writeLines(sprintf('Run time (ms) over all graphs in graph space: 
-                                     %s\nRun time (ms) per graph in graph space: %s', 
+      if(verbose){writeLines(sprintf('\nRun time (ms) over all graphs in graph space: %s
+                                     \nRun time (ms) per graph in graph space: %s', 
                                      round(ms_per_graph_space), round(ms_per_graph,2)))}
       #complexity_time[i,] = c(complexity_problem, ms_per_graph) # Store time 
       log_Pr_yn_Gnbs = log_Pr_yn_Gnbs_unnormalised - log_A # Normalise probabilities
@@ -468,8 +470,9 @@ post_prob_CLI = function(MSdata, # MS data
                                 I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
         rownames(Post_probs) = recurrences
       }
-      
-      Post_probs # return vector
+
+      Post_probs$Phased = paste(Phased[initial], Phased[recurrences], sep = "_")
+      Post_probs
     }
   }
   
@@ -477,8 +480,6 @@ post_prob_CLI = function(MSdata, # MS data
   # complexity_time = array(NA, c(N,2), dimnames = list(IDs, c('Number of graphs in viable graph space', 
   #                                                            'Run time (ms) per graph')))
   #
-  ## Uncomment for doParallel
-  # Post_probs[names(Post_probs)] = Post_probs
   # Aimee I'm saving this so plot can be generated outside of function
   # James: need to think how to incorporate this into the parallel version
   # save(complexity_time, file = '../../RData/complexity_time.RData')

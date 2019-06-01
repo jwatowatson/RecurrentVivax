@@ -476,8 +476,7 @@ if(RUN_MODELS_SINGLE_SIMPLE){
   #===============================================
   # Approx 100 secs per full model run
   tic()
-  thetas_9MS = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
-                             p = p, cores = Ncores, verbose = F) 
+  thetas_9MS = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, p = p, cores = Ncores, verbose = F) 
   thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
   save(thetas_9MS, file = '../RData/GeneticModel/thetas_9MS.RData')
   toc()

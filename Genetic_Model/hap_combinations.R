@@ -73,7 +73,7 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
     if(diff_unique[1] < 0){next()} # If the current attempt is worse than before, try again
     num_unique = length(unique_comp) # update number that are unique
     nrep = nrep + 0.5*Max_Hap_comb # increase (0.5*Max_Hap_comb s.t. unique_comp doesn't vastly exceed Max_Hap_comb)
-    print(c(num_unique, nrep))
+    #print(c(num_unique, nrep))
   }
   return(unique_comp)
 }
