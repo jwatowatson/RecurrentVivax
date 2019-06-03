@@ -1,7 +1,7 @@
 ###############################################
 # Script to explore the different impact of 
 # deterministic versus probablistic phasing
-# To-do: understand the what is wrong with VHX_214_3
+# To-do: check for expanded vhx
 ###############################################
 
 rm(list = ls())
