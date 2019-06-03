@@ -52,20 +52,30 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
   # or if number unique exceeds Max_Hap_comb
   while(!all(diff_unique[1:3] %in% 0) & num_unique < Max_Hap_comb){ 
     
-    nrep_comp = lapply(1:nrep, function(i){sapply(Y, function(as){
-      num_obs = length(as) # Number of alleles at m-th marker
-      if(num_obs > 1 & num_obs < cnt){ # if het but not saturated, bootstrap...
-        extra = sample(as, cnt - num_obs, replace = T) 
-        return(c(as, extra))}
-      if(num_obs == cnt){ # if het and saturated, permute
-        return(sample(as, cnt, replace = F))}
-      if(num_obs == 1){ # Otherwise, return only value observed
-        return(rep(as,cnt))}
-      if(num_obs == 0){ # Otherwise, return only value observed
-        return(rep(NA,cnt))}
-    })})
+    nrep_comp = lapply(1:nrep, function(i){
+      
+      z = sapply(Y, function(as){
+        num_obs = length(as) # Number of alleles at m-th marker
+        if(num_obs == cnt){ # if het and saturated
+          return(sample(as, cnt, replace = F))} # permute order
+        if(num_obs > 1 & num_obs < cnt){ # if het but not saturated
+          extra = sample(as, cnt - num_obs, replace = T) # bootstrap
+          inds = sample(1:cnt, cnt, replace = F) # permute order
+          return(c(as,extra)[inds])}
+        if(num_obs == 1){ # Otherwise, return only value observed
+          return(rep(as,cnt))}
+        if(num_obs == 0){ # Otherwise, return only value observed
+          return(rep(NA,cnt))}
+      })
+      
+      # Sort s.t. matrices do not differ by row order
+      z = matrix(z, ncol = length(Y), dimnames = list(NULL,names(Y)))
+      inds_sorted = sort.int(apply(z, 1, paste, collapse= ""), index.return = T)$ix
+      comp = z[inds_sorted, , drop = F]
+      return(comp)
+    })
     
-    # Second, remove duplicates (can take a while for a long list)
+    # Second, remove exact duplicates (can take a while for a long list)
     unique_comp = unique(nrep_comp)
     
     # Third updated diff_unique with most recent at start
@@ -73,7 +83,7 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
     if(diff_unique[1] < 0){next()} # If the current attempt is worse than before, try again
     num_unique = length(unique_comp) # update number that are unique
     nrep = nrep + 0.5*Max_Hap_comb # increase (0.5*Max_Hap_comb s.t. unique_comp doesn't vastly exceed Max_Hap_comb)
-    #print(c(num_unique, nrep))
+    print(c(num_unique, nrep))
   }
   return(unique_comp)
 }
@@ -100,7 +110,16 @@ hap_combinations_deterministic = function(Hnt, cnt, ynt, Y, MSs, M){
   colnames(Hnt_chr) = MSs
   
   # Return all possible compatible combinations of haploid genotypes as a list (apply returns array)
-  all_comp = lapply(apply(Vt_Hnt_inds_comp,1,function(i){list(Hnt_chr[i,,drop = F])}), function(x) x[[1]])
+  all_comp = lapply(apply(Vt_Hnt_inds_comp,1,function(i){
+    z = Hnt_chr[i,,drop = F]
+    
+    # Sort s.t. matrices do not differ by row order
+    z = matrix(z, ncol = length(MSs), dimnames = list(NULL,MSs))
+    inds_sorted = sort.int(apply(z, 1, paste, collapse= ""), index.return = T)$ix
+    
+    # Return
+    list(z[inds_sorted, , drop = F])
+    }), function(x) x[[1]])
   
   return(all_comp)
 }
