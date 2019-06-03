@@ -37,15 +37,15 @@ post_prob_CLI = function(MSdata, # MS data
   #                           relatedness = 'Clone')
   # MSdata = sim_output$MS_data_sim # MS data
   # Fs = sim_output$FS # MS population frequencies
+  # Max_Hap_genotypes = 20 # Limit on deterministic phasing
   # p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3) # Uniform prior over C, L, I
-  alpha = 0 # Additive inbreeding constant
-  cores = 4 # Number of cores for parallel computation
-  Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
-  Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
-  Max_Hap_genotypes = 20 # Limit on deterministic phasing
-  Max_Hap_comb = 200 # Limit on probablistically phased graphs
-  UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
-  verbose = TRUE
+  # alpha = 0 # Additive inbreeding constant
+  # cores = 4 # Number of cores for parallel computation
+  # Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
+  # Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
+  # Max_Hap_comb = 200 # Limit on probablistically phased graphs
+  # UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
+  # verbose = TRUE
   # # # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
   #==========================================================================
@@ -273,8 +273,8 @@ post_prob_CLI = function(MSdata, # MS data
   
   if(any(n_haps_per_episode > Max_Hap_genotypes)){ # If there are any too complex, print names to screen
     episodes_with_too_many_hap_to_phase = paste0(names(which(n_haps_per_episode > Max_Hap_genotypes)), collapse = ', ')
-    writeLines(sprintf('\nThe following episodes compatible with more than %s haploid genotypes will be phased probabilistically: \n %s',
-                       Max_Hap_genotypes,episodes_with_too_many_hap_to_phase))
+    if(verbose){writeLines(sprintf('\nThe following episodes compatible with more than %s haploid genotypes will be phased probabilistically: \n %s',
+                       Max_Hap_genotypes,episodes_with_too_many_hap_to_phase))}
   }
   
   
@@ -287,14 +287,13 @@ post_prob_CLI = function(MSdata, # MS data
   # otherwise it doesn't work for more than one core. This is still compatible with Mac
   if(cores>1) registerDoParallel(cores = cores) # If cores=1 then this does normal sequential computation
   
-
   Post_probs = foreach(i=1:N, .combine = rbind,
                        .packages = c('dplyr','igraph','gtools',
                                      'matrixStats','Matrix','tictoc'),
                        .export = c('Log_Pr_yn_Gab','Log_Pr_yn_Gnb_unnormalised',
                                    'test_Rn_compatible','test_cln_incompatible')
   ) %dopar% {
-   
+  
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
     # set id = 'BPD_402' for vtx_counts_str = "4_1_0" when checking by hand
