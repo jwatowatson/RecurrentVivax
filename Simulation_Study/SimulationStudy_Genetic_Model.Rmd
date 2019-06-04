@@ -8,8 +8,7 @@ output:
 ---
 
 Reviewer's example: "a recurrence with MOI of 3, containing a clone and two unrelated strains, but with overall pairwise relatedness close to 0.5.""
-Need to save the messages 
-Need to change the plotting code also
+
 
 ```{r, echo=FALSE, include=F}
 knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
@@ -39,10 +38,8 @@ source('./BuildSimData.R')
 ```
 
 
-Determines whether to run the full suite of simulations (takes a long time to run).
 ```{r}
 SIM_DATA = F 
-RUN_MODELS = F # 12 jobs each with N_indivs = 500 takes approx. 4 hrs with 8 cores
 PLOT_RESULTS = F # Will need to check 
 ```
 
@@ -81,7 +78,6 @@ jobs = nrow(settings) # Number of simulations jobs
 
 
 ```{r}
-# First let's simulate some data 
 if(SIM_DATA){
   for(cardinality in cardinalities){ # iterate over cardinality of markers
     for(relationship in relationships){ # iterative over simulation scenario 
@@ -115,7 +111,6 @@ if(SIM_DATA){
 # Second let's summarise the simulated data in terms of 
 # fraction evidence IBS (one number per episode pair)
 # fraction heteroallic (one number per episode)
-
 for(cardinality in cardinalities){ # iterate over cardinality of markers
   for(relationship in relationships){ # iterative over simulation scenario 
     
@@ -296,44 +291,6 @@ for(relationship in c("Sibling", "Stranger")){ # Evidence of IBS is always one f
 }
 ```
 
-
-
-```{r}
-if(RUN_MODELS){
-  for(cardinality in cardinalities){ # iterate over cardinality of markers
-    for(relationship in relationships){ # iterative over simulation scenario 
-      
-      
-      thetas_all = foreach(job = 1:(jobs-1), .combine = rbind, # iterate over jobs parameter settings
-                           .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
-      ) %do% { # parallisation happening inside the function
-        
-        # load data
-        load(sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
-                     cardinality, settings$M[job], settings$COI_pattern[job], relationship))
-        
-        ######################################################################
-        # Run the model on the data using default uniform prior over states
-        ######################################################################
-        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, Fs = sim_output$FS) 
-        TH$setting = job # Add setting number for plotting
-        TH # return results
-        
-      }
-      writeLines(sprintf('********** Done for %s, cardinality %s **********', relationship, cardinality))
-      save(thetas_all, file = sprintf('SimulationOutputs/Sim_Genetic_Results/%s_%s.RData', relationship, cardinality))
-    }
-  }
-}
-```
-
-```{r}
-if(!RUN_MODELS){
-  for(cardinality in cardinalities){ # iterate over cardinality of markers
-    for(relationship in relationships){ # iterative over simulation scenario 
-    load(sprintf('SimulationOutputs/Sim_Genetic_Results/%s_%s.RData', relationship, cardinality))
-}}}
-```
 
 ### Plot results
 
