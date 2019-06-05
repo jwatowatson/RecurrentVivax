@@ -143,8 +143,8 @@ ColorPlot_MSdata = function(MS_data, surpress_messages = FALSE){
   }
 }
 
-# Example 
-load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
-ColorPlot_MSdata(MS_pooled)
+# # Example 
+# load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
+# ColorPlot_MSdata(MS_pooled)
 
 
