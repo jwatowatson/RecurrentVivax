@@ -343,13 +343,13 @@ post_prob_CLI = function(MSdata, # MS data
       
       # If moderate haploid genotypes, adopt deterministic phasing approach
       if(total_haps_count >= cn[inf] & total_haps_count <= Max_Hap_genotypes){ 
-        Hap_combinations[[inf]] = hap_combinations_deterministic(Hnt, cnt = cn[inf], ynt, Y, MSs, M)
+        Hap_combinations[[inf]] = hap_combinations_deterministic(Hnt, cnt = cn[inf], ynt, Y)
         Phased[inf] = 'D'
       }
       
       # This line allows the model to process entirely NA data 
       if(total_haps_count < cn[inf]){
-        Hap_combinations[[inf]] = hap_combinations_missing_data(ynt, MSs, M)
+        Hap_combinations[[inf]] = hap_combinations_missing_data(ynt)
         Phased[inf] = 'U'
       }
     }
