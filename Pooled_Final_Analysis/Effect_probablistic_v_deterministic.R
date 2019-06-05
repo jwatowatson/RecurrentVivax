@@ -55,6 +55,20 @@ load('Results_inflate_prob_v_det_simple.RData')
 all(rownames(Results_MaxHap0) == rownames(Results_MaxHap20)) 
 all(rownames(Results_inflate_MaxHap0) == rownames(Results_inflate_MaxHap20)) 
 
+# ++++++++++++++++++ check row names  ++++++++++++++++++++
+# James I cannot find the misnamed samples? Please can you
+# provide an example? 
+Rownames = list(rownames(Results_MaxHap0),
+                rownames(Results_MaxHap20),
+                rownames(Results_inflate_MaxHap0), 
+                rownames(Results_inflate_MaxHap20))
+lapply(Rownames, function(X){
+  not_string = !(grepl('VHX', X) | grepl('BPD', X))  
+  X[not_string]
+})
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 # Extract comparisons usign probablistic vs deterministic approach
 inds_to_compare = which(Results_MaxHap0$Phased == 'P_P' & Results_MaxHap20$Phased == "D_D")
 inds_to_compare_inflate = which(Results_inflate_MaxHap0$Phased == 'P_P' & Results_inflate_MaxHap20$Phased == "D_D")
