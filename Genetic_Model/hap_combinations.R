@@ -36,9 +36,6 @@
 #
 # Future iterations of the model with likely adopt the probablistic approach.
 ############################################################################
-
-
-### Why does this function not take as argument MSs??? The others do (e.g. deterministic one)
 hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
   
   names(Y) = colnames(ynt) # S.t. return combinations have names
@@ -89,7 +86,10 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
 }
 
 
-hap_combinations_deterministic = function(Hnt, cnt, ynt, Y, MSs, M){
+hap_combinations_deterministic = function(Hnt, cnt, ynt, Y){
+  
+  MSs = colnames(ynt)
+  M = length(MSs)
   
   # Indices of all combinations of nrow(Hnt) choose cn[inf] haploid genotypes for the tth infection, inf 
   Vt_Hnt_inds = combinations(nrow(Hnt), r = cnt, v = 1:nrow(Hnt))  
@@ -125,8 +125,11 @@ hap_combinations_deterministic = function(Hnt, cnt, ynt, Y, MSs, M){
 }
 
 
-hap_combinations_missing_data = function(ynt, MSs, M){
+hap_combinations_missing_data = function(ynt){
   
+  MSs = colnames(ynt)
+  M = length(MSs)
+    
   # Convert to character since used to index 
   Hnt_chr = matrix(sapply(ynt, as.character), ncol = M)
   colnames(Hnt_chr) = MSs
