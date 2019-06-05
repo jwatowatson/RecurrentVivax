@@ -18,11 +18,12 @@ source('../Genetic_Model/post_prob_CLI.R')
 source('../Genetic_Model/hap_combinations.R')
 
 RUN_MODELS = T
+#+++++++++++++++
 CORES = parallel::detectCores()-2
-  
+#+++++++++++++++
+
 set.seed(1)
 cardinalities = c(4,13) # Marker cardinalities (set to match min and mean of our panel)
-N_indivs = 250 # Number of individuals
 Ms = seq(3,12,3) # Number of MS markers
 COIs_1 = c(1,3) # COIs of primary episode (COMMENT)
 COIs_2 = c(1,3) # COIs of recurrent episode
@@ -50,12 +51,10 @@ if(RUN_MODELS){
         load(sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
                      cardinality, settings$M[job], settings$COI_pattern[job], relationship))
         
-        inds = sim_output$MS_data_sim$ID == 'SIM_1'
-        
         ######################################################################
         # Run the model on the data using default uniform prior over states
         ######################################################################
-        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[inds,], Fs = sim_output$FS, cores = CORES) 
+        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, Fs = sim_output$FS, cores = CORES) 
         TH$setting = job # Add setting number for plotting
         TH # return results
         
