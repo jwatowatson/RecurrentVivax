@@ -38,7 +38,7 @@
 ############################################################################
 hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
   
-  names(Y) = colnames(ynt) # S.t. return combinations have names
+  Y = lapply(Y, as.character) # Needs to be character s.t. sample('9') not interpreted as sample(1:9)
   diff_unique = c(1,1,1) # Set a trio of non-zero differences s.t. while loop starts
   num_unique = 0 # Number of initial combinations 
   nrep = Max_Hap_comb # We don't know how many are needed to capture most unique combinations, 
@@ -97,10 +97,15 @@ hap_combinations_deterministic = function(Hnt, cnt, ynt, Y){
   # Check each combination to see if compatible with ynt 
   # (this is a bit like an ABC step with epsilon = 0)
   scores = apply(Vt_Hnt_inds, 1, function(x, Y){ 
-    X = alply(Hnt[x,,drop=FALSE], 2, function(x){as.character(sort(unique(x[!is.na(x)])))})
-    score = identical(X,Y) # Test that they are the same
-    return(score)
-  }, Y)
+    comb = Hnt[x,,drop=FALSE]
+    for(MS in MSs){
+      if(!setequal(comb[,MS], Y[[MS]])){
+        score = F; break()
+      } else {
+        score = T
+      }
+    }
+    return(score)}, Y)
   
   # Extract only those indices that are compatible 
   Vt_Hnt_inds_comp = Vt_Hnt_inds[scores,,drop = FALSE]
@@ -119,7 +124,7 @@ hap_combinations_deterministic = function(Hnt, cnt, ynt, Y){
     
     # Return
     list(z[inds_sorted, , drop = F])
-    }), function(x) x[[1]])
+  }), function(x) x[[1]])
   
   return(all_comp)
 }
@@ -129,7 +134,7 @@ hap_combinations_missing_data = function(ynt){
   
   MSs = colnames(ynt)
   M = length(MSs)
-    
+  
   # Convert to character since used to index 
   Hnt_chr = matrix(sapply(ynt, as.character), ncol = M)
   colnames(Hnt_chr) = MSs
