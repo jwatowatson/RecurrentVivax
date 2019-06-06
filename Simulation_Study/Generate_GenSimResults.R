@@ -61,7 +61,7 @@ if(RUN_MODELS){
         #+++++++++++++++++++
         
         # Run the model
-        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, Fs = sim_output$FS, cores = CORES) 
+        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[Ind,], Fs = sim_output$FS, cores = CORES) 
         TH$setting = job # Add setting number for plotting
         TH # return results
         
