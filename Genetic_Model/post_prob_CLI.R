@@ -18,8 +18,8 @@ post_prob_CLI = function(MSdata, # MS data
                          cores = 4, # Number of cores for parallel computation
                          Max_Eps = 3, # Limit on number of episodes (due to test_Rn_compatible) 
                          Max_Tot_Vtx = 6, # Limit on number of vertices = cumulative COI
-                         Max_Hap_genotypes = 300, # Limit on deterministic phasing 
-                         Max_Hap_comb = 200, # Limit on probabilistically phased graphs 
+                         Max_Hap_genotypes = 100, # Limit on deterministic phasing 
+                         Max_Hap_comb = 800, # Limit on probabilistically phased graphs (sufficient to phase comp with 72) 
                          UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
                          verbose = FALSE){ # Set to true to return all messages
   
@@ -27,7 +27,6 @@ post_prob_CLI = function(MSdata, # MS data
   # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   # # Simulate code for internal checks. Comment when not doing internal checks
   # # Ultimate goal: integrate into unit test
-  # 
   # set.seed(1)
   # sim_output = BuildSimData(Tn = 3,
   #                           COIs = c(1,2,3), # COI from settings
@@ -37,16 +36,18 @@ post_prob_CLI = function(MSdata, # MS data
   #                           relatedness = 'Clone')
   # MSdata = sim_output$MS_data_sim # MS data
   # Fs = sim_output$FS # MS population frequencies
-  # Max_Hap_genotypes = 20 # Limit on deterministic phasing
+  # Max_Hap_genotypes = 300 # Limit on deterministic phasing
+  # Max_Hap_comb = 1000 # Limit on probablistically phased graphs
   # p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3) # Uniform prior over C, L, I
   # alpha = 0 # Additive inbreeding constant
   # cores = 4 # Number of cores for parallel computation
   # Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
   # Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
-  # Max_Hap_comb = 200 # Limit on probablistically phased graphs
   # UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
   # verbose = TRUE
   # # # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  
+  
   
   #==========================================================================
   # Check the MSdata and p have the correct structures
@@ -277,7 +278,7 @@ post_prob_CLI = function(MSdata, # MS data
                        Max_Hap_genotypes,episodes_with_too_many_hap_to_phase))}
   }
   
-  print(max(n_haps_per_episode))
+  print(max(n_haps_per_episode)) 
   #return(n_haps_per_episode)
   
   #***********************************************
@@ -329,7 +330,7 @@ post_prob_CLI = function(MSdata, # MS data
 
       # Summarise data for compatibility check and Hap_combinations_probabilistic()
       # alply ensures it's always as a list, important for Hap_combinations_probabilistic()
-      Y = alply(ynt, 2, function(x){as.character(sort(unique(x[!is.na(x)])))})
+      Y = alply(ynt, 2, function(x){sort(unique(x[!is.na(x)]))}, .dims = T)
 
       # All haploid genotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
       Hnt = expand.grid((lapply(ynt, unique)))
@@ -337,8 +338,9 @@ post_prob_CLI = function(MSdata, # MS data
 
       # If very many compatible haploid genotypes, adopt probablistic phasing approach
       if(total_haps_count > Max_Hap_genotypes){
-        Hap_combinations[[inf]] = hap_combinations_probabilistic(Max_Hap_comb, cnt = cn[inf], ynt, Y)
-        Phased[inf] = 'P'
+        X = hap_combinations_probabilistic(Max_Hap_comb, cnt = cn[inf], ynt, Y)
+        Hap_combinations[[inf]] = X$hap_combs
+        Phased[inf] = sprintf('P%s', as.numeric(X$coverge))
       }
 
       # If moderate haploid genotypes, adopt deterministic phasing approach
@@ -408,7 +410,9 @@ post_prob_CLI = function(MSdata, # MS data
       Post_probs = data.frame(C=rep(NA,length(recurrences)),
                               L=rep(NA,length(recurrences)),
                               I=rep(NA,length(recurrences)),
-                              Phased = NA)
+                              Phased = NA, 
+                              Hapcnt= NA)
+      
       rownames(Post_probs) = recurrences
       # return NA vector of Post_probs
       Post_probs
@@ -471,6 +475,8 @@ post_prob_CLI = function(MSdata, # MS data
       }
 
       Post_probs$Phased = paste(Phased[initial], Phased[recurrences], sep = "_")
+      Post_probs$Hapcnt = paste(n_haps_per_episode[initial], 
+                                n_haps_per_episode[recurrences], sep = "_")
       Post_probs
     }
   }

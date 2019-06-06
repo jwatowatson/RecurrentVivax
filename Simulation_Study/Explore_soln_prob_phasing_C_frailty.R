@@ -18,21 +18,23 @@ source('../Genetic_Model/post_prob_CLI.R')
 source('../Genetic_Model/hap_combinations.R')
 
 set.seed(1)
-inds = sim_output$MS_data_sim$ID == 'SIM_1'
+
 
 #====================================================================
 # Does increasing Max_Hap_comb recover non-zero recrudescence: no...
 # Recovered non-zero for one case only with M = 9; for zero with M = 12
 # Meanwhile computation time increases, almost linearly
-# A.s. increasing Max_Hap_comb is not a solution to overcoming frailty in 
+# A.s. increasing Max_Hap_comb is not a solution to overcoming frailty 
+# in highly complex simulated data
 #====================================================================
 load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M9_COIs3_1_Clone.RData') # load data
-max_hap_combs = c(100, 250, 500, 1000, 2500, 5000)
+inds = sim_output$MS_data_sim$ID == 'SIM_1'
+max_hap_combs = c(100, 500, 1000) # When we allow more than 1000, start to skip problems as too complex
 tic.clearlog()
 Results = t(sapply(max_hap_combs, function(x){
   tic()
   TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[inds,], Fs = sim_output$FS, 
-                     Max_Hap_comb = x) 
+                     Max_Hap_comb = x,  Max_Hap_genotypes = 0) 
   toc(log = T)
   TH 
 }))
@@ -43,17 +45,22 @@ plot(x = max_hap_combs, y = Times)
 
 #====================================================================
 # Does increasing Max_Hap_genotypes recover non-zero recrudescence: no
+# Problem sim cases are all in excess of any reasonable Max_Hap_genotypes
+# 
 # But perhaps it would in the real data?
 # The maximum observed in the VHX and BPD simple set is 1296
-# The maximum observed in the VHX and BPD inflated set is 19XX
+# The maximum observed in the VHX and BPD inflated set is 1728
+# 
+# Setting Max_Hap_genotypes above 300 leads to problems with combinations
+# It's acctually faster when deterministic when M3 
 #====================================================================
 load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M3_COIs3_1_Clone.RData') # load data
-max_genotypes = c(20, 200, 800, 1300, 2000) # Need a less complex case to test this 
+max_genotypes = c(0, 10, 100, 200, 300) # Cannot go over 300
 tic.clearlog()
 Results = t(sapply(max_genotypes, function(x){
   tic()
-  TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[inds,], Fs = sim_output$FS,
-                     Max_Hap_genotypes = x) 
+  TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[inds,], Fs = sim_output$FS, verbose = T, 
+                     Max_Hap_genotypes = x, Max_Hap_comb = 1300) 
   toc(log = T)
   TH 
 }))
@@ -66,22 +73,22 @@ plot(x = max_genotypes, y = Times)
 
 #=============================================
 # Can we do a potential for clone check? This has 
-# been aborted because 1) too hard and 2) XXX
+# been aborted because too hard 
 # 
 # Nevertheless I keep notes here in case of future
 # editions, esp. with different data types. 
 # 
-# This hard because it requires infections to 
+# This is hard because it requires infections to 
 # be processed as pairs whereas currently
 # we phase each infection in turn
 #
 # Currently we have for a pair of infections a way to 
-# extract intersecting allels and check if hapltypes using 
-# those allels have been 
+# extract intersecting allels and check if haplotypes using 
+# those allels have been sampled probabilistically
 #
 # This is not yet automated over multiple infections 
-# Moveover, I'm not sure how we might ti make haplotype combinations 
-# from intersecting haplotypes if non are represented, 
+# Moveover, I'm not sure how we might make haplotype combinations 
+# from intersecting haplotypes were non already sampled 
 # e.g. 
 # could sample from the intesecting haplotypes then 
 # add additional markers so compatible with data observed

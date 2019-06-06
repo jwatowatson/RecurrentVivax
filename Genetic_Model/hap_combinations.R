@@ -7,29 +7,30 @@
 # 
 # hap_combinations_probabilistic: 
 # When a polyclonal infection is compatible with more than Max_Hap_genotypes, 
-# we avoid using the deterministic approach, i.e. combinations() followed by scores, 
-# where score = T for a combination of haploid genotypes (phasing) that is 
-# compatible with the observed data.
+# we avoid using the deterministic approach, i.e. combinations() and scores, 
+# where score = T for each combination (phasing) compatible with the observed data.
 #
 # This is because the number of combinations is very large when the data are
-# compatible with many haploid genotypes, even if sum(scores = T) is small
-#
+# compatible with many haploid genotypes (or COI is large), even if sum(scores = T) is small
+# e.g., combinations is excessively slow for when nrow(Hnt) = 648 choose cnt = 3 (45139896 rows)
+# e.g., combinations is excessively slow for when nrow(Hnt) = 288 choose cnt = 4 (280720440 rows)
+# 
 # Instead we permute and bootstrap the observed data to create combinations that 
-# are guaranteed compatible with the data. Since this is a probablistic approach
-# some of the combinations are duplicates. Rather than generating a fixed number of 
-# combinations, we repeat until either the number found stabilises or exceeds
-# some arbitarily high cut-off, Max_Hap_comb. Without the cut-off, the while loop 
-# could be close to infinite for highly complex infections. 
+# are guaranteed compatible with the data. 
+# Specifically, we permute saturated het. markers (markers with num. alleles obs. = COI)
+# and bootstrap markers with redundancy (markers with num. alleles observed < COI)
+# Since this is a probablistic approach some of the combinations are duplicates. 
+# Rather than generating a fixed number of combinations, we repeat until either the 
+# number found stabilises or exceeds a cut-off, Max_Hap_comb. Without the cut-off, the while loop 
+# is liable to loop forever for highly complex infections. 
 #
 # Ideally, the arbitary cut-off, Max_Hap_comb, should exceed the number of combinations 
 # compatible with infections whose haploid genotype count < Max_Hap_genotypes. We choose 
 # Max_Hap_genotypes and Max_Hap_comb in Setting_Max_Hap_genotypes_comb
 # 
-# Specifically, we permute saturated het. markers (markers with num. alleles obs. = COI)
-# and bootstrap markers with redundancy (markers with num. alleles observed < COI)
-#
-# Using the probablistic approach, we are likely to some over all possible phasings 
-# if the number of compatable haploid genotypes is small, but with no guarantee. 
+# Using the probablistic approach, we are likely to recover all possible phasings 
+# if the number of compatable haploid genotypes is small and the output "converge" is true, 
+# but without guarantee. 
 # The deterministic approach has the advantage of ensuring we sum over all 
 # possible combinations of haplotypes compatible with the data, 
 # but is not efficient since many combinations are not compatible. 
@@ -37,6 +38,9 @@
 # Future iterations of the model with likely adopt the probablistic approach.
 ############################################################################
 hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
+  
+  MSs = colnames(ynt)
+  M = length(MSs)
   
   Y = lapply(Y, as.character) # Needs to be character s.t. sample('9') not interpreted as sample(1:9)
   diff_unique = c(1,1,1) # Set a trio of non-zero differences s.t. while loop starts
@@ -65,8 +69,8 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
           return(rep(NA,cnt))}
       })
       
-      # Sort s.t. matrices do not differ by row order
-      z = matrix(z, ncol = length(Y), dimnames = list(NULL,names(Y)))
+      # Sort s.t. matrices do not differ by row order (important for unique step below)
+      z = matrix(z, ncol = M, dimnames = list(NULL,MSs))
       inds_sorted = sort.int(apply(z, 1, paste, collapse= ""), index.return = T)$ix
       comp = z[inds_sorted, , drop = F]
       return(comp)
@@ -82,8 +86,12 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
     nrep = nrep + 0.5*Max_Hap_comb # increase (0.5*Max_Hap_comb s.t. unique_comp doesn't vastly exceed Max_Hap_comb)
     print(c(num_unique, nrep))
   }
-  return(unique_comp)
+  
+  to_return = list(hap_combs = unique_comp, 
+                   coverge = all(diff_unique[1:3] %in% 0)) # Return logical to know if diff_unique converged or not
+  return(to_return)
 }
+
 
 
 hap_combinations_deterministic = function(Hnt, cnt, ynt, Y){
@@ -96,38 +104,31 @@ hap_combinations_deterministic = function(Hnt, cnt, ynt, Y){
   
   # Check each combination to see if compatible with ynt 
   # (this is a bit like an ABC step with epsilon = 0)
-  scores = apply(Vt_Hnt_inds, 1, function(x, Y){ 
+  # This is essentially a huge for loop and so could be sped up with Rcpp
+  all_comp = alply(Vt_Hnt_inds, 1, function(x, Y){ 
     comb = Hnt[x,,drop=FALSE]
     for(MS in MSs){
-      if(!setequal(comb[,MS], Y[[MS]])){
-        score = F; break()
-      } else {
+      if(setequal(comb[,MS], Y[[MS]])){
         score = T
+      } else {
+        score = F; break()
       }
     }
-    return(score)}, Y)
+    if(score){
+      Hnt_chr = matrix(sapply(comb, as.character), ncol = M)
+      colnames(Hnt_chr) = MSs
+      return(Hnt_chr)
+    } else {
+      return(NULL)
+    }}, Y)
   
-  # Extract only those indices that are compatible 
-  Vt_Hnt_inds_comp = Vt_Hnt_inds[scores,,drop = FALSE]
+  to_return = all_comp[!sapply(all_comp, is.null)] 
   
-  # Convert to character since used to index 
-  Hnt_chr = matrix(sapply(Hnt, as.character), ncol = M)
-  colnames(Hnt_chr) = MSs
-  
-  # Return all possible compatible combinations of haploid genotypes as a list (apply returns array)
-  all_comp = lapply(apply(Vt_Hnt_inds_comp,1,function(i){
-    z = Hnt_chr[i,,drop = F]
-    
-    # Sort s.t. matrices do not differ by row order
-    z = matrix(z, ncol = length(MSs), dimnames = list(NULL,MSs))
-    inds_sorted = sort.int(apply(z, 1, paste, collapse= ""), index.return = T)$ix
-    
-    # Return
-    list(z[inds_sorted, , drop = F])
-  }), function(x) x[[1]])
-  
-  return(all_comp)
+  return(to_return)
 }
+
+
+
 
 
 hap_combinations_missing_data = function(ynt){

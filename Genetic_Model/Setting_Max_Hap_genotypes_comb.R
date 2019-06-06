@@ -2,7 +2,30 @@
 # This script was used to choose reasonable limits for Max_Hap_genotypes and Max_Hap_comb 
 # based on the BPD and VHX data. Note that, the code takes a long time when Max_Hap_comb is 
 # high as it needs to sum over a lot of graphs
+#
+# If probablistic is faster than deterministic, may be preferable to set 
+# Max_Hap_genotypes to low, s.t. some that could be phased deterministically
+# are phased probabilistically but with Max_Hap_comb set to sufficiently high
+# to capture all that could be otherwise phased deterministically
+#
+# Doing so requires at least one high Max_Hap_genotypes run
+# to show that deterministically phased is the same as probablistically phased. 
+#
+#
+# Based on this script: 
+# 97.5th percentile of no. of haploid genotypes per episode: 64
+# 99th percentile of no. of haploid genotypes per episode: 128
+# Max number of hap. genotype combinations given 97.5th percentile: 216
+# Max number of hap. genotype combinations given 99th percentile: 1296
+#
+# However, Setting Max_hap_comb > 1000 can lead to UpperComplexity > 10^6
+# Combinations is excessively slow when nrow(Hnt) = 288 choose cnt = 4 (280720440 rows)
+#
+# In clonclusion
+# Let's set Max_Hap_genotypes = 100 for deterministic
+# Let's set Max_Hap_comb = 800 always
 ##############################################################################################
+
 rm(list = ls())
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData') # For MS_pooled
 load('../RData/Data_for_relatedness.RData') # For Fs_Combined
@@ -12,7 +35,7 @@ source('../Genetic_Model/Data_functions.R')
 source('../Genetic_Model/test_Rn_compatible.R')
 source('../Genetic_Model/post_prob_CLI.R')
 source('../Genetic_Model/hap_combinations.R')
-source('BuildSimData.R')
+source('../Simulation_Study/BuildSimData.R')
 
 
 # Remove MS data for which there are no recurrent data
@@ -46,13 +69,14 @@ n_haps_per_episode = lapply(yns, function(yn){ # For a given individual
 })
 names(n_haps_per_episode) = NULL # Remove IDs since episode ID sufficient 
 n_haps_per_episode = unlist(n_haps_per_episode) # Convert to vector and then string
-Percentile_95th = quantile(n_haps_per_episode, probs = 0.95)
+PROB = 0.975
+Percentile = quantile(n_haps_per_episode, probs = PROB)
 
 
 #==========================================================================
 # Set limit on haploid genotypes
 #==========================================================================
-Max_Hap_genotypes = Percentile_95th # Set max to 95th percentil Limits based on script
+Max_Hap_genotypes = Percentile # Set max to 95th percentil Limits based on script
 number_comp = number_geno = array(dim = length(Episodes), dimnames = list(Episodes)) # Includes all
 
 # Loop over not too complex
@@ -84,7 +108,7 @@ for(i in 1:N){
     
     # Summarise data for compatibility check and Hap_combinations_probabilistic() 
     # alply ensures it's always as a list, important for Hap_combinations_probabilistic() 
-    Y = alply(ynt, 2, function(x){sort(unique(x[!is.na(x)]))}) 
+    Y = alply(ynt, 2, function(x){sort(unique(x[!is.na(x)]))}, .dims = T) 
     
     # All haploid genotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
     Hnt = expand.grid((lapply(ynt, unique)))
@@ -95,7 +119,7 @@ for(i in 1:N){
     if(total_haps_count > Max_Hap_genotypes){
       next()
     } else {
-      hap_comps = hap_combinations_deterministic(Hnt, cn[inf], ynt, Y, MSs, M)
+      hap_comps = hap_combinations_deterministic(Hnt, cnt = cn[inf], ynt, Y)
       number_comp[inf] = length(hap_comps)
     }
   }
@@ -107,8 +131,8 @@ number_comp = number_comp[!is.na(number_comp)]
 number_geno = number_geno[!is.na(number_geno)]
 all(number_geno ==  n_haps_per_episode[names(number_geno)]) # Check the same answer: yes
 
-writeLines(sprintf('95th percentile of no. of haploid genotypes per episode: %s', Percentile_95th))
-writeLines(sprintf('Max number of hap. genotype combinations given 95th percentile: %s', max(number_comp)))
+writeLines(sprintf('%sth percentile of no. of haploid genotypes per episode: %s', PROB*100, Percentile))
+writeLines(sprintf('Max number of hap. genotype combinations given %sth percentile: %s', PROB*100, max(number_comp)))
 
 
 
