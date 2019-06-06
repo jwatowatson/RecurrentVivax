@@ -18,7 +18,7 @@ post_prob_CLI = function(MSdata, # MS data
                          cores = 4, # Number of cores for parallel computation
                          Max_Eps = 3, # Limit on number of episodes (due to test_Rn_compatible) 
                          Max_Tot_Vtx = 6, # Limit on number of vertices = cumulative COI
-                         Max_Hap_genotypes = 20, # Limit on deterministic phasing 
+                         Max_Hap_genotypes = 800, # Limit on deterministic phasing 
                          Max_Hap_comb = 200, # Limit on probabilistically phased graphs 
                          UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
                          verbose = FALSE){ # Set to true to return all messages
@@ -277,8 +277,8 @@ post_prob_CLI = function(MSdata, # MS data
                        Max_Hap_genotypes,episodes_with_too_many_hap_to_phase))}
   }
   
-  
-  
+  print(max(n_haps_per_episode))
+  #return(n_haps_per_episode)
   
   #***********************************************
   # Computation of per-individual values
@@ -286,24 +286,24 @@ post_prob_CLI = function(MSdata, # MS data
   # dopar in Windows needs the packages and functions explicitly passed to foreach command
   # otherwise it doesn't work for more than one core. This is still compatible with Mac
   if(cores>1) registerDoParallel(cores = cores) # If cores=1 then this does normal sequential computation
-  
+
   Post_probs = foreach(i=1:N, .combine = rbind,
                        .packages = c('dplyr','igraph','gtools',
                                      'matrixStats','Matrix','tictoc'),
                        .export = c('Log_Pr_yn_Gab','Log_Pr_yn_Gnb_unnormalised',
                                    'test_Rn_compatible','test_cln_incompatible')
   ) %dopar% {
-  
+
     # set id = 'BPD_91' for vtx_counts_str = "2_1_0" when checking by hand
     # set id = 'BPD_70' for vtx_counts_str = "1_2_2" when checking by hand
     # set id = 'BPD_402' for vtx_counts_str = "4_1_0" when checking by hand
-    
-    id = IDs[i] 
-    
+
+    id = IDs[i]
+
     #==========================================================================
     # Extract data and processed data for the nth individual
     #==========================================================================
-    yn = yns[[id]] 
+    yn = yns[[id]]
     cn = cns[[id]]
     sum_cn = sum(cn)
     Tn = Tns[[id]]
@@ -314,40 +314,40 @@ post_prob_CLI = function(MSdata, # MS data
     vtx_count_str = vtx_count_strs[id] # Extract vertex sizes of Gn
     log_Pr_Rn = if(p_pop_ind){log_Pr_Rns[[Tn_chr]]}else{log_Pr_Rns[[id]]} # Extract log P(Rn)
     log_Pr_G_Rn = log_Pr_G_Rns[[vtx_count_str]] # Extract log P(Gnb | Rn)
-    
-    #==========================================================================          
-    # Generate all possible vertex haploid genotype label mappings of data onto a graph 
+
     #==========================================================================
-    Hap_combinations = vector('list', length = length(infections)) # Store of haploid genotype combinations 
+    # Generate all possible vertex haploid genotype label mappings of data onto a graph
+    #==========================================================================
+    Hap_combinations = vector('list', length = length(infections)) # Store of haploid genotype combinations
     Phased = vector('character', length = length(infections)) # Store record of phasing method
     names(Hap_combinations) = names(Phased) = infections
-      
+
     for(inf in infections){
-      
+
       # Extract data for the tth infection
-      ynt = filter(yn, Episode_Identifier == inf)[,MSs,drop = FALSE] 
-      
-      # Summarise data for compatibility check and Hap_combinations_probabilistic() 
-      # alply ensures it's always as a list, important for Hap_combinations_probabilistic() 
-      Y = alply(ynt, 2, function(x){as.character(sort(unique(x[!is.na(x)])))}) 
-      
+      ynt = filter(yn, Episode_Identifier == inf)[,MSs,drop = FALSE]
+
+      # Summarise data for compatibility check and Hap_combinations_probabilistic()
+      # alply ensures it's always as a list, important for Hap_combinations_probabilistic()
+      Y = alply(ynt, 2, function(x){as.character(sort(unique(x[!is.na(x)])))})
+
       # All haploid genotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
       Hnt = expand.grid((lapply(ynt, unique)))
       total_haps_count = nrow(Hnt)
-      
+
       # If very many compatible haploid genotypes, adopt probablistic phasing approach
-      if(total_haps_count > Max_Hap_genotypes){ 
+      if(total_haps_count > Max_Hap_genotypes){
         Hap_combinations[[inf]] = hap_combinations_probabilistic(Max_Hap_comb, cnt = cn[inf], ynt, Y)
         Phased[inf] = 'P'
       }
-      
+
       # If moderate haploid genotypes, adopt deterministic phasing approach
-      if(total_haps_count >= cn[inf] & total_haps_count <= Max_Hap_genotypes){ 
+      if(total_haps_count >= cn[inf] & total_haps_count <= Max_Hap_genotypes){
         Hap_combinations[[inf]] = hap_combinations_deterministic(Hnt, cnt = cn[inf], ynt, Y)
         Phased[inf] = 'D'
       }
-      
-      # This line allows the model to process entirely NA data 
+
+      # This line allows the model to process entirely NA data
       if(total_haps_count < cn[inf]){
         Hap_combinations[[inf]] = hap_combinations_missing_data(ynt)
         Phased[inf] = 'U'
@@ -356,87 +356,87 @@ post_prob_CLI = function(MSdata, # MS data
 
     # Extract vector of compatible combinations for each episode
     num_comp_combs_Vt = lapply(Hap_combinations, function(x){1:length(x)})
-    
+
     # Create a matrix of inds to create all possible Gna for a given Gn
     labelled_G_ind = as.matrix(expand.grid(num_comp_combs_Vt))
-    
+
     # Total number of possible mappings, A (same as prod(sapply(num_comp_combs_Vt, length)))
     A = nrow(labelled_G_ind)
     log_A = log(A) # Needed for log domain calculation
-    
-    # From labelled_G_ind create all Gna 
+
+    # From labelled_G_ind create all Gna
     Gabs = vector('list', A) # store in list
-    
+
     for(label_ind in 1:nrow(labelled_G_ind)){ # labelled_G_ind inc. compatible labelled graphs only
-      # For each labelling in labelled_G_ind extract vertex data matrix 
+      # For each labelling in labelled_G_ind extract vertex data matrix
       x <- labelled_G_ind[label_ind, ,drop=FALSE]
       vertex_data_matrix = array(dim = c(sum_cn, M))
       for(t in 1:Tn){ # Since each infection has its own set of combinations, we need to loop over infections
-        vertex_data_matrix[cumsum(c(1,cn))[t]:cumsum(cn)[t], ] = Hap_combinations[[infections[t]]][[x[t]]] 
+        vertex_data_matrix[cumsum(c(1,cn))[t]:cumsum(cn)[t], ] = Hap_combinations[[infections[t]]][[x[t]]]
       }
-      Gabs[[label_ind]] = vertex_data_matrix # Characters since used to extract allele frequ. 
+      Gabs[[label_ind]] = vertex_data_matrix # Characters since used to extract allele frequ.
     }
-    
-    #==========================================================================          
+
+    #==========================================================================
     # Load all Gnb and check complexity
     #==========================================================================
     load(sprintf('../RData/graph_lookup/graph_lookup_%s.Rdata', vtx_count_str))
     length_graph_lookup = length(graph_lookup)
     # as.numeric to avoid getting integer overflow leading to an error
     complexity_problem = as.numeric(A)*as.numeric(length_graph_lookup)
-    
+
     if(verbose){
-      writeLines(sprintf('\nComplexity of problem, ID: 
-                         %s\nThe number of different viable vertex labeled graphs is: 
-                         %s\nThe number of different viable edge labeled graphs is: 
-                         %s\nThe number of graphs in viable graph space is therefore: 
-                         %s', 
+      writeLines(sprintf('\nComplexity of problem, ID:
+                         %s\nThe number of different viable vertex labeled graphs is:
+                         %s\nThe number of different viable edge labeled graphs is:
+                         %s\nThe number of graphs in viable graph space is therefore:
+                         %s',
                          id, A, length_graph_lookup, complexity_problem))
     }
-    
+
     # Create recurrences names (do not use infections[-1] incase misordered)
-    inf_no = yn$Episode[!duplicated(yn$Episode_Identifier)] 
+    inf_no = yn$Episode[!duplicated(yn$Episode_Identifier)]
     initial = paste(id, 1, sep = '_') # Initial infection name
     recurrences = paste(id, inf_no[inf_no > 1], sep = '_') # Recurrence names
-    
+
     # We do a complexity check - need to work out what an OK upper limit should be
     # Aimee: Rather than having two complexity checks, I wonder if we might do this check
-    # outside do.par/forloop 
+    # outside do.par/forloop
     if(complexity_problem > UpperComplexity){ # Return NAs and skip to next ID
-      
+
       writeLines(sprintf('\nSkipping this problem (ID %s), too complex (%s).', id, complexity_problem))
       Post_probs = data.frame(C=rep(NA,length(recurrences)),
                               L=rep(NA,length(recurrences)),
-                              I=rep(NA,length(recurrences)), 
+                              I=rep(NA,length(recurrences)),
                               Phased = NA)
       rownames(Post_probs) = recurrences
       # return NA vector of Post_probs
       Post_probs
-      
+
     } else { # Go on to calculate posterior probabilities
-      
-      #==========================================================================          
+
+      #==========================================================================
       # Calculate Pr(yn | Gnb) = sum from a = 1 to A over Pr(yn | Gnab) and record run time
       # This bit can take a long time
       #==========================================================================
       tic() # Start clock to calculate time take per graph
-      
-      # Calculate probabilities of Gnb summed over all Gnab  
-      log_Pr_yn_Gnbs_unnormalised = sapply(graph_lookup, Log_Pr_yn_Gnb_unnormalised, 
-                                           Gabs=Gabs, cn=cn, Tn=Tn, 
-                                           log_Fs=log_Fs, MSs=MSs, alpha_terms=alpha_terms) 
-      
+
+      # Calculate probabilities of Gnb summed over all Gnab
+      log_Pr_yn_Gnbs_unnormalised = sapply(graph_lookup, Log_Pr_yn_Gnb_unnormalised,
+                                           Gabs=Gabs, cn=cn, Tn=Tn,
+                                           log_Fs=log_Fs, MSs=MSs, alpha_terms=alpha_terms)
+
       z = toc(quiet = TRUE) # Stop clock
       ms_per_graph_space = 1000*(z$toc-z$tic) # Total time taken
       ms_per_graph = ms_per_graph_space/complexity_problem # Time taken per graph
-      
+
       if(verbose){writeLines(sprintf('\nRun time (ms) over all graphs in graph space: %s
-                                     \nRun time (ms) per graph in graph space: %s', 
+                                     \nRun time (ms) per graph in graph space: %s',
                                      round(ms_per_graph_space), round(ms_per_graph,2)))}
-      #complexity_time[i,] = c(complexity_problem, ms_per_graph) # Store time 
+      #complexity_time[i,] = c(complexity_problem, ms_per_graph) # Store time
       log_Pr_yn_Gnbs = log_Pr_yn_Gnbs_unnormalised - log_A # Normalise probabilities
-      
-      #==========================================================================          
+
+      #==========================================================================
       # Calculate P(yn | Rn) by summing over all Gnb
       #==========================================================================
       log_Pr_yn_Rn = array(dim = dim(log_Pr_G_Rn), dimnames = dimnames(log_Pr_G_Rn))
@@ -444,19 +444,19 @@ post_prob_CLI = function(MSdata, # MS data
         log_Pr_yn_Rn[,col_i] = log_Pr_yn_Gnbs + log_Pr_G_Rn[,col_i]
       }
       log_Pr_yn_Rn = apply(log_Pr_yn_Rn, 2, logSumExp, na.rm = TRUE)
-      
-      #==========================================================================          
-      # Calculate P(Rn | yn) 
+
+      #==========================================================================
+      # Calculate P(Rn | yn)
       #==========================================================================
       # Pr_yn_Rn[] = 1 # Likelihood check: returns the prior
       log_Pr_yn_and_Rn = log_Pr_yn_Rn[names(log_Pr_Rn)] + log_Pr_Rn
       log_Pr_yn = logSumExp(log_Pr_yn_and_Rn)
-      Pr_Rn_yn = exp(log_Pr_yn_and_Rn - log_Pr_yn) 
-      
-      #==========================================================================          
-      # Calculate P(Rnt | yn) and return 
+      Pr_Rn_yn = exp(log_Pr_yn_and_Rn - log_Pr_yn)
+
       #==========================================================================
-      
+      # Calculate P(Rnt | yn) and return
+      #==========================================================================
+
       if(Tn == 2){ # Return a data.frame C, L, I for single recurrence
         Post_probs = data.frame(C = Pr_Rn_yn['C'],
                                 L = Pr_Rn_yn['L'],
@@ -464,8 +464,8 @@ post_prob_CLI = function(MSdata, # MS data
         rownames(Post_probs) = recurrences
       }
       if(Tn == 3){ # Return a data.frame C, L, I for recurrences 1 and 2
-        Post_probs = data.frame(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])), 
-                                L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])), 
+        Post_probs = data.frame(C = c(sum(Pr_Rn_yn[c('CL','CI','CC')]), sum(Pr_Rn_yn[c('LC','CC','IC')])),
+                                L = c(sum(Pr_Rn_yn[c('LL','LI','LC')]), sum(Pr_Rn_yn[c('LL','CL','IL')])),
                                 I = c(sum(Pr_Rn_yn[c('IL','II','IC')]), sum(Pr_Rn_yn[c('LI','CI','II')])))
         rownames(Post_probs) = recurrences
       }
@@ -474,9 +474,9 @@ post_prob_CLI = function(MSdata, # MS data
       Post_probs
     }
   }
-  
-  # # Store to check relationship between problem complexity and time
-  # complexity_time = array(NA, c(N,2), dimnames = list(IDs, c('Number of graphs in viable graph space', 
+
+  # Store to check relationship between problem complexity and time
+  # complexity_time = array(NA, c(N,2), dimnames = list(IDs, c('Number of graphs in viable graph space',
   #                                                            'Run time (ms) per graph')))
   #
   # Aimee I'm saving this so plot can be generated outside of function

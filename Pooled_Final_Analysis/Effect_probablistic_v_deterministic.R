@@ -17,20 +17,21 @@ source("../Genetic_Model/Data_Inflation_Functions.R")
 source("../Genetic_Model/hap_combinations.R")
 source("../Genetic_Model/PlottingFunction.R")
 load('../RData/Data_for_relatedness.RData') # For Fs_combined
-load('../RData/GeneticModel/MS_data_PooledAnalysis.RData') # Pooled MS data from BPD and VHX
-RUN = F
+load('./RData/GeneticModel/MS_data_PooledAnalysis.RData') # Pooled MS data from BPD and VHX
+RUN = T
 MSs = names(Fs_Combined)
 
 #=====================================================
 # Star with simple cases with one or two recurrence
 #=====================================================
 if(RUN){ # Run models
-  Results_MaxHap0 = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 0)
-  Results_MaxHap20 = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 20)
-  #save(Results_MaxHap0, Results_MaxHap20, file = 'Results_prob_v_det_simple.RData')
+  Results_prob = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 0)
+  Results_det = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T)
+  save(Results_prob, Results_det, file = '../RData/Results_prob_v_det_simple.RData')
 } else {
   load('Results_prob_v_det_simple.RData')
 }
+
 
 #============================================
 # Now explore inflated
@@ -43,13 +44,21 @@ MS_inflate = reformat_MSdata(filter(MS_pooled, ID %in% IDs_remaining), MSs = nam
 MS_inflated = Inflate_into_pairs(MS_data = MS_inflate) # Inflate
 
 if(RUN){ # Run models
-  Results_inflate_MaxHap0 = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 0)
-  Results_inflate_MaxHap20 = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 20)
-  #save(Results_inflate_MaxHap0, Results_inflate_MaxHap20, file = 'Results_inflate_prob_v_det_simple.RData')
+  Results_inflate_prob = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 0)
+  Results_inflate_det = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T)
+  save(Results_inflate_prob, Results_inflate_det, file = '../RData/Results_inflate_prob_v_det_simple.RData')
 } else {
   load('Results_inflate_prob_v_det_simple.RData')
 }
 
+# By changing the code we can return numbers of compatable haplotypes
+# no_haps_simple = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 0)
+# no_haps_inflate = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 0)
+# 
+# tail(sort(no_haps_simple)) #  two biggest: 648 1296 
+# table(tail(sort(no_haps_inflate), 25)) # if we Max_Hap_genotypes = 800 we could get all but 13
+# 288  648 1296 1728 
+# 2    1    9   13
 
 #============================================
 # Now plot results
@@ -98,6 +107,10 @@ for(state in c("C","L","I")){
 # First let's look at those that were not deterministically phased
 Results_MaxHap20[Results_MaxHap20$Phased != 'D_D', ] # 5 different IDs
 Results_inflate_MaxHap20[Results_inflate_MaxHap20$Phased != 'D_D', ] 
+
+# How many were probablistically phased for both
+Results_MaxHap20[Results_MaxHap20$Phased == 'P_P', ] # 0 
+Results_inflate_MaxHap20[Results_inflate_MaxHap20$Phased == 'P_P', ] #6 
 
 # Extract rownames (!= episode name for inflated)
 rownames_simple_prob = rownames(Results_MaxHap20)[Results_MaxHap20$Phased != 'D_D']

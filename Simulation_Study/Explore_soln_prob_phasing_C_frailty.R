@@ -18,7 +18,6 @@ source('../Genetic_Model/post_prob_CLI.R')
 source('../Genetic_Model/hap_combinations.R')
 
 set.seed(1)
-load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M9_COIs3_1_Clone.RData') # load data
 inds = sim_output$MS_data_sim$ID == 'SIM_1'
 
 #====================================================================
@@ -27,6 +26,7 @@ inds = sim_output$MS_data_sim$ID == 'SIM_1'
 # Meanwhile computation time increases, almost linearly
 # A.s. increasing Max_Hap_comb is not a solution to overcoming frailty in 
 #====================================================================
+load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M9_COIs3_1_Clone.RData') # load data
 max_hap_combs = c(100, 250, 500, 1000, 2500, 5000)
 tic.clearlog()
 Results = t(sapply(max_hap_combs, function(x){
@@ -47,7 +47,8 @@ plot(x = max_hap_combs, y = Times)
 # The maximum observed in the VHX and BPD simple set is 1296
 # The maximum observed in the VHX and BPD inflated set is 19XX
 #====================================================================
-max_genotypes = c(20, 100, 1000, 2000) 
+load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M3_COIs3_1_Clone.RData') # load data
+max_genotypes = c(20, 200, 800, 1300, 2000) # Need a less complex case to test this 
 tic.clearlog()
 Results = t(sapply(max_genotypes, function(x){
   tic()
@@ -86,6 +87,7 @@ plot(x = max_genotypes, y = Times)
 # add additional markers so compatible with data observed
 #
 #=============================================
+load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M9_COIs3_1_Clone.RData') # load data
 MSs = names(sim_output$FS) # extract microsatellite names 
 yns = dlply(sim_output$MS_data_sim, 'ID') # list of per-ID data
 ynts = lapply(yns, function(yn) dlply(yn, 'Episode_Identifier')) # list of list of per-episode data
