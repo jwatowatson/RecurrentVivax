@@ -18,7 +18,7 @@ post_prob_CLI = function(MSdata, # MS data
                          cores = 4, # Number of cores for parallel computation
                          Max_Eps = 3, # Limit on number of episodes (due to test_Rn_compatible) 
                          Max_Tot_Vtx = 6, # Limit on number of vertices = cumulative COI
-                         Max_Hap_genotypes = 800, # Limit on deterministic phasing 
+                         Max_Hap_genotypes = 300, # Limit on deterministic phasing 
                          Max_Hap_comb = 200, # Limit on probabilistically phased graphs 
                          UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
                          verbose = FALSE){ # Set to true to return all messages

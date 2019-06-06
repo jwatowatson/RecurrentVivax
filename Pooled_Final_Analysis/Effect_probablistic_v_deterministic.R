@@ -17,7 +17,7 @@ source("../Genetic_Model/Data_Inflation_Functions.R")
 source("../Genetic_Model/hap_combinations.R")
 source("../Genetic_Model/PlottingFunction.R")
 load('../RData/Data_for_relatedness.RData') # For Fs_combined
-load('./RData/GeneticModel/MS_data_PooledAnalysis.RData') # Pooled MS data from BPD and VHX
+load('../RData/GeneticModel/MS_data_PooledAnalysis.RData') # Pooled MS data from BPD and VHX
 RUN = T
 MSs = names(Fs_Combined)
 
@@ -80,7 +80,6 @@ lapply(Rownames, function(X){
   X[not_string]
 })
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 
 # Extract comparisons usign probablistic vs deterministic approach
 inds_to_compare = (Results_MaxHap0$Phased == 'P_P' & Results_MaxHap20$Phased == "D_D")
