@@ -22,7 +22,7 @@ RUN_MODELS = T
 CORES = parallel::detectCores()-2
 #+++++++++++++++
 
-set.seed(1)
+set.seed(1) # For reproducibility
 cardinalities = c(4,13) # Marker cardinalities (set to match min and mean of our panel)
 Ms = seq(3,12,3) # Number of MS markers
 COIs_1 = c(1,3) # COIs of primary episode (COMMENT)
@@ -31,29 +31,36 @@ relationships = c('Sibling','Stranger','Clone') # Relationships of parasite
 COI_c_max = 4 # Maximum COI we currently consider
 
 # Enumerate all combinations of COI complexity and numbers of markers
-settings = expand.grid(Ms, COIs_1, COIs_2) # Enumerate all possible combinations of COIs and markers 
-names(settings)= c('M','COI_1','COI_2') # Name colunms 
+settings = expand.grid(Ms = Ms, COI_1 = COIs_1, COI_2 = COIs_2) # Enumerate all possible combinations of COIs and markers 
+settings = rbind(settings, expand.grid(Ms = Ms, COI_1 = 2, COI_2 = 1)) # Add settings for 2_1
 settings = settings[settings$COI_1+settings$COI_2<=COI_c_max,] # Remove any with cumulative COI greater than that feasible
 settings$COI_pattern <- paste(settings$COI_1, settings$COI_2, sep = "_") # Store the COIs as a patter
-jobs = nrow(settings) # Number of simulations jobs
+rownames(settings) = NULL
+jobs_cor = which(settings$COI_pattern != '2_1') # Indices of core simulations jobs
+jobs_add = which(settings$COI_pattern == '2_1') # Indices of addn simulations jobs
 
+#====================================================================
+# Run model on well-specified data: core jobs only
+# Cardinalities 4 and 13
+#====================================================================
 tic()
 if(RUN_MODELS){
   for(cardinality in cardinalities){ # iterate over cardinality of markers
     for(relationship in relationships){ # iterative over simulation scenario 
       
-      
-      thetas_all = foreach(job = 1:(jobs-1), .combine = rbind, # iterate over jobs parameter settings
+      thetas_all = foreach(job = jobs_cor, .combine = rbind, # iterate over jobs parameter settings
                            .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
       ) %do% { # parallisation happening inside the function
         
-        # load data
+        # load well-specified data
         load(sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
                      cardinality, settings$M[job], settings$COI_pattern[job], relationship))
         
-        ######################################################################
-        # Run the model on the data using default uniform prior over states
-        ######################################################################
+        #+++++++++++++++++++
+        Ind = sim_output$MS_data_sim$ID == "SIM_1"
+        #+++++++++++++++++++
+        
+        # Run the model
         TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, Fs = sim_output$FS, cores = CORES) 
         TH$setting = job # Add setting number for plotting
         TH # return results
@@ -65,7 +72,69 @@ if(RUN_MODELS){
   }
 }
 
-# # Check
-# load(sprintf('SimulationOutputs/Sim_Genetic_Results/%s_%s.RData', relationship, cardinality))
-# thetas_all
+#====================================================================
+# Run models on erroneous data: cor jobs only
+# Cardinality fixed to 13
+#====================================================================
+tic()
+if(RUN_MODELS){
+  for(relationship in relationships){ # iterative over simulation scenario 
+    
+    thetas_all = foreach(job = jobs_cor, .combine = rbind, # iterate over jobs parameter settings
+                         .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
+    ) %do% { # parallisation happening inside the function
+      
+      # load miss-specified data
+      load(sprintf('./SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M%s_COIs%s_%s_Error.RData', 
+                   settings$M[job], settings$COI_pattern[job], relationship))
+      
+      #+++++++++++++++++++
+      Ind = sim_output$MS_data_sim$ID == "SIM_1"
+      #+++++++++++++++++++
+      
+      # Run the model 
+      TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[Ind, ], Fs = sim_output$FS, cores = CORES) 
+      TH$setting = job # Add setting number for plotting
+      TH # return results
+      
+    }
+    writeLines(sprintf('********** Done for %s **********', relationship))
+    save(thetas_all, file = sprintf('./SimulationOutputs/Sim_Genetic_Results/%s_13_Error.RData', relationship))
+  }
+}
+toc()
+
+
+#====================================================================
+# Run models on well-specified data: add jobs only
+# Cardinality fixed to 13
+#====================================================================
+tic()
+if(RUN_MODELS){
+  for(relationship in relationships){ # iterative over simulation scenario 
+    
+    thetas_all = foreach(job = jobs_cor, .combine = rbind, # iterate over jobs parameter settings
+                         .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
+    ) %do% { # parallisation happening inside the function
+      
+      # load data
+      load(sprintf('./SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M%s_COIs%s_%s.RData', 
+                   settings$M[job], settings$COI_pattern[job], relationship))
+      
+      #+++++++++++++++++++
+      Ind = sim_output$MS_data_sim$ID == "SIM_1"
+      #+++++++++++++++++++
+      
+      # Run the model 
+      TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[Ind, ], Fs = sim_output$FS, cores = CORES) 
+      TH$setting = job # Add setting number for plotting
+      TH # return results
+      
+    }
+    writeLines(sprintf('********** Done for %s **********', relationship))
+    save(thetas_all, file = sprintf('./SimulationOutputs/Sim_Genetic_Results/%s_13_COIs2_1.RData', relationship))
+  }
+}
+toc()
+
 

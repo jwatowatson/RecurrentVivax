@@ -41,7 +41,9 @@ source('./BuildSimData.R')
 
 ```{r, echo=FALSE}
 # Note that the model is currently run a separate script 
-SIM_DATA = F 
+SIM_DATA = T
+SIM_DATA_ERROR = T
+SIM_DATA_COIs2_1 = T
 PLOT_RESULTS = T
 ```
 
@@ -58,10 +60,9 @@ Note that when we previously specified a cut off for the number of heterolalleli
 
 
 ```{r, echo=FALSE}
-# Setup simulation study parameters
 set.seed(1) # For reproducibility
-cardinalities = c(4,13) # Marker cardinalities (min and mean of our panel)
-N_indivs = 250 # Number of individuals
+N_indivs = 250
+cardinalities = c(4,13) # Marker cardinalities (set to match min and mean of our panel)
 Ms = seq(3,12,3) # Number of MS markers
 COIs_1 = c(1,3) # COIs of primary episode (COMMENT)
 COIs_2 = c(1,3) # COIs of recurrent episode
@@ -69,21 +70,23 @@ relationships = c('Sibling','Stranger','Clone') # Relationships of parasite
 COI_c_max = 4 # Maximum COI we currently consider
 
 # Enumerate all combinations of COI complexity and numbers of markers
-settings = expand.grid(Ms, COIs_1, COIs_2) # Enumerate all possible combinations of COIs and markers 
-names(settings)= c('M','COI_1','COI_2') # Name colunms 
+settings = expand.grid(Ms = Ms, COI_1 = COIs_1, COI_2 = COIs_2) # Enumerate all possible combinations of COIs and markers 
+settings = rbind(settings, expand.grid(Ms = Ms, COI_1 = 2, COI_2 = 1)) # Add settings for 2_1
 settings = settings[settings$COI_1+settings$COI_2<=COI_c_max,] # Remove any with cumulative COI greater than that feasible
 settings$COI_pattern <- paste(settings$COI_1, settings$COI_2, sep = "_") # Store the COIs as a patter
-jobs = nrow(settings) # Number of simulations jobs
+rownames(settings) = NULL
+jobs_cor = which(settings$COI_pattern != '2_1') # Indices of core simulations jobs
+jobs_add = which(settings$COI_pattern == '2_1') # Indices of addn simulations jobs
 ```
 
 
 ```{r, echo=FALSE}
-# First simulate data 
+# First simulate data for cor jobs with cardinalities 4 and 13
 if(SIM_DATA){
   for(cardinality in cardinalities){ # iterate over cardinality of markers
     for(relationship in relationships){ # iterative over simulation scenario 
       
-      thetas_all = foreach(job = 1:jobs, .combine = rbind, # iterate over jobs parameter settings
+      thetas_all = foreach(job = jobs_cor, .combine = rbind, # iterate over jobs parameter settings
                            .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
                            
       ) %do% { # parallisation happening inside the function
@@ -107,9 +110,71 @@ if(SIM_DATA){
 }
 ```
 
+```{r, echo=FALSE}
+# Second simulate erroneous data for cor jobs with cardinality 13 only
+error_prob = 0.25 # Ask Mallika
+error_probs = c(error_prob*0.1, # This version assumes a fixed rate for all motif sizes
+                error_prob*0.4, 
+                1-error_prob, 
+                error_prob*0.4, 
+                error_prob*0.1)
+sum(error_probs) # Check sums to one
+
+if(SIM_DATA_ERROR){
+  for(relationship in relationships){ # iterative over simulation scenario 
+    for(job in jobs_cor){
+      
+      # load data
+      load(sprintf('./SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M%s_COIs%s_%s.RData', 
+                   settings$M[job], settings$COI_pattern[job], relationship))
+      
+      # Add error
+      MSs = names(sim_output$FS)
+      data_dim = dim(sim_output$MS_data_sim[, MSs])
+      errors = sample(-2:2, size = prod(data_dim), prob = error_probs, replace = T)
+      MSdata_with_error = sim_output$MS_data_sim[, MSs] + array(errors, dim = data_dim)
+      sim_output$MS_data_sim[, MSs] = MSdata_with_error
+      
+      # save a copy of the erronenous data
+      save(sim_output, file = sprintf('./SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M%s_COIs%s_%s_Error.RData', 
+                                      settings$M[job], settings$COI_pattern[job], relationship))
+    }
+  }
+}
+```
+
+
+```{r, echo=FALSE}
+# Third simulate data for add jobs with cardinality 13 only
+if(SIM_DATA_COIs2_1){
+  for(relationship in relationships){ # iterative over simulation scenario 
+    
+    thetas_all = foreach(job = jobs_add, .combine = rbind, # iterate over jobs parameter settings
+                         .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
+                         
+    ) %do% { # parallisation happening inside the function
+      
+      #####################################################
+      # Simulate and save MS data
+      #####################################################
+      sim_output = BuildSimData(COIs = c(settings$COI_1[job],  # COI from settings
+                                         settings$COI_2[job]), # COI from settings
+                                M = settings$M[job], # Number of markers from settings 
+                                N = N_indivs, # Number of individuals
+                                N_alleles = 13, 
+                                relatedness = relationship)
+      
+      # Save a copy of the simulated data
+      save(sim_output, file=sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M%s_COIs%s_%s.RData', 
+                                    settings$M[job], settings$COI_pattern[job], relationship))
+    }
+  }
+}
+```
+
 
 ```{r, echo = FALSE}
-# Second let's summarise the simulated data in terms of 
+# Now let's summarise the well-specified simulated cor data in terms of 
 # fraction evidence IBS (one number per episode pair)
 # fraction heteroallic (one number per episode)
 if(SIM_DATA){
@@ -117,7 +182,7 @@ if(SIM_DATA){
     for(relationship in relationships){ # iterative over simulation scenario 
       
       
-      Data_summaries = lapply(1:jobs, function(job){
+      Data_summaries = lapply(jobs_cor, function(job){
         
         load(sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
                      cardinality, settings$M[job], settings$COI_pattern[job], relationship))
@@ -315,6 +380,7 @@ for(relationship in c("Sibling", "Stranger", "Clone")){
 
 
 
+
 ### Plot results
 
 ```{r results_COI_effect, fig.width = 12, fig.height = 5, echo = F}
@@ -332,10 +398,10 @@ if(PLOT_RESULTS){
   BESIDES = T # Allows visualisation of error by stacking bars side by side
   
   for(cardinality in cardinalities){ # cardinalities
-  
-  for(pattern in unique(settings$COI_pattern)){
-    JOBS_pattern <- which(settings$COI_pattern == as.character(pattern))
     
+    for(pattern in unique(settings$COI_pattern)){
+      JOBS_pattern <- which(settings$COI_pattern == as.character(pattern))
+      
       
       # Iterate over simulation scenarions (types of data)
       for(relationship in relationships){
