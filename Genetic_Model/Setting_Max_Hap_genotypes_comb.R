@@ -70,7 +70,7 @@ n_haps_per_episode = lapply(yns, function(yn){ # For a given individual
 names(n_haps_per_episode) = NULL # Remove IDs since episode ID sufficient 
 n_haps_per_episode = unlist(n_haps_per_episode) # Convert to vector and then string
 PROB = 0.975
-Percentile = quantile(n_haps_per_episode, probs = PROB)
+Percentile = 128 # quantile(n_haps_per_episode, probs = PROB)
 
 
 #==========================================================================
@@ -119,17 +119,23 @@ for(i in 1:N){
     if(total_haps_count > Max_Hap_genotypes){
       next()
     } else {
-      hap_comps = hap_combinations_deterministic(Hnt, cnt = cn[inf], ynt, Y)
+      hap_comps = hap_combinations_deterministic(Hnt, cnt = cn[inf], ynt)
       number_comp[inf] = length(hap_comps)
     }
   }
 }
 
 
+
+
 # Condense
 number_comp = number_comp[!is.na(number_comp)]
 number_geno = number_geno[!is.na(number_geno)]
-all(number_geno ==  n_haps_per_episode[names(number_geno)]) # Check the same answer: yes
+max(number_comp)
+max(number_geno[names(number_comp)])
+all(number_geno == n_haps_per_episode[names(number_geno)]) # Check the same answer: yes
+
+plot(y = number_comp, x = number_geno[names(number_comp)])
 
 writeLines(sprintf('%sth percentile of no. of haploid genotypes per episode: %s', PROB*100, Percentile))
 writeLines(sprintf('Max number of hap. genotype combinations given %sth percentile: %s', PROB*100, max(number_comp)))
