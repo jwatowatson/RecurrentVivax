@@ -24,28 +24,28 @@ post_prob_CLI = function(MSdata, # MS data
                          verbose = FALSE){ # Set to true to return all messages
   
   
-  # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  # # Simulate code for internal checks. Comment when not doing internal checks
-  # # Ultimate goal: integrate into unit test
-  # set.seed(1)
-  # sim_output = BuildSimData(Tn = 3,
-  #                           COIs = c(1,2,3), # COI from settings
-  #                           M = 6, # Number of markers from settings
-  #                           N = 1, # Number of individuals
-  #                           N_alleles = 4,
-  #                           relatedness = 'Clone')
-  # MSdata = sim_output$MS_data_sim # MS data
-  # Fs = sim_output$FS # MS population frequencies
-  # Max_Hap_genotypes = 300 # Limit on deterministic phasing
-  # Max_Hap_comb = 1000 # Limit on probablistically phased graphs
-  # p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3) # Uniform prior over C, L, I
-  # alpha = 0 # Additive inbreeding constant
-  # cores = 4 # Number of cores for parallel computation
-  # Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
-  # Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
-  # UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
-  # verbose = TRUE
-  # # # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  # Simulate code for internal checks. Comment when not doing internal checks
+  # Ultimate goal: integrate into unit test
+  set.seed(1)
+  sim_output = BuildSimData(Tn = 3,
+                            COIs = c(1,2,3), # COI from settings
+                            M = 6, # Number of markers from settings
+                            N = 1, # Number of individuals
+                            N_alleles = 4,
+                            relatedness = 'Clone')
+  MSdata = sim_output$MS_data_sim # MS data
+  Fs = sim_output$FS # MS population frequencies
+  Max_Hap_genotypes = 100 # Limit on deterministic phasing
+  Max_Hap_comb = 800 # Limit on probablistically phased graphs
+  p = c('C' = 1/3, 'L' = 1/3, 'I' = 1/3) # Uniform prior over C, L, I
+  alpha = 0 # Additive inbreeding constant
+  cores = 4 # Number of cores for parallel computation
+  Max_Eps = 3 # Limit on number of episodes (due to test_Rn_compatible)
+  Max_Tot_Vtx = 6 # Limit on number of vertices = cumulative COI
+  UpperComplexity = 10^6 # Assuming 1ms per operation -> 5 hours
+  verbose = TRUE
+  # # #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
   
   
@@ -328,24 +328,20 @@ post_prob_CLI = function(MSdata, # MS data
       # Extract data for the tth infection
       ynt = filter(yn, Episode_Identifier == inf)[,MSs,drop = FALSE]
 
-      # Summarise data for compatibility check and Hap_combinations_probabilistic()
-      # alply ensures it's always as a list, important for Hap_combinations_probabilistic()
-      Y = alply(ynt, 2, function(x){sort(unique(x[!is.na(x)]))}, .dims = T)
-
       # All haploid genotypes compatible with ynt (`unique` collapses repeats due to row per MOI)
       Hnt = expand.grid((lapply(ynt, unique)))
       total_haps_count = nrow(Hnt)
 
       # If very many compatible haploid genotypes, adopt probablistic phasing approach
       if(total_haps_count > Max_Hap_genotypes){
-        X = hap_combinations_probabilistic(Max_Hap_comb, cnt = cn[inf], ynt, Y)
+        X = hap_combinations_probabilistic(Max_Hap_comb, cnt = cn[inf], ynt)
         Hap_combinations[[inf]] = X$hap_combs
         Phased[inf] = sprintf('P%s', as.numeric(X$coverge))
       }
 
       # If moderate haploid genotypes, adopt deterministic phasing approach
       if(total_haps_count >= cn[inf] & total_haps_count <= Max_Hap_genotypes){
-        Hap_combinations[[inf]] = hap_combinations_deterministic(Hnt, cnt = cn[inf], ynt, Y)
+        Hap_combinations[[inf]] = hap_combinations_deterministic(Hnt, cnt = cn[inf], ynt)
         Phased[inf] = 'D'
       }
 

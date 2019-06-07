@@ -37,12 +37,14 @@
 #
 # Future iterations of the model with likely adopt the probablistic approach.
 ############################################################################
-hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
+hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt){
   
+  # Summarise data for compatibility check and Hap_combinations_probabilistic()
+  # alply ensures it's always as a list, important for Hap_combinations_probabilistic()
+  Y = alply(ynt, 2, function(x){sort(unique(x[!is.na(x)]))}, .dims = T)
+  Y = lapply(Y, as.character) # Needs to be character s.t. sample('9') not interpreted as sample(1:9)
   MSs = colnames(ynt)
   M = length(MSs)
-  
-  Y = lapply(Y, as.character) # Needs to be character s.t. sample('9') not interpreted as sample(1:9)
   diff_unique = c(1,1,1) # Set a trio of non-zero differences s.t. while loop starts
   num_unique = 0 # Number of initial combinations 
   nrep = Max_Hap_comb # We don't know how many are needed to capture most unique combinations, 
@@ -94,7 +96,7 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt, Y){
 
 
 
-hap_combinations_deterministic = function(Hnt, cnt, ynt, Y){
+hap_combinations_deterministic = function(Hnt, cnt, ynt){
   
   MSs = colnames(ynt)
   M = length(MSs)
@@ -105,10 +107,10 @@ hap_combinations_deterministic = function(Hnt, cnt, ynt, Y){
   # Check each combination to see if compatible with ynt 
   # (this is a bit like an ABC step with epsilon = 0)
   # This is essentially a huge for loop and so could be sped up with Rcpp
-  all_comp = alply(Vt_Hnt_inds, 1, function(x, Y){ 
+  all_comp = alply(Vt_Hnt_inds, 1, function(x){ 
     comb = Hnt[x,,drop=FALSE]
     for(MS in MSs){
-      if(setequal(comb[,MS], Y[[MS]])){
+      if(setequal(comb[,MS], ynt[,MS])){
         score = T
       } else {
         score = F; break()
@@ -120,7 +122,7 @@ hap_combinations_deterministic = function(Hnt, cnt, ynt, Y){
       return(Hnt_chr)
     } else {
       return(NULL)
-    }}, Y)
+    }})
   
   to_return = all_comp[!sapply(all_comp, is.null)] 
   
