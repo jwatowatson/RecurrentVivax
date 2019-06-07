@@ -64,14 +64,14 @@ set.seed(1) # For reproducibility
 N_indivs = 250
 cardinalities = c(4,13) # Marker cardinalities (set to match min and mean of our panel)
 Ms = seq(3,12,3) # Number of MS markers
-COIs_1 = c(1,3) # COIs of primary episode (COMMENT)
-COIs_2 = c(1,3) # COIs of recurrent episode
+COIs_1 = c(1,2) # COIs of primary episode (COMMENT)
+COIs_2 = c(1,2) # COIs of recurrent episode
 relationships = c('Sibling','Stranger','Clone') # Relationships of parasite
 COI_c_max = 4 # Maximum COI we currently consider
 
 # Enumerate all combinations of COI complexity and numbers of markers
 settings = expand.grid(Ms = Ms, COI_1 = COIs_1, COI_2 = COIs_2) # Enumerate all possible combinations of COIs and markers 
-settings = rbind(settings, expand.grid(Ms = Ms, COI_1 = 2, COI_2 = 1)) # Add settings for 2_1
+settings = rbind(settings, expand.grid(Ms = Ms, COI_1 = 3, COI_2 = 1)) # Add settings for 2_1
 settings = settings[settings$COI_1+settings$COI_2<=COI_c_max,] # Remove any with cumulative COI greater than that feasible
 settings$COI_pattern <- paste(settings$COI_1, settings$COI_2, sep = "_") # Store the COIs as a patter
 rownames(settings) = NULL
