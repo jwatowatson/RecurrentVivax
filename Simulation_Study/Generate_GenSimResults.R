@@ -25,14 +25,14 @@ CORES = parallel::detectCores()-2
 set.seed(1) # For reproducibility
 cardinalities = c(4,13) # Marker cardinalities (set to match min and mean of our panel)
 Ms = seq(3,12,3) # Number of MS markers
-COIs_1 = c(1,3) # COIs of primary episode (COMMENT)
-COIs_2 = c(1,3) # COIs of recurrent episode
+COIs_1 = c(1,2) # COIs of primary episode (COMMENT)
+COIs_2 = c(1,2) # COIs of recurrent episode
 relationships = c('Sibling','Stranger','Clone') # Relationships of parasite
 COI_c_max = 4 # Maximum COI we currently consider
 
 # Enumerate all combinations of COI complexity and numbers of markers
 settings = expand.grid(Ms = Ms, COI_1 = COIs_1, COI_2 = COIs_2) # Enumerate all possible combinations of COIs and markers 
-settings = rbind(settings, expand.grid(Ms = Ms, COI_1 = 2, COI_2 = 1)) # Add settings for 2_1
+settings = rbind(settings, expand.grid(Ms = Ms, COI_1 = 3, COI_2 = 1)) # Add settings for 2_1
 settings = settings[settings$COI_1+settings$COI_2<=COI_c_max,] # Remove any with cumulative COI greater than that feasible
 settings$COI_pattern <- paste(settings$COI_1, settings$COI_2, sep = "_") # Store the COIs as a patter
 rownames(settings) = NULL
@@ -56,12 +56,12 @@ if(RUN_MODELS){
         load(sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
                      cardinality, settings$M[job], settings$COI_pattern[job], relationship))
         
-        #+++++++++++++++++++
-        Ind = sim_output$MS_data_sim$ID == "SIM_1"
-        #+++++++++++++++++++
+        # #+++++++++++++++++++
+        # Ind = sim_output$MS_data_sim$ID == "SIM_1"
+        # #+++++++++++++++++++
         
         # Run the model
-        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[Ind,], Fs = sim_output$FS, cores = CORES) 
+        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim,Fs = sim_output$FS, cores = CORES) 
         TH$setting = job # Add setting number for plotting
         TH # return results
         
@@ -88,12 +88,12 @@ if(RUN_MODELS){
       load(sprintf('./SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M%s_COIs%s_%s_Error.RData', 
                    settings$M[job], settings$COI_pattern[job], relationship))
       
-      #+++++++++++++++++++
-      Ind = sim_output$MS_data_sim$ID == "SIM_1"
-      #+++++++++++++++++++
+      # #+++++++++++++++++++
+      # Ind = sim_output$MS_data_sim$ID == "SIM_1"
+      # #+++++++++++++++++++
       
       # Run the model 
-      TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[Ind, ], Fs = sim_output$FS, cores = CORES) 
+      TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, Fs = sim_output$FS, cores = CORES) 
       TH$setting = job # Add setting number for plotting
       TH # return results
       
@@ -113,7 +113,7 @@ tic()
 if(RUN_MODELS){
   for(relationship in relationships){ # iterative over simulation scenario 
     
-    thetas_all = foreach(job = jobs_cor, .combine = rbind, # iterate over jobs parameter settings
+    thetas_all = foreach(job = jobs_add, .combine = rbind, # iterate over jobs parameter settings
                          .packages = c('dplyr','Matrix','gtools','igraph','matrixStats','doParallel')
     ) %do% { # parallisation happening inside the function
       
@@ -121,12 +121,12 @@ if(RUN_MODELS){
       load(sprintf('./SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M%s_COIs%s_%s.RData', 
                    settings$M[job], settings$COI_pattern[job], relationship))
       
-      #+++++++++++++++++++
-      Ind = sim_output$MS_data_sim$ID == "SIM_1"
-      #+++++++++++++++++++
+      # #+++++++++++++++++++
+      # Ind = sim_output$MS_data_sim$ID == "SIM_1"
+      # #+++++++++++++++++++
       
       # Run the model 
-      TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[Ind, ], Fs = sim_output$FS, cores = CORES) 
+      TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, Fs = sim_output$FS, cores = CORES) 
       TH$setting = job # Add setting number for plotting
       TH # return results
       
