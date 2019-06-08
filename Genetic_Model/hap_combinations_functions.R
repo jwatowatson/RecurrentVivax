@@ -6,14 +6,17 @@
 # missing (hap_combinations_missing_data)
 # 
 # hap_combinations_probabilistic: 
-# When a polyclonal infection is compatible with more than Max_Hap_genotypes, 
+# When a polyclonal infection is compatible with more than Max_Hap_genotypes 
+# (this cut off is not ideal - see Setting_Max_Hap_genotypes_combs.R), 
 # we avoid using the deterministic approach, i.e. combinations() and scores, 
 # where score = T for each combination (phasing) compatible with the observed data.
 #
-# This is because the number of combinations is very large when the data are
-# compatible with many haploid genotypes (or COI is large), even if sum(scores = T) is small
-# e.g., combinations is excessively slow for when nrow(Hnt) = 648 choose cnt = 3 (45139896 rows)
-# e.g., combinations is excessively slow for when nrow(Hnt) = 288 choose cnt = 4 (280720440 rows)
+# This is because, in general, the number of combinations is very large when the data are
+# compatible with many haploid genotypes (or COI is large), even if sum(scores = T) is small.
+# However, no. of combinations also scales with cnt, s.t. Max_Hap_genotypes is NOT a very
+# robust way to avoid deterministic phasing
+# e.g., no. combinations when nrow(Hnt) = 648 choose cnt = 3 (45139896 rows)
+# e.g., no. combinations when nrow(Hnt) = 288 choose cnt = 4 (280720440 rows)
 # 
 # Instead we permute and bootstrap the observed data to create combinations that 
 # are guaranteed compatible with the data. 
@@ -24,10 +27,6 @@
 # number found stabilises or exceeds a cut-off, Max_Hap_comb. Without the cut-off, the while loop 
 # is liable to loop forever for highly complex infections. 
 #
-# Ideally, the arbitary cut-off, Max_Hap_comb, should exceed the number of combinations 
-# compatible with infections whose haploid genotype count < Max_Hap_genotypes. We choose 
-# Max_Hap_genotypes and Max_Hap_comb in Setting_Max_Hap_genotypes_comb
-# 
 # Using the probablistic approach, we are likely to recover all possible phasings 
 # if the number of compatable haploid genotypes is small and the output "converge" is true, 
 # but without guarantee. 
@@ -35,7 +34,10 @@
 # possible combinations of haplotypes compatible with the data, 
 # but is not efficient since many combinations are not compatible. 
 #
+# Future more-efficient version of deterministic phasing would use dynamic programming
 # Future iterations of the model with likely adopt the probablistic approach.
+# Future iterations could also recursively phase conditional on inferred state
+# (doing so would upweight inrelated parsites if L and thus reduce state space)
 ############################################################################
 hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt){
   
