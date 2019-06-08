@@ -1,7 +1,11 @@
-###############################################
-# Script to explore the impact of 
-# deterministic versus probablistic phasing
-###############################################
+##############################################################################
+# Script to explore the impact of deterministic versus probablistic phasing
+# Two motivations: 
+# 1) Assess if faster to probabilistically phase and with which Max_Hap_comb
+# 2) Assess if probablistic phasing prevents recrudescence phasing in the real
+# data (i.e. the needle in the haystack problem seen in the simulated 
+# stranger-graph setting)
+##############################################################################
 rm(list = ls())
 load('../RData/RPackages_List.RData')
 new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
@@ -14,7 +18,7 @@ source('../Genetic_Model/iGraph_functions.R')
 source("../Genetic_Model/post_prob_CLI.R") 
 source("../Genetic_Model/test_Rn_compatible.R") 
 source("../Genetic_Model/Data_Inflation_Functions.R")
-source("../Genetic_Model/hap_combinations.R")
+source("../Genetic_Model/hap_combinations_functions.R")
 source("../Genetic_Model/PlottingFunction.R")
 load('../RData/Data_for_relatedness.RData') # For Fs_combined
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData') # Pooled MS data from BPD and VHX
@@ -26,18 +30,38 @@ MSs = names(Fs_Combined)
 #=====================================================
 if(RUN){ # Run models
   
+  # #==============================================================================
+  # tic()
+  # Results_prob = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T,
+  #                              Max_Hap_genotypes = 0,
+  #                              Max_Hap_comb = 800)
+  # toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 199.534 sec elapsed
+  # 
+  # tic()
+  # Results_det = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T,
+  #                             Max_Hap_genotypes = 100,
+  #                             Max_Hap_comb = 800)
+  # toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 81.772 sec elapsed
+  # 
+  # save(Results_prob, Results_det, file = '../RData/Results_prob_v_det_simple_800.RData')
+  
+  #==============================================================================
   tic()
-  Results_prob = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 0)
-  toc()
+  Results_prob = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, 
+                               Max_Hap_genotypes = 0,
+                               Max_Hap_comb = 300)
+  toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 300, 410.261 sec elapsed
   
   tic()
-  Results_det = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 100)
-  toc()
+  Results_det = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, 
+                              Max_Hap_genotypes = 100,
+                              Max_Hap_comb = 300)
+  toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 300, 381.322 sec elapsed
   
-  save(Results_prob, Results_det, file = '../RData/Results_prob_v_det_simple.RData')
-} else {
-  load('../RData/Results_prob_v_det_simple.RData')
-}
+  save(Results_prob, Results_det, file = '../RData/Results_prob_v_det_simple_300.RData')
+} 
+
+
 
 
 #============================================
@@ -52,21 +76,42 @@ MS_inflated = Inflate_into_pairs(MS_data = MS_inflate) # Inflate
 
 if(RUN){ # Run models
   
-  tic()
-  Results_inflate_prob = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 0)
-  toc()
+  # #==============================================================================
+  # tic()
+  # Results_inflate_prob = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, 
+  #                                      Max_Hap_genotypes = 0,
+  #                                      Max_Hap_comb = 800)
+  # toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 2391.415 sec elapsed = 40 mins
+  # 
+  # tic() 
+  # Results_inflate_det = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, 
+  #                                     Max_Hap_genotypes = 100, 
+  #                                     Max_Hap_comb = 800)
+  # toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 1676.266 sec elapsed = 28 mins
+  # 
+  # save(Results_inflate_prob, Results_inflate_det, file = '../RData/Results_inflate_prob_v_det_simple_800.RData')
   
+
+  #==============================================================================
   tic()
-  Results_inflate_det = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, Max_Hap_genotypes = 100)
-  toc()
+  Results_inflate_prob = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, 
+                                       Max_Hap_genotypes = 0,
+                                       Max_Hap_comb = 300)
+  toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 
   
-  save(Results_inflate_prob, Results_inflate_det, file = '../RData/Results_inflate_prob_v_det_simple.RData')
-} else {
-  load('../RData/Results_inflate_prob_v_det_simple.RData')
-}
+  tic() 
+  Results_inflate_det = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, 
+                                      Max_Hap_genotypes = 100, 
+                                      Max_Hap_comb = 300)
+  toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 
+  
+  save(Results_inflate_prob, Results_inflate_det, file = '../RData/Results_inflate_prob_v_det_simple_300.RData')
+} 
 
 
-#+++++++++++++++++++++++++++++++++++++++++++
+
+
+
 
 
 #============================================
@@ -109,23 +154,17 @@ for(state in c("C","L","I")){
 }
 
 #===========================================================
-# When Max_Hap_genotypes = 20, how many are probablistically
+# When Max_Hap_genotypes = 100, how many are probablistically
 # phased and do not converge, thus potentially impacted by recrudescene frailty
 #===========================================================
 # First let's look at those that were not deterministically phased
-Results_MaxHap20[Results_MaxHap20$Phased != 'D_D', ] # 5 different IDs
-Results_inflate_MaxHap20[Results_inflate_MaxHap20$Phased != 'D_D', ] 
+Results_det[Results_det$Phased != 'D_D', ] # Zero
+Results_inflate_det[Results_inflate_det$Phased != 'D_D', ] # Not so many, moreover many converged
 
-# How many were probablistically phased for both
-Results_MaxHap20[Results_MaxHap20$Phased == 'P_P', ] # 0 
-Results_inflate_MaxHap20[Results_inflate_MaxHap20$Phased == 'P_P', ] #6 
-
-# Extract rownames (!= episode name for inflated)
-rownames_simple_prob = rownames(Results_MaxHap20)[Results_MaxHap20$Phased != 'D_D']
-rownames_inflate_prob = rownames(Results_inflate_MaxHap20)[Results_inflate_MaxHap20$Phased != 'D_D']
+# Extract rownames for inflated (!= episode name for inflated)
+rownames_inflate_prob = rownames(Results_inflate_det)[Results_inflate_det$Phased != 'D_D']
 
 # Extract episode names
-Episodes_prob_simple = unique(rownames_simple_prob[!is.na(rownames_simple_prob)])
 Episodes_prob_inflate = unique(sapply(strsplit(rownames_inflate_prob[!is.na(rownames_inflate_prob)], 
                                                split = "%"), function(x){
                                                  ID = gsub('TID', '', x[1])
@@ -133,17 +172,12 @@ Episodes_prob_inflate = unique(sapply(strsplit(rownames_inflate_prob[!is.na(rown
                                                  paste(ID, episode, sep = '_')
                                                }))
 
-IDs_prob_simple = apply(do.call(rbind, strsplit(Episodes_prob_simple, '_'))[,1:2], 1, paste, collapse = "_")
 IDs_prob_inflate = apply(do.call(rbind, strsplit(Episodes_prob_inflate, '_'))[,1:2], 1, paste, collapse = "_")
 
-# Extract IDs
-Episodes_prob = c(Episodes_prob_simple, Episodes_prob_inflate)
-IDs_prob = c(IDs_prob_simple, IDs_prob_inflate)
-
 # How many IDs might be impacted? 
-length(IDs_prob) # 24 IDs
-mean(unique(MS_pooled$ID) %in% IDs_prob)*100 # 8%
-MS_pooled_prob = MS_pooled[MS_pooled$ID %in% IDs_prob,]
+length(IDs_prob_inflate) # 5 IDs
+mean(unique(MS_pooled$ID) %in% IDs_prob_inflate)*100 # 2% episodes
+MS_pooled_prob = MS_pooled[MS_pooled$ID %in% IDs_prob_inflate,]
 
 # COI patterns and number of markers typed of those potentially impacted:
 # most have some potential for recrudescence (decreasing diversity)
@@ -158,15 +192,5 @@ ddply(MS_pooled_prob, .variables = 'ID', .fun = function(x){
 # Lets visually inspect these data to see if we can find evidence of 
 # clones in the data that are not captured in the results
 #-----------------------------------------------------------------
-# Inspect simple first 
-ColorPlot_MSdata(MS_data = reformat_MSdata(MS_pooled[MS_pooled$ID %in% IDs_prob_simple,])) # Plot of all data 
-X = Results_MaxHap20[Results_MaxHap20$Phased != 'D_D', ] # 5 different IDs (501 at top of plot)
-X[nrow(X):1,] # Reverse order to match plot
-# VHX_501 results make sense
-# VHX_352 results make sense
-# VHX_239 results make sense
-# BPD_598 results make sense
-# BPD_562 results make sense 
-
 # We need to process the results to check for inflated (not yet done)
 ColorPlot_MSdata(MS_data = reformat_MSdata(MS_pooled[MS_pooled$ID %in% IDs_prob_inflate,])) # Plot of all data 
