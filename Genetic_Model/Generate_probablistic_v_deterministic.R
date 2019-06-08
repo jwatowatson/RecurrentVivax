@@ -25,43 +25,44 @@ load('../RData/GeneticModel/MS_data_PooledAnalysis.RData') # Pooled MS data from
 RUN = T
 MSs = names(Fs_Combined)
 
+
 #=====================================================
 # Start with simple cases with one or two recurrence
 #=====================================================
-if(RUN){ # Run models
-  
-  # #==============================================================================
-  # tic()
-  # Results_prob = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T,
-  #                              Max_Hap_genotypes = 0,
-  #                              Max_Hap_comb = 800)
-  # toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 199.534 sec elapsed
-  # 
-  # tic()
-  # Results_det = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T,
-  #                             Max_Hap_genotypes = 100,
-  #                             Max_Hap_comb = 800)
-  # toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 81.772 sec elapsed
-  # 
-  # save(Results_prob, Results_det, file = '../RData/Results_prob_v_det_simple_800.RData')
+if(RUN){ # Run models compare det vs prob with Max_Hap_genotypes and Max_Hap_comb 800 vs 300
+  tic.clearlog()
   
   #==============================================================================
-  tic()
+  tic(msg = 'prob_800_simple')
+  Results_prob = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T,
+                               Max_Hap_genotypes = 0,
+                               Max_Hap_comb = 800)
+  toc(log = TRUE, quiet = TRUE) 
+  
+
+  tic(msg = 'det_800_simple')
+  Results_det = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T,
+                              Max_Hap_genotypes = 100,
+                              Max_Hap_comb = 800)
+  toc(log = TRUE, quiet = TRUE) 
+
+  save(Results_prob, Results_det, file = '../RData/Results_prob_v_det_simple_800.RData')
+  
+  #==============================================================================
+  tic(msg = 'prob_300_simple')
   Results_prob = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, 
                                Max_Hap_genotypes = 0,
                                Max_Hap_comb = 300)
-  toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 300, 410.261 sec elapsed
+  toc(log = TRUE, quiet = TRUE) 
   
-  tic()
+  tic(msg = 'det_300_simple')
   Results_det = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, 
                               Max_Hap_genotypes = 100,
                               Max_Hap_comb = 300)
-  toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 300, 381.322 sec elapsed
+  toc(log = TRUE, quiet = TRUE)
   
   save(Results_prob, Results_det, file = '../RData/Results_prob_v_det_simple_300.RData')
 } 
-
-
 
 
 #============================================
@@ -76,34 +77,34 @@ MS_inflated = Inflate_into_pairs(MS_data = MS_inflate) # Inflate
 
 if(RUN){ # Run models
   
-  # #==============================================================================
-  # tic()
-  # Results_inflate_prob = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, 
-  #                                      Max_Hap_genotypes = 0,
-  #                                      Max_Hap_comb = 800)
-  # toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 2391.415 sec elapsed = 40 mins
-  # 
-  # tic() 
-  # Results_inflate_det = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, 
-  #                                     Max_Hap_genotypes = 100, 
-  #                                     Max_Hap_comb = 800)
-  # toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 1676.266 sec elapsed = 28 mins
-  # 
-  # save(Results_inflate_prob, Results_inflate_det, file = '../RData/Results_inflate_prob_v_det_simple_800.RData')
+  #==============================================================================
+  tic(msg = 'prob_800_inflate')
+  Results_inflate_prob = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T,
+                                       Max_Hap_genotypes = 0,
+                                       Max_Hap_comb = 800)
+  toc(log = TRUE, quiet = TRUE)
+
+  tic(msg = 'det_800_inflate')
+  Results_inflate_det = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T,
+                                      Max_Hap_genotypes = 100,
+                                      Max_Hap_comb = 800)
+  toc(log = TRUE, quiet = TRUE) 
+
+  save(Results_inflate_prob, Results_inflate_det, file = '../RData/Results_inflate_prob_v_det_simple_800.RData')
   
 
   #==============================================================================
-  tic()
+  tic(msg = 'prob_300_inflate')
   Results_inflate_prob = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, 
                                        Max_Hap_genotypes = 0,
                                        Max_Hap_comb = 300)
-  toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 
+  toc(log = TRUE, quiet = TRUE) # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 
   
-  tic() 
+  tic(msg = 'det_300_inflate') 
   Results_inflate_det = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, 
                                       Max_Hap_genotypes = 100, 
                                       Max_Hap_comb = 300)
-  toc() # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 
+  toc(log = TRUE, quiet = TRUE) # with Max_Hap_genotypes = 100 and Max_Hap_comb = 800, 
   
   save(Results_inflate_prob, Results_inflate_det, file = '../RData/Results_inflate_prob_v_det_simple_300.RData')
 } 
@@ -115,7 +116,7 @@ if(RUN){ # Run models
 
 
 #============================================
-# Now plot results
+# Now plot results: this bit needs finishing 
 #============================================
 
 # Check all the same
