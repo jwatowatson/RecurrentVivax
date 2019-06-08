@@ -25,6 +25,7 @@
 # However, setting Max_hap_comb > 1000 is prohibitively slow when applied to many episodes. 
 # If we keep Max_Hap_genotypes = 100, we will deterministically phase all with <= Max_Hap_genotypes 
 # inc. VHX_461_1 with 72 comp genotypes and 1296 possible combinations. 
+# To phase VHX_461_1 probablistically, set Max_Hap_genotypes = 70 and Max_Hap_comb = 300
 # For all with > Max_Hap_genotypes we phase probabilistically with Max_Hap_comb combinations. 
 #
 # If probablistic faster than deterministic, preferable to set 
