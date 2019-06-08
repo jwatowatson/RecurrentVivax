@@ -1,6 +1,7 @@
 ##############################################################################
-# To explore solutions to recrudescence frailty
+# To explore solutions to sim recrudescence frailty
 # For a recrudescence frailty case (COIs 3_1 and 12 markers)
+# Timing really ought to be based on the real data set 
 ##############################################################################
 rm(list = ls())
 load('../RData/RPackages_List.RData')
@@ -15,7 +16,7 @@ source('../Genetic_Model/Likelihood_function.R')
 source('../Genetic_Model/Data_functions.R')
 source('../Genetic_Model/test_Rn_compatible.R')
 source('../Genetic_Model/post_prob_CLI.R')
-source('../Genetic_Model/hap_combinations.R')
+source('../Genetic_Model/hap_combinations_functions.R')
 
 set.seed(1)
 
@@ -28,13 +29,13 @@ set.seed(1)
 # in highly complex simulated data
 #====================================================================
 load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M9_COIs3_1_Clone.RData') # load data
-inds = sim_output$MS_data_sim$ID == 'SIM_1'
-max_hap_combs = c(100, 500, 1000) # When we allow more than 1000, start to skip problems as too complex
+inds = sim_output$MS_data_sim$ID == 'SIM_1' # All probablistic because complicated data
+max_hap_combs = c(100, 500, 800, 1000) # When we allow more than 1000 with sim data, start to skip problems as too complex
 tic.clearlog()
 Results = t(sapply(max_hap_combs, function(x){
-  tic()
+  tic(sprintf('prob_%s',x))
   TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[inds,], Fs = sim_output$FS, 
-                     Max_Hap_comb = x,  Max_Hap_genotypes = 0) 
+                     Max_Hap_comb = x,  Max_Hap_genotypes = 0)
   toc(log = T)
   TH 
 }))
@@ -47,20 +48,18 @@ plot(x = max_hap_combs, y = Times)
 # Does increasing Max_Hap_genotypes recover non-zero recrudescence: no
 # Problem sim cases are all in excess of any reasonable Max_Hap_genotypes
 # 
-# But perhaps it would in the real data?
-# The maximum observed in the VHX and BPD simple set is 1296
-# The maximum observed in the VHX and BPD inflated set is 1728
-# 
 # Setting Max_Hap_genotypes above 300 leads to problems with combinations
-# It's acctually faster when deterministic when M3 
+# It's acctually faster when deterministic, 
+# regardless of Max_Hap_comb = 300 or 800 (but both P1 so should be no difference)
 #====================================================================
-load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M3_COIs3_1_Clone.RData') # load data
+load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M6_COIs2_1_Clone.RData') # load data
+inds = sim_output$MS_data_sim$ID == 'SIM_1' # Need a not so complicated example otherwise Det not poss
 max_genotypes = c(0, 10, 100, 200, 300) # Cannot go over 300
 tic.clearlog()
 Results = t(sapply(max_genotypes, function(x){
   tic()
   TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[inds,], Fs = sim_output$FS, verbose = T, 
-                     Max_Hap_genotypes = x, Max_Hap_comb = 1300) 
+                     Max_Hap_genotypes = x, Max_Hap_comb = 300) 
   toc(log = T)
   TH 
 }))
@@ -99,12 +98,18 @@ MSs = names(sim_output$FS) # extract microsatellite names
 yns = dlply(sim_output$MS_data_sim, 'ID') # list of per-ID data
 ynts = lapply(yns, function(yn) dlply(yn, 'Episode_Identifier')) # list of list of per-episode data
 
+
+
 # Make a fake challenging data set by adding some extra 
 # rows to a random example to stress test
-ynts[["SIM_10"]]$SIM_10_2 = rbind(ynts[[ID]]$SIM_10_2, ynts[[ID]]$SIM_10_2,  ynts[[ID]]$SIM_10_2)
+ynts[["SIM_10"]]$SIM_10_2 = rbind(ynts[["SIM_10"]]$SIM_10_2, 
+                                  ynts[["SIM_10"]]$SIM_10_2,  
+                                  ynts[["SIM_10"]]$SIM_10_2)
 ynts[["SIM_10"]]$SIM_10_2$MOI_id[2:3] = 2:3
 ynts[["SIM_10"]]$SIM_10_2$MS1[2:3] = c(9,12)
 ynts[["SIM_10"]]$SIM_10_2$MS2[2:3] = c(3,11)
+
+ID = "SIM_10"
 
 # Specifiy data set
 MSdata = do.call(rbind, ynts[[ID]])
