@@ -1,7 +1,7 @@
 ##############################################################################
 # To explore solutions to sim recrudescence frailty
 # For a recrudescence frailty case (COIs 3_1 and 12 markers)
-# Timing really ought to be based on the real data set 
+# Timing based on real data set in Generated_analyse_probabilistic_v_deterministic
 ##############################################################################
 rm(list = ls())
 load('../RData/RPackages_List.RData')
@@ -17,25 +17,24 @@ source('../Genetic_Model/Data_functions.R')
 source('../Genetic_Model/test_Rn_compatible.R')
 source('../Genetic_Model/post_prob_CLI.R')
 source('../Genetic_Model/hap_combinations_functions.R')
-
 set.seed(1)
 
 
 #====================================================================
 # Does increasing Max_Hap_comb recover non-zero recrudescence: no...
 # Recovered non-zero for one case only with M = 9; for zero with M = 12
-# Meanwhile computation time increases, almost linearly
+# Meanwhile computation time increases linearly
 # A.s. increasing Max_Hap_comb is not a solution to overcoming frailty 
 # in highly complex simulated data
 #====================================================================
-load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M9_COIs3_1_Clone.RData') # load data
+load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M3_COIs1_1_Clone.RData') # load data
 inds = sim_output$MS_data_sim$ID == 'SIM_1' # All probablistic because complicated data
-max_hap_combs = c(100, 500, 800, 1000) # When we allow more than 1000 with sim data, start to skip problems as too complex
+max_hap_combs = rev(c(100, 300, 500, 800, 1000)) # When we allow more than 1000 with sim data, start to skip problems as too complex
 tic.clearlog()
 Results = t(sapply(max_hap_combs, function(x){
   tic(sprintf('prob_%s',x))
   TH = post_prob_CLI(MSdata = sim_output$MS_data_sim[inds,], Fs = sim_output$FS, 
-                     Max_Hap_comb = x,  Max_Hap_genotypes = 0)
+                     Max_Hap_comb = x, Max_Hap_genotypes = 0)
   toc(log = T)
   TH 
 }))
@@ -44,13 +43,16 @@ Time_msg = unlist(tic.log(format = T))
 Times = as.numeric(do.call(rbind, strsplit(Time_msg, split = ' '))[,1])
 plot(x = max_hap_combs, y = Times)
 
+
+
+
 #====================================================================
 # Does increasing Max_Hap_genotypes recover non-zero recrudescence: no
 # Problem sim cases are all in excess of any reasonable Max_Hap_genotypes
 # 
 # Setting Max_Hap_genotypes above 300 leads to problems with combinations
-# It's acctually faster when deterministic, 
-# regardless of Max_Hap_comb = 300 or 800 (but both P1 so should be no difference)
+# It's acctually faster when deterministic, regardless of Max_Hap_comb = 300 or 800 
+# (but both P1 so should be no difference)
 #====================================================================
 load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M6_COIs2_1_Clone.RData') # load data
 inds = sim_output$MS_data_sim$ID == 'SIM_1' # Need a not so complicated example otherwise Det not poss
