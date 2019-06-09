@@ -35,6 +35,9 @@
 # but is not efficient since many combinations are not compatible. 
 #
 # Future more-efficient version of deterministic phasing would use dynamic programming
+# This would remove the need for Max_Hap_genotypes but not Max_Hap_comb, though
+# compute time would scale deterministically with Max_Hap_comb. 
+# 
 # Future iterations of the model with likely adopt the probablistic approach.
 # Future iterations could also recursively phase conditional on inferred state
 # (doing so would upweight inrelated parsites if L and thus reduce state space)
@@ -88,7 +91,7 @@ hap_combinations_probabilistic = function(Max_Hap_comb, cnt, ynt){
     if(diff_unique[1] < 0){next()} # If the current attempt is worse than before, try again
     num_unique = length(unique_comp) # update number that are unique
     nrep = nrep + 0.5*Max_Hap_comb # increase (0.5*Max_Hap_comb s.t. unique_comp doesn't vastly exceed Max_Hap_comb)
-    print(c(num_unique, nrep))
+    #print(c(num_unique, nrep))
   }
   
   to_return = list(hap_combs = unique_comp, 
