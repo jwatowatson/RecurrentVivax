@@ -40,7 +40,7 @@ source('../Genetic_Model/iGraph_functions.R')
 source("../Genetic_Model/post_prob_CLI.R") 
 source("../Genetic_Model/test_Rn_compatible.R") 
 source("../Genetic_Model/Data_Inflation_Functions.R")
-source("../Genetic_Model/hap_combinations.R")
+source("../Genetic_Model/hap_combinations_functions.R")
 
 # The pooled MS data from BPD and VHX
 load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
@@ -61,10 +61,10 @@ RUN_MODELS_FULL_POSTERIOR_SIMPLE = F    # can do on laptop (4.5 hours)
 RUN_MODELS_FULL_POSTERIOR_BPD_TAGNOSTIC = F # can do on laptop (20 mins)
 
 # runs the model for 100 random draws from the Time model posterior on those that cannot be directly computed
-RUN_MODELS_FULL_POSTERIOR_INFLATED = T  # cluster is better (10 hours)
+RUN_MODELS_FULL_POSTERIOR_INFLATED = F # cluster is better (10 hours)
 
 # Does the false positive discovery estimation
-RUN_MODELS_FALSE_POSITIVE = T           # only cluster (1 day with 42 cores)
+RUN_MODELS_FALSE_POSITIVE = F          # only cluster (1 day with 42 cores)
 
 # generates plots
 CREATE_PLOTS = T
@@ -882,7 +882,7 @@ writeLines(sprintf('Number of pairwise probabilities of recurrence states betwee
 ```{r, include=FALSE}
 lowerCI=0.025
 upperCI=0.975
-Ksamples = 50
+Ksamples = 10
 if(RUN_MODELS_FULL_POSTERIOR_INFLATED){  
   
   all_rec_eps_ind = !duplicated(MS_inflated$Episode_Identifier) &
@@ -1513,10 +1513,10 @@ Summaries across all samples selected
 #=================================================
 # Episodes with missing core: share with Mallika
 Episodes_missing_core = names(MS_core_count)[(which(MS_core_count < 3))] # Names 
-Data_missing_core = MS_typd[MS_typed$Episode_Identifier %in% Episodes_missing_core, ] # All data 
+Data_missing_core = MS_typd[MS_typd$Episode_Identifier %in% Episodes_missing_core, ] # All data 
 MSData_missing_core = Data_missing_core[, c(MS_core, MS_addn)] # MS Data
 rownames(MSData_missing_core) = Data_missing_core$Episode_Identifier # name rows
-write.csv(x = MSData_missing_core, file = '~/Dropbox/Genotyping/MSData_missing_core.csv', row.names = T) # Print
+#write.csv(x = MSData_missing_core, file = '~/Dropbox/Genotyping/MSData_missing_core.csv', row.names = T) # Print
 #=================================================
 
 writeLines(sprintf('Number of enrolment samples successfully genotyped at additional markers: %s of %s (%s percent, %s VHX, %s BPD)',
