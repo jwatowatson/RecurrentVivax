@@ -15,7 +15,7 @@ source('../Genetic_Model/Likelihood_function.R')
 source('../Genetic_Model/Data_functions.R')
 source('../Genetic_Model/test_Rn_compatible.R')
 source('../Genetic_Model/post_prob_CLI.R')
-source('../Genetic_Model/hap_combinations.R')
+source('../Genetic_Model/hap_combinations_functions.R')
 
 RUN_MODELS = T
 #+++++++++++++++
@@ -28,16 +28,16 @@ Ms = seq(3,12,3) # Number of MS markers
 COIs_1 = c(1,2) # COIs of primary episode (COMMENT)
 COIs_2 = c(1,2) # COIs of recurrent episode
 relationships = c('Sibling','Stranger','Clone') # Relationships of parasite
-COI_c_max = 4 # Maximum COI we currently consider
+COI_c_max = 3 # Maximum COI we currently consider for cor
 
 # Enumerate all combinations of COI complexity and numbers of markers
 settings = expand.grid(Ms = Ms, COI_1 = COIs_1, COI_2 = COIs_2) # Enumerate all possible combinations of COIs and markers 
-settings = rbind(settings, expand.grid(Ms = Ms, COI_1 = 3, COI_2 = 1)) # Add settings for 2_1
 settings = settings[settings$COI_1+settings$COI_2<=COI_c_max,] # Remove any with cumulative COI greater than that feasible
+settings = rbind(settings, expand.grid(Ms = Ms, COI_1 = 3, COI_2 = 1)) # Add settings for 3_1 example
 settings$COI_pattern <- paste(settings$COI_1, settings$COI_2, sep = "_") # Store the COIs as a patter
 rownames(settings) = NULL
-jobs_cor = which(settings$COI_pattern != '2_1') # Indices of core simulations jobs
-jobs_add = which(settings$COI_pattern == '2_1') # Indices of addn simulations jobs
+jobs_cor = which(settings$COI_pattern != '3_1') # Indices of core simulations jobs
+jobs_add = which(settings$COI_pattern == '3_1') # Indices of addn simulations jobs
 
 #====================================================================
 # Run model on well-specified data: core jobs only
@@ -61,7 +61,7 @@ if(RUN_MODELS){
         # #+++++++++++++++++++
         
         # Run the model
-        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim,Fs = sim_output$FS, cores = CORES) 
+        TH = post_prob_CLI(MSdata = sim_output$MS_data_sim, Fs = sim_output$FS, cores = CORES) 
         TH$setting = job # Add setting number for plotting
         TH # return results
         
@@ -132,7 +132,7 @@ if(RUN_MODELS){
       
     }
     writeLines(sprintf('********** Done for %s **********', relationship))
-    save(thetas_all, file = sprintf('./SimulationOutputs/Sim_Genetic_Results/%s_13_COIs2_1.RData', relationship))
+    save(thetas_all, file = sprintf('./SimulationOutputs/Sim_Genetic_Results/%s_13_COIs3_1.RData', relationship))
   }
 }
 toc()
