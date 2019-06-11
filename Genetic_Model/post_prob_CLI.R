@@ -3,12 +3,21 @@
 # Variables names: conditioning bar is represented by an underscore while 'and' is explicit
 # e.g. log_Pr_yn_Rn denotes log Pr(yn | Rn) while log_Pr_yn_and_Rn denotes log Pr(yn, Rn)
 #
-# Currently, we have set various limits (Max_Eps, Max_Tot_Vtx, Max_Hap_genotypes, UpperComplexity)
+# Currently, we have set various limits (Max_Eps, Max_Tot_Vtx, Max_Hap_genotypes, Max_Hap_comb)
 # allowing us to analyse and interpret the data with which we are working. Ultimately, we aim 
 # to generalise the model to accommodate different data types and release it for general use. 
 # The general-purpose release will likely retain the same statistical framework, but with more
 # computational sophistication, i.e. packaged as software versus statistical model code, e.g
 # in optimal code upperComplexity = 10^6 may be redundant 
+#
+# Settin Max_Hap_genotypes, Max_Hap_comb is nointuitive (see following scripts to better understand)
+# - Explore_soln_prob_phasing_C_frailty.R
+# - Setting_Max_Hap_genotypes_comb.R
+# - Generate_analyse_probablistic_v_deterministic_inc.NA.IDs.R
+# - Generate_analyse_probablistic_v_deterministic_exc.NA.IDs.R
+#
+# Future iterations that use a dynamic approach to phasing should render Max_Hap_genotypes 
+# obsolate
 ##############################################################################################
 
 post_prob_CLI = function(MSdata, # MS data 
@@ -18,8 +27,8 @@ post_prob_CLI = function(MSdata, # MS data
                          cores = 4, # Number of cores for parallel computation
                          Max_Eps = 3, # Limit on number of episodes (due to test_Rn_compatible) 
                          Max_Tot_Vtx = 6, # Limit on number of vertices = cumulative COI
-                         Max_Hap_genotypes = 100, # Limit on deterministic phasing 
-                         Max_Hap_comb = 800, # Limit on probabilistically phased graphs (sufficient to phase comp with 72) 
+                         Max_Hap_genotypes = 50, # Limit on deterministic phasing 
+                         Max_Hap_comb = 500, # Limit on probabilistically phased graphs 
                          UpperComplexity = 10^6, # Assuming 1ms per operation -> 5 hours
                          verbose = FALSE){ # Set to true to return all messages
   
