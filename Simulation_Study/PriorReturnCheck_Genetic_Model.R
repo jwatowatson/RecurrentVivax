@@ -20,7 +20,7 @@ source('../Genetic_Model/iGraph_functions.R')
 source('../Genetic_Model/Likelihood_function.R')
 source('../Genetic_Model/Data_functions.R')
 source('../Genetic_Model/test_Rn_compatible.R')
-source('../Genetic_Model/hap_combinations.R')
+source('../Genetic_Model/hap_combinations_functions.R')
 source('BuildSimData.R')
 
 RUN_MODELS = T # Set to true to run model
