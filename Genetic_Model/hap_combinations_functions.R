@@ -35,10 +35,9 @@
 # but is not efficient since many combinations are not compatible. 
 #
 # Future more-efficient version of deterministic phasing would use dynamic programming
-# This would remove the need for Max_Hap_genotypes but not Max_Hap_comb, though
-# compute time would scale deterministically with Max_Hap_comb. 
-# 
-# Future iterations of the model with likely adopt the probablistic approach.
+# This would remove the need for Max_Hap_genotypes. Although it would not remove
+# the need for Max_Hap_comb compute time would scale deterministically with Max_Hap_comb. 
+#
 # Future iterations could also recursively phase conditional on inferred state
 # (doing so would upweight inrelated parsites if L and thus reduce state space)
 ############################################################################
