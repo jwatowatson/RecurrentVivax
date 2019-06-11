@@ -41,10 +41,10 @@ source('./BuildSimData.R')
 
 ```{r, echo=FALSE}
 # Note that the model is currently run a separate script 
-SIM_DATA = F
-SIM_DATA_ERROR = F
-SIM_DATA_COIs2_1 = F
-PLOT_RESULTS = T
+SIM_DATA = T
+SIM_DATA_ERROR = T
+SIM_DATA_COIs3_1 = T
+PLOT_RESULTS = F
 ```
 
 ## Simulation 1: Effective Complexity of Infection
@@ -67,16 +67,16 @@ Ms = seq(3,12,3) # Number of MS markers
 COIs_1 = c(1,2) # COIs of primary episode (COMMENT)
 COIs_2 = c(1,2) # COIs of recurrent episode
 relationships = c('Sibling','Stranger','Clone') # Relationships of parasite
-COI_c_max = 4 # Maximum COI we currently consider
+COI_c_max = 3 # Maximum COI we currently consider for cor
 
 # Enumerate all combinations of COI complexity and numbers of markers
 settings = expand.grid(Ms = Ms, COI_1 = COIs_1, COI_2 = COIs_2) # Enumerate all possible combinations of COIs and markers 
-settings = rbind(settings, expand.grid(Ms = Ms, COI_1 = 3, COI_2 = 1)) # Add settings for 2_1
 settings = settings[settings$COI_1+settings$COI_2<=COI_c_max,] # Remove any with cumulative COI greater than that feasible
+settings = rbind(settings, expand.grid(Ms = Ms, COI_1 = 3, COI_2 = 1)) # Add settings for 3_1 example
 settings$COI_pattern <- paste(settings$COI_1, settings$COI_2, sep = "_") # Store the COIs as a patter
 rownames(settings) = NULL
-jobs_cor = which(settings$COI_pattern != '2_1') # Indices of core simulations jobs
-jobs_add = which(settings$COI_pattern == '2_1') # Indices of addn simulations jobs
+jobs_cor = which(settings$COI_pattern != '3_1') # Indices of core simulations jobs
+jobs_add = which(settings$COI_pattern == '3_1') # Indices of addn simulations jobs
 ```
 
 
@@ -112,7 +112,7 @@ if(SIM_DATA){
 
 ```{r, echo=FALSE}
 # Second simulate erroneous data for cor jobs with cardinality 13 only
-error_prob = 0.25 # Ask Mallika
+error_prob = 0.20 # Ask Mallika
 error_probs = c(error_prob*0.1, # This version assumes a fixed rate for all motif sizes
                 error_prob*0.4, 
                 1-error_prob, 
@@ -146,7 +146,7 @@ if(SIM_DATA_ERROR){
 
 ```{r, echo=FALSE}
 # Third simulate data for add jobs with cardinality 13 only
-if(SIM_DATA_COIs2_1){
+if(SIM_DATA_COIs3_1){
   for(relationship in relationships){ # iterative over simulation scenario 
     
     thetas_all = foreach(job = jobs_add, .combine = rbind, # iterate over jobs parameter settings
@@ -238,7 +238,7 @@ for(relationship in c("Sibling", "Stranger")){
     
     # Distribution of IBS (for a given relationship, cardinality, COI pattern, they should be approximately the same)
     fracs_evi_IBS = sapply(Data_summaries, function(x){x$frac_evi_IBS})
-    colnames(fracs_evi_IBS) = apply(settings, 1, function(x) paste(as.numeric(x[1]), x[2], x[3], collapse = ''))
+    colnames(fracs_evi_IBS) = apply(settings[jobs_cor,], 1, function(x) paste(as.numeric(x[1]), x[2], x[3], collapse = ''))
     require(RColorBrewer)
     cols = sapply(brewer.pal(length(Ms), 'GnBu'), adjustcolor, alpha.f = 1) # Adjust col if hist
     names(cols)= Ms
@@ -287,7 +287,7 @@ for(relationship in c("Sibling", "Stranger","Clone")){
     
     # Distribution of IBS (for a given relationship, cardinality, COI pattern, they should be approximately the same)
     fracs_het_epi1 = sapply(Data_summaries, function(x){x$frac_het_epi1})
-    colnames(fracs_het_epi1) = apply(settings, 1, function(x) paste(as.numeric(x[1]), x[2], x[3], collapse = ''))
+    colnames(fracs_het_epi1) = apply(settings[jobs_cor,], 1, function(x) paste(as.numeric(x[1]), x[2], x[3], collapse = ''))
     require(RColorBrewer)
     cols = sapply(brewer.pal(length(Ms), 'GnBu'), adjustcolor, alpha.f = 1) # Adjust col if hist
     names(cols)= Ms
@@ -338,7 +338,7 @@ for(relationship in c("Sibling", "Stranger", "Clone")){
     
     # Distribution of IBS (for a given relationship, cardinality, COI pattern, they should be approximately the same)
     fracs_het_epi2 = sapply(Data_summaries, function(x){x$frac_het_epi2})
-    colnames(fracs_het_epi2) = apply(settings, 1, function(x) paste(as.numeric(x[1]), x[2], x[3], collapse = ''))
+    colnames(fracs_het_epi2) = apply(settings[jobs_cor,], 1, function(x) paste(as.numeric(x[1]), x[2], x[3], collapse = ''))
     require(RColorBrewer)
     cols = sapply(brewer.pal(length(Ms), 'GnBu'), adjustcolor, alpha.f = 1) # Adjust col if hist
     names(cols)= Ms
