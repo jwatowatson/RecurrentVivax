@@ -1,7 +1,7 @@
 ##############################################################################
 # To explore solutions to sim recrudescence frailty
-# For a recrudescence frailty case (COIs 3_1 and 12 markers)
-# Timing based on real data set in Generated_analyse_probabilistic_v_deterministic
+# Timing based on real data set in 
+# Generated_analyse_probabilistic_v_deterministic_inc.NA.IDs.R
 ##############################################################################
 rm(list = ls())
 load('../RData/RPackages_List.RData')
@@ -49,10 +49,9 @@ plot(x = max_hap_combs, y = Times)
 #====================================================================
 # Does increasing Max_Hap_genotypes recover non-zero recrudescence: no
 # Problem sim cases are all in excess of any reasonable Max_Hap_genotypes
-# 
-# Setting Max_Hap_genotypes above 300 leads to problems with combinations
-# It's acctually faster when deterministic, regardless of Max_Hap_comb = 300 or 800 
-# (but both P1 so should be no difference)
+# Moreover, setting Max_Hap_genotypes above 300 leads to problems with combinations
+# It's actually faster when deterministic, regardless of Max_Hap_comb = 300 or 800 
+# (since both P1)
 #====================================================================
 load('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M6_COIs2_1_Clone.RData') # load data
 inds = sim_output$MS_data_sim$ID == 'SIM_1' # Need a not so complicated example otherwise Det not poss
@@ -127,7 +126,7 @@ extract_intersecting_as = function(z){
     # For each recurrence, check if any alleles intersect with the previous infection
     # Sequential comparisons are valid here since we're checking clones for evidence of recrudescence
     shared_as = lapply(2:length(ynm), function(t){
-     intersect(x = ynm[[t-1]], y = ynm[[t]])
+      intersect(x = ynm[[t-1]], y = ynm[[t]])
     })
   })
 }

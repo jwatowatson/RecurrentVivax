@@ -2,8 +2,10 @@
 # Initially, this script was written to choose reasonable limits for both Max_Hap_genotypes 
 # and Max_Hap_comb based on the BPD and VHX data. Important because prob_post_CLI is slow
 # time when Max_Hap_comb is high as it needs to sum over a lot of graphs. 
-# It is now used to set Max_Hap_genotype, and Max_Hap_comb in combination with results
-# generated in Effect_probablistic_v_deterministic.R 
+# It is now used to better understand interplay between Max_Hap_genotype and Max_Hap_comb 
+# in combination with results generated in the following scripts: 
+# Generate_analyse_probablistic_v_deterministic_inc.NA.IDs.R 
+# Generate_analyse_probablistic_v_deterministic_exc.NA.IDs.R
 #
 # ********************** !!!!IMPORTANT!!!! ******************************
 # 1) Not always true that no. compatible haploid genotypes > no. of compatible combinations
@@ -13,20 +15,20 @@
 # VHX_501_1: 64 genotypes comp with 32 compatible combinations
 # ***********************************************************************
 #
-# Re 3), it thus makes little sense to set Max_Hap_comb based on Max_Hap_genotypes, e.g.
+# Re 3) it thus makes little sense to set Max_Hap_comb based on Max_Hap_genotypes, e.g.
 # 97.5th percentile of no. of compatible haploid genotypes per episode BPD and VHX simple: 16 
 # max no. of hap. genotype combinations given 97.5th percentile: 196 
 # The 99th percentile, 50.24, is between 32 and 64, 
 # for which max no. of hap. genotype combinations are 32 and 64 (less than for 16)
 #
 # Nevertheless, initial approach: set Max_Hap_genotypes to highest reasonable, 
-# then set Max_Hap_comb to match highest in the set that pass Max_Hap_genotypes
-# (for Max_Hap_genotypes = 72, highest combinations: 1296)
+# then set Max_Hap_comb to match highest in the set that pass Max_Hap_genotypes. 
+# For Max_Hap_genotypes = 72, highest count of combinations = 1296 (both VHX_461_1)
 # However, setting Max_hap_comb > 1000 is prohibitively slow when applied to many episodes. 
 # If we keep Max_Hap_genotypes = 100, we will deterministically phase all with <= Max_Hap_genotypes 
 # inc. VHX_461_1 with 72 comp genotypes and 1296 possible combinations. 
-# To phase VHX_461_1 probablistically, set Max_Hap_genotypes = 70 and Max_Hap_comb = 300
-# For all with > Max_Hap_genotypes we phase probabilistically with Max_Hap_comb combinations. 
+# However, from Generate_analyse_probablistic_v_deterministic_inc.NA.IDs.R, we learn that VHX_461
+# is inc. in UpperComplexityIDs due to VHX_461_2. A.s. no reason to set Max_Hap_genotypes > 70. 
 #
 # If probablistic faster than deterministic, preferable to set 
 # Max_Hap_genotypes to low in the main code, s.t. some that could be phased deterministically
@@ -34,10 +36,8 @@
 # to capture all that could be otherwise phased deterministically
 # Doing so requires at least one high Max_Hap_genotypes run
 # to show that deterministically phased is the same as probablistically phased. 
-# 
-# From Effect_probablistic_v_deterministic.R, when Max_Hap_genotypes = 100 and...
-# Max_Hap_comb = 800, deterministically faster and only 5 not "D_D" (all in inflated data set)
-# Max_Hap_comb = 300, ? faster ann how many fewer inflated data set have P1
+# This is shown in Generate_analyse_probablistic_v_deterministic_inc.NA.IDs.R 
+# However, from the above mentioned scripts we find probablistic phasing is slower.
 ##############################################################################################
 rm(list = ls())
 load('../RData/RPackages_List.RData')
@@ -57,7 +57,6 @@ source('../Genetic_Model/post_prob_CLI.R')
 source('../Genetic_Model/hap_combinations_functions.R')
 source('../Simulation_Study/BuildSimData.R')
 
-
 # Remove MS data for which there are no recurrent data
 N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
 MSdata = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
@@ -70,11 +69,13 @@ MSdata = arrange(MSdata, ID, Episode, MOI_id) # Make sure that the data are sort
 MSs = names(Fs)
 M = length(MSs)
 IDs_all = as.character(unique(MSdata$ID)) # Character vector
-yns = dlply(MSdata, 'ID') # transform into a list
+yns = dlply(MSdata, 'ID') # Transform into a list
 cns = lapply(yns, function(x){cn = table(x$Episode_Identifier)})
 sum_cns = sapply(cns, sum)
 Tns = lapply(cns, length) # Number of episodes (also used in check below)
 Tns_chr = lapply(Tns, as.character) # Character version needed for indexes in do.par
+Tns = unlist(Tns)
+all(sapply(yns, function(x) any(unique(x$Episode) == 1)))
 
 #==========================================================================
 # Number of haploid genotypes per person: this includes all episodes
@@ -91,16 +92,15 @@ n_haps_per_episode = lapply(yns, function(yn){ # For a given individual
 
 # Remove complex and no recurrence
 complex = (Tns > Max_Eps) | (sum_cns > Max_Tot_Vtx) # 54 indiv. whose data are too complex 
-no_recurrence = Tns < 2 # individuals that have Tn = 1 (no recurrence)
+no_recurrence = unlist(Tns) < 2 # individuals that have Tn = 1 (no recurrence)
 IDs = IDs_all[(!complex & !no_recurrence)] 
 N = length(IDs)
 
 # Number of genotypes before and after removing complex
 Num_with_wout = cbind("WithComplex" = tail(sort(unlist(n_haps_per_episode)),10), 
       "WOutComplex" = tail(sort(unlist(n_haps_per_episode[IDs])),10)) 
+rownames(Num_with_wout) = NULL 
 Num_with_wout
-
-
 
 Limit = 72 # Limit (3rd hightest after removal of complex)
 
