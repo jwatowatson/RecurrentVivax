@@ -60,17 +60,17 @@ if(RUN){
                               Max_Hap_genotypes = 100, # Most deterministically phased
                               Max_Hap_comb = 800) # Applies to episodes with > Max_Hap_genotypes only
   toc(log = TRUE, quiet = TRUE) 
-
+  
   save(Results_prob, Results_det, file = '../RData/Results_prob_v_det_simple_800.RData')
   rm(list = c('Results_prob', 'Results_det'))
   
   tic(msg = 'prob_300_simple')
   Results_prob = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, 
-                              Max_Hap_genotypes = 0,
-                              Max_Hap_comb = 300)
+                               Max_Hap_genotypes = 0,
+                               Max_Hap_comb = 300)
   toc(log = TRUE, quiet = TRUE)
-
-    
+  
+  
   tic(msg = 'det_300_simple')
   Results_det = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, verbose = T, 
                               Max_Hap_genotypes = 100,
@@ -100,16 +100,16 @@ if(RUN){
                                        Max_Hap_genotypes = 0,
                                        Max_Hap_comb = 800)
   toc(log = TRUE, quiet = TRUE)
-
+  
   tic(msg = 'det_800_inflate')
   Results_inflate_det = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T,
                                       Max_Hap_genotypes = 100, 
                                       Max_Hap_comb = 800)
   toc(log = TRUE, quiet = TRUE) 
-
+  
   save(Results_inflate_prob, Results_inflate_det, file = '../RData/Results_inflate_prob_v_det_simple_800.RData')
   rm(list = 'Results_inflate_prob', 'Results_inflate_det')
-
+  
   tic(msg = 'prob_300_inflate')
   Results_inflate_prob = post_prob_CLI(MSdata = MS_inflated, Fs = Fs_Combined, verbose = T, 
                                        Max_Hap_genotypes = 0,
@@ -338,3 +338,28 @@ ColorPlot_MSdata(MS_data = reformat_MSdata(MS_pooled[MS_pooled$ID %in% "VHX_16",
 
 
 
+#-----------------------------------------------------------------
+# Could some have been probablistically phased with a dynamical approach
+# That just caps Max_hap_comb? Maybe VHX_16, VHX_225, VHX_583
+#-----------------------------------------------------------------
+MS_pooled_prob = MS_pooled[MS_pooled$ID %in% UpperComplexityIDs,]
+Summary = ddply(MS_pooled_prob, .variables = 'ID', .fun = function(x){
+  coi_pattern = paste(table(x$Episode_Identifier), collapse = '_')
+  num_markers = sum(sapply(MSs, function(ms) any(!is.na(x[,ms]))))
+  data.frame(coi_pattern = coi_pattern, num_markers = num_markers)
+})
+
+Summary$hapcnt = sapply(Summary$ID, function(id){
+indsimple = grepl(paste(id,'_',sep=''),  rownames(Results_prob_300))
+  indinflate = grepl(paste(id,'%',sep=''),  rownames(Results_inflate_prob_300))
+  if(any(indinflate)){
+    z = max(as.numeric(unlist(strsplit(Results_inflate_prob_300$Hapcnt[indinflate], split = '_'))), na.rm = T)
+  } 
+  if(any(indsimple)){
+    z = max(as.numeric(unlist(strsplit(Results_prob_300$Hapcnt[indsimple], split = '_'))), na.rm = T)
+  }
+  if(all(!c(indinflate, indsimple))){z = NA}
+  z
+})
+
+print(Summary)
