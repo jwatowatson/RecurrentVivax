@@ -8,6 +8,11 @@ output:
     keep_md: yes
 ---
 
+In this scr
+
+Most relationship graphs most relation graphs compatible with relapse contain sibling. A single parasite haploid among majority unrelated 
+
+
 Reviewer's example: "a recurrence with MOI of 3, containing a clone and two unrelated strains, but with overall pairwise relatedness close to 0.5."
 
 
@@ -41,10 +46,10 @@ source('./BuildSimData.R')
 
 ```{r, echo=FALSE}
 # Note that the model is currently run a separate script 
-SIM_DATA = T
-SIM_DATA_ERROR = T
-SIM_DATA_COIs3_1 = T
-PLOT_RESULTS = F
+SIM_DATA = F
+SIM_DATA_ERROR = F
+SIM_DATA_COIs3_1 = F
+PLOT_RESULTS = T
 ```
 
 ## Simulation 1: Effective Complexity of Infection
@@ -274,7 +279,7 @@ for(relationship in c("Sibling", "Stranger")){
 ```
 
 
-```{r fraction_het_epi1, fig.height = 8, fig.width = 12, echo = F}
+```{r fraction_het_epi1, fig.height = 8, fig.width = 12, echo = F, include = F}
 #=====================================================================
 # Visualize summarised data fraction het episode 1 
 #=====================================================================
@@ -326,7 +331,7 @@ for(relationship in c("Sibling", "Stranger","Clone")){
 }
 ```
 
-```{r fraction_het_epi2, fig.height = 8, fig.width = 12, echo = F}
+```{r fraction_het_epi2, fig.height = 8, fig.width = 12, echo = F, include = F}
 #=====================================================================
 # Visualize summarised data fraction het epsisode 2 
 #=====================================================================
@@ -381,15 +386,12 @@ for(relationship in c("Sibling", "Stranger", "Clone")){
 
 
 
-### Plot results
+\section{Results}
 
 ```{r results_COI_effect, fig.width = 12, fig.height = 5, echo = F}
 States = c("C","I","L")
-settings_cor = settings[jobs_cor,]
 State_names = list(L='Relapse',I='Reinfection',C='Recrudescence')
 if(PLOT_RESULTS){
-  
-  # Alternative vizualisation: show one row in main plot
   
   mycols = brewer.pal(length(State_names), 'Dark2')
   relationship_names = c('Clone' = 'Clonal scenario', 
@@ -401,15 +403,14 @@ if(PLOT_RESULTS){
   
   for(cardinality in cardinalities){ # cardinalities
     
-    for(pattern in unique(settings_cor$COI_pattern)){
-      JOBS_pattern <- rownames(settings_cor)[settings_cor$COI_pattern == as.character(pattern)]
+    for(pattern in unique(settings[jobs_cor,]$COI_pattern)){
       
-      # Iterate over simulation scenarions (types of data)
-      for(relationship in relationships){
+      JOBS_pattern <- which(settings$COI_pattern == as.character(pattern))
+      
+      for(relationship in relationships){ # Iterate over simulation scenarions (types of data)
         
         # Load data 
-        load(sprintf('./SimulationOutputs/Sim_Genetic_Results/%s_%s.RData',
-                     relationship, cardinality))
+        load(sprintf('./SimulationOutputs/Sim_Genetic_Results/%s_%s.RData',relationship, cardinality))
         
         # Extract medians
         X <- sapply(JOBS_pattern, function(x){
@@ -417,17 +418,13 @@ if(PLOT_RESULTS){
           apply(thetas_all[ind,States], 2, median, na.rm = T)
         })
         
-        #++++++++++++
-        ind <- thetas_all$setting %in% JOBS_pattern[-(1:2)]
-        thetas_all[ind,]
-        
         # Extract standard deviations
         sds <- sapply(JOBS_pattern, function(x){
           ind <- thetas_all$setting == x
-          apply(thetas_all[ind,States], 2, sd)
+          apply(thetas_all[ind,States], 2, sd, na.rm = T)
         })
         
-        colnames(X) = settings_cor[JOBS_pattern,'M']
+        colnames(X) = settings[JOBS_pattern,'M']
         
         # Barplot
         Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
@@ -460,4 +457,170 @@ if(PLOT_RESULTS){
 }
 toc()
 ```
+
+
+```{r GenSim_Error, fig.width = 12, fig.height = 5, echo = F, fig.cap='\\label{fig: error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario assuming an extremely high probability of error.'}
+States = c("C","I","L")
+State_names = list(L='Relapse',I='Reinfection',C='Recrudescence')
+if(PLOT_RESULTS){
+  
+  mycols = brewer.pal(length(State_names), 'Dark2')
+  relationship_names = c('Clone' = 'Clonal scenario', 
+                         'Sibling' = 'Sibling scenario',
+                         'Stranger' = 'Stranger scenario')
+  
+  par(mfrow = c(1,3), family = 'serif', pty = 's', oma = c(0,0,3,0), las =1, mar=c(4,5,4,1))
+  BESIDES = T # Allows visualisation of error by stacking bars side by side
+
+    for(pattern in unique(settings[jobs_cor,]$COI_pattern)){
+      
+      JOBS_pattern <- which(settings$COI_pattern == as.character(pattern))
+      
+      for(relationship in relationships){ # Iterate over simulation scenarions (types of data)
+        
+        # Load data 
+        load(sprintf('./SimulationOutputs/Sim_Genetic_Results/%s_13_Error.RData',relationship))
+        
+        # Extract medians
+        X <- sapply(JOBS_pattern, function(x){
+          ind <- thetas_all$setting == x
+          apply(thetas_all[ind,States], 2, median, na.rm = T)
+        })
+        
+        # Extract standard deviations
+        sds <- sapply(JOBS_pattern, function(x){
+          ind <- thetas_all$setting == x
+          apply(thetas_all[ind,States], 2, sd, na.rm = T)
+        })
+        
+        colnames(X) = settings[JOBS_pattern,'M']
+        
+        # Barplot
+        Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
+                    ylab = '', xlab = '', cex.names=1.5,cex.axis = 1.5,
+                    main = relationship_names[relationship])
+        mtext(text = 'Probability', side = 2, line=3.5, cex=1, las=3)
+        mtext(text = 'Number of markers', side = 1, line=3, cex=1.3)
+        if(relationship=='Clone'){
+          legend(ifelse(BESIDES,'topleft','top'), fill = mycols[1:3], 
+                 legend = State_names[States], inset = 0.01,cex = 1.3)
+        }
+        
+        # Title
+        mtext(text = sprintf('Marker cardinality: %s \n COI of first and second infection: %s and %s, respectively', 
+                             cardinality, 
+                             strsplit(pattern, split = '_')[[1]][1], 
+                             strsplit(pattern, split = '_')[[1]][2]), side = 3, outer = T)
+        
+        # Add error bars (+/- sd)
+        if(BESIDES){
+          rownames(Z) <- States
+          for(state in States){
+            segments(x0 = Z[state,], x1 = Z[state,], 
+                     y0 = X[state,] - sds[state,], y1 = X[state,] + sds[state,])
+          }
+        }
+      }
+    }
+  }
+toc()
+```
+
+
+```{r GenSim_COI31, fig.width = 12, fig.height = 5, echo = F, fig.cap='\\label{fig: COI31}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario when the COI of the initial infection is three and the COI of the recurrent infection is one.'}
+States = c("C","I","L")
+State_names = list(L='Relapse',I='Reinfection',C='Recrudescence')
+if(PLOT_RESULTS){
+  
+  mycols = brewer.pal(length(State_names), 'Dark2')
+  relationship_names = c('Clone' = 'Clonal scenario', 
+                         'Sibling' = 'Sibling scenario',
+                         'Stranger' = 'Stranger scenario')
+  
+  par(mfrow = c(1,3), family = 'serif', pty = 's', oma = c(0,0,3,0), las =1, mar=c(4,5,4,1))
+  BESIDES = T # Allows visualisation of error by stacking bars side by side
+
+    for(pattern in unique(settings[jobs_add,]$COI_pattern)){
+      
+      JOBS_pattern <- which(settings$COI_pattern == as.character(pattern))
+      
+      for(relationship in relationships){ # Iterate over simulation scenarions (types of data)
+        
+        # Load data 
+        load(sprintf('./SimulationOutputs/Sim_Genetic_Results/%s_13_COIs3_1.RData',relationship))
+        
+        # Extract medians
+        X <- sapply(JOBS_pattern, function(x){
+          ind <- thetas_all$setting == x
+          apply(thetas_all[ind,States], 2, median, na.rm = T)
+        })
+        
+        # Extract standard deviations
+        sds <- sapply(JOBS_pattern, function(x){
+          ind <- thetas_all$setting == x
+          apply(thetas_all[ind,States], 2, sd, na.rm = T)
+        })
+        
+        colnames(X) = settings[JOBS_pattern,'M']
+        
+        # Barplot
+        Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
+                    ylab = '', xlab = '', cex.names=1.5,cex.axis = 1.5,
+                    main = relationship_names[relationship])
+        mtext(text = 'Probability', side = 2, line=3.5, cex=1, las=3)
+        mtext(text = 'Number of markers', side = 1, line=3, cex=1.3)
+        if(relationship=='Clone'){
+          legend(ifelse(BESIDES,'topleft','top'), fill = mycols[1:3], 
+                 legend = State_names[States], inset = 0.01,cex = 1.3)
+        }
+        
+        # Title
+        mtext(text = sprintf('Marker cardinality: %s \n COI of first and second infection: %s and %s, respectively', 
+                             cardinality, 
+                             strsplit(pattern, split = '_')[[1]][1], 
+                             strsplit(pattern, split = '_')[[1]][2]), side = 3, outer = T)
+        
+        # Add error bars (+/- sd)
+        if(BESIDES){
+          rownames(Z) <- States
+          for(state in States){
+            segments(x0 = Z[state,], x1 = Z[state,], 
+                     y0 = X[state,] - sds[state,], y1 = X[state,] + sds[state,])
+          }
+        }
+      }
+    }
+  }
+toc()
+```
+
+The genetic model relies on data that list alleles detected at genotyped microsatellite markers (i.e. alleles are either detected or not). The model does not account for error in the alleles detected, nor incorporate weighted evidence of majority versus minority alleles, say. First, let's consider the failure to detect minority clones, second let's consider the impact of error. 
+
+\subsubsection{Undetected parasite haploid genotypes}
+
+Failure to detect data from a minority parasite haploid genotype will have different consequences, depending on the relationship of the minority parasite with others across episodes. For example, referring to each plot in Figure XXX as an illustrative scenario where COI I II denotes a COI of I in the first infection and a COI of II in the second infection, 
+
+- in the Sibling COI 2 1 case, failure to detect the stranger parasite will result in the Sibling COI 1 1 case, thereby increasing probability relapsing; meanwhile, failure to detect the sibling parasite will result in the Stranger COI 1 1 case, thereby decreasing probability of relpase, but not erasing it. Note that the case in which the noisy parasite is unrelated demonstrates the most severe possible outcome: if the noisy parasite were related, failure to detect it would result in a Sibling COI 1 1 case, thereby maintaining probability of relapse.  
+
+- failure to detect either stranger parasite in the Clone COI 2 1 case will result in the Stranger COI 1 1 case, maintaining probability of reinfection and relapse. 
+
+- In the Clone COI 2 1 case, failure to detect the stranger parasite will result in the Clone COI 1 1 case, thereby maintaining probability of recrudescence and relapse; meanwhile, failure to detect the clonal parasite will result in the Stranger COI 1 1 case, thereby erasing probability of recrudescence and replacing it with probability of reinfection.
+
+The examples above illustrate the robust versus frail nature of relapse versus recrudescene inference under the model. Relapse infernce is also robust in the prescence of error, whereas recrudescence is not. 
+
+\subsubsection{Erroneous data}
+
+Figure XXX shows inference in the presence of unmodelled error. The probability of error, 0.2, was set extremely high to clearly illustrate model behaviour. Realistic error rates, XXX-XXX, will have much less impact. Error largely impacts impacts inference of recrudescence: in the Clonal scenario clonal parasites are interpreted as sibling parasites and the probability of relapse tends towards one.
+
+
+\subsection{Highly complex data}
+
+A major limitation of the genetic model has to do with computational complexity. One aspect of which is described below. When samples are highly complex, e.g. when they contain majority unrelated parasites, unconverged probablistic phasing is liable to miss clonally compatible combinations among the vast number of combinations that are possible. The number of possible combinations grows exponentially with the number of markers genotyped, rendering probability estimates inconsistent for recrudescence (Figure \ref{fig: COI3_1}). Such highly complex scenarios are extreme. They are helpful for illustrating the problem (Figure \ref{fig: COI3_1}), but not representative of the VHX and BPD data: all those analysed probablistic phasing converged. Otherwise stated, inconsistency is not a problem VHX and BPD data anlysed under the model. 
+
+Nine individuals from the VHX and BPD datasets were deemed to have data too complex to analyse under the model. They received drugs XXX. All nine individuls appear to have had multoiple relapses, based on data vizualisation, which can be used to rapidly identify clonally compatible phases, where computational methods fail (Figure XXX).
+
+
+\section{Conclusion}
+The current genetic model does not account for error in alleles detected, nor incorporate weighted evidence of majority versus minority alleles. These omissions render inference of recrudescence under the current model brittle, but have little impact on inference of reinfection versus relapse. As such, analyses of data from the Thailand_Myanmar border, where evidence of resistant \textit{P. vivax} is lacking, are likely robust to the above ommissions. Before application to data from a region where \textit{P. vivax} resistance is suspected, the model merits extension. 
+
 
