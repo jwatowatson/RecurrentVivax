@@ -17,7 +17,7 @@
 # - Generate_analyse_probablistic_v_deterministic_exc.NA.IDs.R
 #
 # Future iterations that use a dynamic approach to phasing should render Max_Hap_genotypes 
-# obsolate
+# obsolete
 ##############################################################################################
 
 post_prob_CLI = function(MSdata, # MS data 

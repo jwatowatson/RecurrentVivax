@@ -1,7 +1,8 @@
 ##############################################################################################
 # Initially, this script was written to choose reasonable limits for both Max_Hap_genotypes 
 # and Max_Hap_comb based on the BPD and VHX data. Important because prob_post_CLI is slow
-# time when Max_Hap_comb is high as it needs to sum over a lot of graphs. 
+# when Max_Hap_comb is high as in some cases it needs to sum over:
+# (a lot of graphs TIMES a lot of haplotypes). 
 # It is now used to better understand interplay between Max_Hap_genotype and Max_Hap_comb 
 # in combination with results generated in the following scripts: 
 # Generate_analyse_probablistic_v_deterministic_inc.NA.IDs.R 
