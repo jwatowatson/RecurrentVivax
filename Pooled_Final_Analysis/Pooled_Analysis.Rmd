@@ -50,15 +50,14 @@ load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
 
 Ncores = 6 # number of cores to use for model estimation
 
-# runs the once model on those that can be directly computed
-RUN_MODELS_SINGLE_SIMPLE = T           # can do on laptop (5 minutes)
+EXCLUDE_COMPLEX = T # There are XX complex ones that considerably increase computation time
 
 # runs the model for 100 random draws from the Time model posterior on those that can be directly computed
-RUN_MODELS_FULL_POSTERIOR_SIMPLE = T    # can do on laptop (4.5 hours)
+RUN_MODELS_FULL_POSTERIOR = T # can do on laptop (4.5 hours)
 
 # runs time-agnostic (with random draws from  allele frequency distribution ) 
 # whose output used for genetic only efficacy estimate
-RUN_MODELS_FULL_POSTERIOR_BPD_TAGNOSTIC = T # can do on laptop (20 mins)
+RUN_MODELS_FULL_POSTERIOR_TAGNOSTIC = T # can do on laptop (20 mins)
 
 # runs the model for 100 random draws from the Time model posterior on those that cannot be directly computed
 RUN_MODELS_FULL_POSTERIOR_INFLATED = T # cluster is better (10 hours)
@@ -68,6 +67,8 @@ RUN_MODELS_FALSE_POSITIVE = F          # only cluster (1 day with 42 cores)
 
 # generates plots
 CREATE_PLOTS = T
+
+Ksamples_min = 100 # set this to low (~5) to run pilot analysis. Should be 100 in full analysis
 
 # Vector of states
 states = c(relapse = 'L', reinfection = 'I', recrudescence = 'C')
@@ -79,6 +80,10 @@ Combined_Time_Data = as.data.frame(Combined_Time_Data)
 ## Threshold value for classification
 Epsilon_upper = 0.7
 Epsilon_lower = 0.3
+
+# For credible interval calculations
+lowerCI=0.025
+upperCI=0.975
 
 # Colour scheme
 # For colourblind friendly: display.brewer.all(colorblindFriendly = T)
@@ -459,48 +464,27 @@ genetic_AND_time_data_eps = intersect(p$Episode_Identifier, MS_pooled$Episode_Id
 p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,] # Only need priors for those with genetic data
 
 # Extract posterior estimates only if running full posterior simple or inflated
-if(RUN_MODELS_FULL_POSTERIOR_SIMPLE | RUN_MODELS_FULL_POSTERIOR_INFLATED){
+if(RUN_MODELS_FULL_POSTERIOR | RUN_MODELS_FULL_POSTERIOR_INFLATED){
   Post_samples_matrix = Post_samples_matrix[Post_samples_matrix$Episode_Identifier %in% genetic_AND_time_data_eps,]
 }
 ```
 
 
-## Computation using full dataset 
+## Computation
 
-We use all 9MS markers (when available).
-
-```{r, include=FALSE}
-if(RUN_MODELS_SINGLE_SIMPLE){
-  #===============================================
-  # Run (with time-to-event)
-  #===============================================
-  # Approx 100 secs per full model run
-  tic()
-  thetas_9MS = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, p = p, 
-                             cores = Ncores, verbose = F) 
-  thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
-  save(thetas_9MS, file = '../RData/GeneticModel/thetas_9MS.RData')
-  toc()
-  
-  #===============================================
-  # Run (without time-to-event)
-  #===============================================
-  tic()
-  thetas_9MS_Tagnostic = post_prob_CLI(MSdata = MS_pooled, Fs = Fs_Combined, 
-                                       cores = Ncores, verbose = F)
-  thetas_9MS_Tagnostic$Episode_Identifier = rownames(thetas_9MS_Tagnostic)
-  save(thetas_9MS_Tagnostic, file = '../RData/GeneticModel/thetas_9MS_Tagnostic.RData')
-  toc()
-} else {
-  load('../RData/GeneticModel/thetas_9MS.RData')
-  load('../RData/GeneticModel/thetas_9MS_Tagnostic.RData')
+```{r}
+if(EXCLUDE_COMPLEX){
+  load('../RData/UpperComplexityIDs.RData') # IDs to avoid
+  MS_pooled = MS_pooled[!MS_pooled$ID %in% UpperComplexityIDs,]
 }
 ```
 
-### Full posterior computation
+
+### Full posterior computation: non-complex cases
+#### Using the time-to-event prior
 
 ```{r, include=FALSE}
-if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
+if(RUN_MODELS_FULL_POSTERIOR){
   #===============================================
   # Run full Bayesian with sampling at random from time prior 
   # (treats time posterior as discrete uniform prior)
@@ -508,7 +492,14 @@ if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
   # The outer loop is not parallelised - suboptimal coding
   #===============================================
   
-  Ksamples = min(length(grep('C',colnames(Post_samples_matrix))), 100)
+  # Run using mean allele frequencies
+  thetas_9MS = post_prob_CLI(MSdata = MS_pooled, 
+                             Fs = Fs_Combined, 
+                             p = p, 
+                             cores = Ncores, verbose = F) 
+  thetas_9MS$Episode_Identifier = rownames(thetas_9MS)
+  
+  Ksamples = min(length(grep('C',colnames(Post_samples_matrix))), Ksamples_min)
   tic()
   Thetas_full_post = foreach(ss = 1:Ksamples, .combine = cbind) %do% {
     
@@ -532,57 +523,76 @@ if(RUN_MODELS_FULL_POSTERIOR_SIMPLE){
     thetas_9MS
   }
   
-  save(Thetas_full_post, file = '../RData/GeneticModel/Full_Posterior_Model_samples.RData')
+  # Pull out the credible intervals
+  CI_C = apply(Thetas_full_post[,'C' == colnames(Thetas_full_post)],1, 
+               quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
+  CI_L = apply(Thetas_full_post[,'L' == colnames(Thetas_full_post)],1, 
+               quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
+  CI_R = apply(Thetas_full_post[,'I' == colnames(Thetas_full_post)],1, 
+               quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
+  CIs = t(rbind(CI_C, CI_L, CI_R)) 
+  colnames(CIs) = paste(rep(c('C', 'L', 'I'), each = 3), colnames(CIs), sep = '')
+  
+  thetas_9MS = cbind(thetas_9MS, CIs)
+  
+  save(thetas_9MS, file = '../RData/GeneticModel/Full_Posterior_Model_samples.RData')
   toc()
 } else {
   load(file = '../RData/GeneticModel/Full_Posterior_Model_samples.RData')
 }
 ```
 
-For genetic only efficacy estimate, run time agnostic (i.e. genetic only) for BPD samples
+For genetic only efficacy estimate, run time agnostic (i.e. genetic only)
 
 ```{r, include=FALSE}
-if(RUN_MODELS_FULL_POSTERIOR_BPD_TAGNOSTIC){
+if(RUN_MODELS_FULL_POSTERIOR_TAGNOSTIC){
   
   #===============================================
   # Run full Bayesian with sampling at random from 
-  # microsatellite allele frequency posterior
+  # microsatellite allele frequency posterior distribution
   #===============================================
   
   # Use the same number as used in the time informed analysis
-  Ksamples = min(length(grep('C',colnames(Post_samples_matrix))), 100)
+  Ksamples = min(length(grep('C',colnames(Post_samples_matrix))), Ksamples_min)
   tic()
   
-  Thetas = foreach(ss = 1:Ksamples, .combine = cbind) %do% {
+  Thetas_Full_Tagnostic = foreach(ss = 1:Ksamples, .combine = cbind) %do% {
     
     # Draw a sample of allele frequencies
     Fs_random = lapply(Alpha_Posteriors, rdirichlet, n=1)
     
-    # Name alleles (imporatant since we use the haplotype labels to extract allele frequencies in Log_Pr_yn_Gab)
+    # Name alleles (important since we use the haplotype labels to extract allele frequencies in Log_Pr_yn_Gab)
     for(i in 1:length(Fs_random)){names(Fs_random[[i]]) = 1:length(Fs_random[[i]])}
     
     # Run the model 
-    thetas_9MS = post_prob_CLI(MSdata = MS_pooled[grepl('BPD', MS_pooled$ID),], Fs = Fs_random, cores = detectCores()-2, verbose = F) 
-    thetas_9MS # return for %do%
+    thetas = post_prob_CLI(MSdata = MS_pooled, 
+                           Fs = Fs_random, 
+                           cores = Ncores, 
+                           verbose = F) 
+    thetas # return for %do%
   }
   
   # Run with non random fs 
-  Thetas_non_random = post_prob_CLI(MSdata = MS_pooled[grepl('BPD', MS_pooled$ID),], 
-                                    Fs = Fs_Combined, cores = Ncores, verbose = F) 
-  
+  thetas_9MS_Tagnostic = post_prob_CLI(MSdata = MS_pooled, 
+                                       Fs = Fs_Combined, 
+                                       cores = Ncores, verbose = F) 
+  thetas_9MS_Tagnostic$Episode_Identifier = rownames(thetas_9MS_Tagnostic)
   # Pull out the credible intervals
-  CI_C = apply(Thetas[,grep('C', colnames(Thetas))],1, quantile, probs = c(0.025, 0.975), na.rm=T)
-  CI_L = apply(Thetas[,grep('L', colnames(Thetas))],1, quantile, probs = c(0.025, 0.975), na.rm=T)
-  CI_R = apply(Thetas[,grep('I', colnames(Thetas))],1, quantile, probs = c(0.025, 0.975), na.rm=T)
+  CI_C = apply(Thetas_Full_Tagnostic[,grep('C', colnames(Thetas_Full_Tagnostic))],1, 
+               quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
+  CI_L = apply(Thetas_Full_Tagnostic[,grep('L', colnames(Thetas_Full_Tagnostic))],1, 
+               quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
+  CI_R = apply(Thetas_Full_Tagnostic[,grep('I', colnames(Thetas_Full_Tagnostic))],1, 
+               quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
   CIs = t(rbind(CI_C, CI_L, CI_R)) 
-  colnames(CIs) = paste(rep(c('C', 'L', 'I'), each = 2), colnames(CIs), sep = '')
+  colnames(CIs) = paste(rep(c('C', 'L', 'I'), each = 3), colnames(CIs), sep = '')
   
   # Combine and save
-  Tagnostic_BPD = cbind(Thetas_non_random, CIs)
-  save(Tagnostic_BPD, file = '../RData/GeneticModel/Tagnostic_BPD.RData')
+  thetas_9MS_Tagnostic = cbind(thetas_9MS_Tagnostic, CIs)
+  save(thetas_9MS_Tagnostic, file = '../RData/GeneticModel/Full_Posterior_Model_samples_Tagnostic.RData')
   toc()
 } else {
-  load(file = '../RData/GeneticModel/Tagnostic_BPD.RData')
+  load(file = '../RData/GeneticModel/Full_Posterior_Model_samples_Tagnostic.RData')
 }
 ```
 
@@ -599,15 +609,9 @@ Time_Estimates_1 = arrange(Time_Estimates_1, Episode_Identifier)
 thetas_9MS = arrange(thetas_9MS, Episode_Identifier)
 thetas_9MS$drug = Time_Estimates_1$arm_num # Add drug
 
-Time_Estimates_1 = filter(Mod2_ThetaEstimates, 
-                          Episode_Identifier %in% thetas_9MS_Tagnostic$Episode_Identifier)
-Time_Estimates_1 = arrange(Time_Estimates_1, Episode_Identifier)
+
 thetas_9MS_Tagnostic = arrange(thetas_9MS_Tagnostic, Episode_Identifier)
 thetas_9MS_Tagnostic$drug = Time_Estimates_1$arm_num # Add drug
-
-# Extract BPD only for BPD only plots
-BPD_data = Thetas_full_post[grep('BPD',rownames(Thetas_full_post)),]
-Thetas_BPD = thetas_9MS[grep('BPD', thetas_9MS$Episode_Identifier),]
 
 # Extract prior used in absence of time-to-event
 Time_agnostic_p = as.list(formals(post_prob_CLI)$p)
@@ -615,10 +619,11 @@ Time_agnostic_p = as.list(formals(post_prob_CLI)$p)
 
 ```{r, echo=FALSE}
 # Highlight some specific examples (useful for slides when presenting work)
+### This is currently not working - need to check log scale is correct
 Hightlight_BPD_examples = F
 if(Hightlight_BPD_examples){
-  example_inds = grepl('BPD_644_', Thetas_BPD$Episode_Identifier) 
-  example_ids = Thetas_BPD$Episode_Identifier[example_inds]
+  example_inds = grepl('BPD_644_', thetas_9MS_Tagnostic_BPD$Episode_Identifier) 
+  example_ids = thetas_9MS_Tagnostic_BPD$Episode_Identifier[example_inds]
   example_inds_times = MS_pooled_summary$timeSinceLastEpisode[MS_pooled_summary$Episode_Identifier %in% example_ids]
   Tagnostic_example_inds = thetas_9MS_Tagnostic$Episode_Identifier %in% example_ids
   thetas9MS_example_inds = thetas_9MS$Episode_Identifier %in% example_ids
@@ -664,14 +669,13 @@ if(CREATE_PLOTS){
   
   # Annotate by examples
   if(Hightlight_BPD_examples){
-    points(x = log10(thetas_9MS_Tagnostic$L[Tagnostic_example_inds]), 
-           y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
+    points(x = log(thetas_9MS_Tagnostic$L[Tagnostic_example_inds]), 
+           y = log(thetas_9MS$L[thetas9MS_example_inds]), 
            pch=1, cex = 1.5, col='black')
     text(x = log10(thetas_9MS_Tagnostic$L[Tagnostic_example_inds]), 
          y = log10(thetas_9MS$L[thetas9MS_example_inds]), 
          labels = example_ids, pos = 2, cex = 0.7)
   }
-  
   plot(x = thetas_9MS_Tagnostic$I, 
        y = thetas_9MS$I, 
        xlab = 'Genetic given time-agnostic prior', 
@@ -738,19 +742,19 @@ pmq = sum(!ind)
 
 # No PMQ
 writeLines(sprintf('Based on time-to-event alone, %s of %s No PMQ classified as relapse', 
-                   sum(Time_Estimates_1$Relapse_mean_theta[ind] > Epsilon_upper, na.rm = T), no_pmq))
+                   sum(Time_Estimates_1$Relapse_mean_theta[ind] >= Epsilon_upper, na.rm = T), no_pmq))
 writeLines(sprintf('Based on genetic alone, %s of %s No PMQ classified as relapse', 
-                   sum(thetas_9MS_Tagnostic$L[ind] > Epsilon_upper, na.rm = T), no_pmq))
+                   sum(thetas_9MS_Tagnostic$L[ind] >= Epsilon_upper, na.rm = T), no_pmq))
 writeLines(sprintf('Based on all available data, %s of %s No PMQ classified as relapse', 
-                   sum(thetas_9MS$L[ind] > Epsilon_upper, na.rm = T), no_pmq))
+                   sum(thetas_9MS$L[ind] >= Epsilon_upper, na.rm = T), no_pmq))
 
 # PMQ+
 writeLines(sprintf('Based on time-to-event alone, %s of %s PMQ+ classified as relapse', 
-                   sum(Time_Estimates_1$Relapse_mean_theta[!ind] > Epsilon_upper, na.rm = T), pmq))
+                   sum(Time_Estimates_1$Relapse_mean_theta[!ind] >= Epsilon_upper, na.rm = T), pmq))
 writeLines(sprintf('Based on genetic alone, %s of %s PMQ+ classified as relapse', 
-                   sum(thetas_9MS_Tagnostic$L[!ind] > Epsilon_upper, na.rm = T), pmq))
+                   sum(thetas_9MS_Tagnostic$L[!ind] >= Epsilon_upper, na.rm = T), pmq))
 writeLines(sprintf('Based on all available data, %s of %s PMQ+ classified as relapse', 
-                   sum(thetas_9MS$L[!ind] > Epsilon_upper, na.rm = T), pmq))
+                   sum(thetas_9MS$L[!ind] >= Epsilon_upper, na.rm = T), pmq))
 ```
 
 Probability of states, ordered from most to least likely:
@@ -774,15 +778,19 @@ if(CREATE_PLOTS){
          main = 'Genetic model given time-to-event prior')
     legend('topright',col = drug_cols2[2:3], bty = 'n', legend = c('No PMQ','PMQ+'),pch=20)
     
-    # Add CIs
-    ind = grepl(state,colnames(Thetas_full_post)) & !grepl('Episode_Identifier',colnames(Thetas_full_post)) 
-    X = Thetas_full_post[ordered$i,ind]
-    CI = t(apply(X, 1, quantile, probs = c(0.025, 0.975), na.rm=T))
-    
-    # I don't think the bars at the end of CIs are necessary
+    CI_cols = which(colnames(thetas_9MS)==paste(state,'2.5%',sep='') |
+                      colnames(thetas_9MS)==paste(state,'97.5%',sep=''))
     for(i in 1:length(ordered$x)){
-      if(!any(is.na(CI[i,])) & diff(CI[i,]) > 0.005) segments(x0 = i, y0 = CI[i,1], x1 = i, y1 = CI[i,2], 
-                                                              col = drug_cols2[thetas_9MS$drug[ordered$ix[i]]])
+      if(!any(is.na(thetas_9MS[i,CI_cols])) & 
+         thetas_9MS[i,CI_cols[2]] > thetas_9MS[i,CI_cols[1]]) {
+        
+        segments(x0 = i, y0 = thetas_9MS[ordered$ix[i],CI_cols[2]], 
+                 x1 = i, 
+                 y1 = thetas_9MS[ordered$ix[i],CI_cols[1]],
+                 col = drug_cols2[thetas_9MS$drug[ordered$ix[i]]])
+      }
+      
+      
     }
     
     # Plot genetic with time-agnostic prior
@@ -799,66 +807,8 @@ if(CREATE_PLOTS){
 ```
 
 
-# BPD Final plot
 
-```{r BPD_efficacy, fig.width=10,echo=FALSE}
-if(CREATE_PLOTS){
-  par(mfrow=c(1,2),las=1, bty='n', family = 'serif')
-  ordered = sort.int(Thetas_BPD$L, decreasing = TRUE, index.return = TRUE)
-  
-  plot(ordered$x, 
-       panel.first = grid(), 
-       pch=20, col = drug_cols2[Thetas_BPD$drug[ordered$ix]],
-       xlab = 'Rank', ylab = 'Probability of relapse',
-       main = '')
-  
-  X = BPD_data[ordered$ix,grep('L',colnames(BPD_data)),]
-  CI = t(cbind(apply(X, 1, quantile, probs = c(0.025, 0.975))))
-  
-  for(i in 1:length(ordered$x)){
-    if(diff(CI[i,]) > 0.005) segments(i,CI[i,1],i,CI[i,2], 
-                                      col=drug_cols2[Thetas_BPD$drug[ordered$ix[i]]])
-  }
-  
-  writeLines(sprintf('The weighted average of recurrences which are estimated to be failures is %s%%',
-                     round(100*sum(Thetas_BPD$L + Thetas_BPD$C)/nrow(Thetas_BPD),2)))
-  writeLines(sprintf('The weighted average of recurrences which are estimated to be relapses is %s%%',
-                     round(100*sum(Thetas_BPD$L)/nrow(Thetas_BPD),2)))
-  writeLines(sprintf('Number of BPD recurrences analysed: %s', nrow(Thetas_BPD)))
-  
-  
-  plot(NULL,
-       xlim=c(0,max(MS_pooled_summary$timeSinceLastEpisode,na.rm=T)), 
-       ylim=c(0,1),
-       ylab='Probability of relapse', 
-       xlab = 'Time since last episode')
-  
-  for(i in 1:length(ordered$x)){
-    kk = ordered$ix[i]
-    x_time = MS_pooled_summary$timeSinceLastEpisode[Thetas_BPD$Episode_Identifier[kk]==
-                                                      MS_pooled_summary$Episode_Identifier]
-    points(x_time,
-           Thetas_BPD$L[kk], pch=20, col = drug_cols2[Thetas_BPD$drug[ordered$ix[i]]])
-    
-    if(diff(CI[i,]) > 0.005) {
-      segments(x_time,CI[i,1],x_time,CI[i,2], 
-               #length = 0.02,angle = 90, code = 3,
-               col=drug_cols_light2[Thetas_BPD$drug[ordered$ix[i]]])
-    }
-  }
-  
-  if(Hightlight_BPD_examples){
-    points(x = example_inds_times,
-           y = Thetas_BPD$L[example_inds], pch=1, cex = 1.5, col='black')
-    text(x = example_inds_times, 
-         y = Thetas_BPD$L[example_inds],
-         labels = example_ids, pos =3)
-  }
-}
-```
-
-
-# Extra computations for VHX: too complex episodes
+#### Extra computations for VHX: complex episodes
 
 
 We remove the IDs that can be straightforwardly calculated:
@@ -880,9 +830,6 @@ writeLines(sprintf('Number of pairwise probabilities of recurrence states betwee
 
 
 ```{r, include=FALSE}
-lowerCI=0.025
-upperCI=0.975
-Ksamples = 10
 if(RUN_MODELS_FULL_POSTERIOR_INFLATED){  
   
   all_rec_eps_ind = !duplicated(MS_inflated$Episode_Identifier) &
@@ -891,7 +838,7 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
   P_matrix = data.frame(array(dim = c(length(all_rec_eps),4)))
   colnames(P_matrix) = c('Episode_Identifier','C','I','L')
   P_matrix$Episode_Identifier = all_rec_eps
-  Ksamples = min(Ksamples, length(grep('C',colnames(Post_samples_matrix))))
+  Ksamples = min(Ksamples_min, length(grep('C',colnames(Post_samples_matrix))))
   
   K_results = sum(!duplicated(MS_inflated$Episode_Identifier[MS_inflated$Episode>1]))
   
@@ -933,34 +880,21 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
                         cores = Ncores)
     Res
   }
-  save(Res_total, file = '../RData/LargeFiles/FullPosterior_INF.bigRData') # save for safety
   toc()
-  # Summarise the results, all CIs are 90%
-  # Save this summary
-  C_cols = grep('C',colnames(Res_total))
-  L_cols = grep('L',colnames(Res_total))
-  I_cols = grep('I',colnames(Res_total))
-  Results_Inflated = 
-    data.frame(Episode_Identifier = rownames(Res_total),
-               C_median = apply(Res_total[,C_cols],1,
-                                quantile,probs = 0.5,na.rm=T),
-               C_min = apply(Res_total[,C_cols],1,
-                             quantile,probs = lowerCI,na.rm=T),
-               C_max = apply(Res_total[,C_cols],1,
-                             quantile,probs = upperCI,na.rm=T),
-               L_median = apply(Res_total[,L_cols],1,
-                                quantile,probs = 0.5,na.rm=T),
-               L_min = apply(Res_total[,L_cols],1,
-                             quantile,probs = lowerCI,na.rm=T),
-               L_max = apply(Res_total[,L_cols],1,
-                             quantile,probs = upperCI,na.rm=T),
-               I_median = apply(Res_total[,I_cols],1,
-                                quantile,probs = 0.5,na.rm=T),
-               I_min = apply(Res_total[,I_cols],1,
-                             quantile,probs = lowerCI,na.rm=T),
-               I_max = apply(Res_total[,I_cols],1,
-                             quantile,probs = upperCI,na.rm=T))
+  # Summarise the results
   
+    # Pull out the credible intervals
+  CI_C = apply(Res_total[,grep('C', colnames(Res_total))],1, 
+               quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
+  CI_L = apply(Res_total[,grep('L', colnames(Res_total))],1, 
+               quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
+  CI_R = apply(Res_total[,grep('I', colnames(Res_total))],1, 
+               quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
+  CIs = t(rbind(CI_C, CI_L, CI_R)) 
+  colnames(CIs) = paste(rep(c('C', 'L', 'I'), each = 3), colnames(CIs), sep = '')
+  
+  
+  Results_Inflated= as.data.frame(CIs)
   save(Results_Inflated, file = '../RData/GeneticModel/Full_Posterior_Inflated.RData')
 } else {
   load('../RData/GeneticModel/Full_Posterior_Inflated.RData')
@@ -979,7 +913,8 @@ MS_pooled_summary$I_lower = MS_pooled_summary$I_upper = MS_pooled_summary$I_medi
 # Get single rows per episode (throw away the extra MOI information)
 MS_inflated_summary = MS_inflated[!duplicated(MS_inflated$Episode_Identifier) & 
                                     MS_inflated$Episode==2,]
-Results_Inflated$Episode_Identifier = as.character(Results_Inflated$Episode_Identifier)
+Results_Inflated$Episode_Identifier = as.character(rownames(Results_Inflated))
+
 for(i in 1:nrow(MS_inflated_summary)){
   if(!length(which(MS_inflated_summary$Episode_Identifier[i] == 
                    Results_Inflated$Episode_Identifier))>0){
@@ -1005,39 +940,28 @@ for(i in 1:nrow(Results_Inflated)){
 
 
 # Iterate through the ones we can calculate in one go
-episodes_full_model = unique(Thetas_full_post$Episode_Identifier)
-cols_remove = grep('Episode_Identifier', colnames(Thetas_full_post))
-Thetas_full_post = Thetas_full_post[, -cols_remove]
+episodes_full_model = unique(thetas_9MS$Episode_Identifier)
 for(ep in episodes_full_model){
-  ind1 = (MS_pooled_summary$Episode_Identifier==ep)
-  ind2 = rownames(Thetas_full_post)==ep
+  ind1 = MS_pooled_summary$Episode_Identifier==ep
+  ind2 = thetas_9MS$Episode_Identifier==ep
   
   ## Summaries for relapse
-  L_cols = grep('L',colnames(Thetas_full_post))
-  MS_pooled_summary$L_upper[ind1] = quantile(unlist(Thetas_full_post[ind2,L_cols]),
-                                             probs=upperCI, na.rm = T)
-  MS_pooled_summary$L_lower[ind1] = quantile(unlist(Thetas_full_post[ind2,L_cols]),
-                                             probs=lowerCI, na.rm = T)
-  MS_pooled_summary$L_median[ind1] = quantile(unlist(Thetas_full_post[ind2,L_cols]),
-                                              probs=0.5, na.rm = T)
+  L_cols = grep('L',colnames(thetas_9MS))
+  MS_pooled_summary$L_upper[ind1] = thetas_9MS[ind2, paste('L','97.5%',sep='')]
+  MS_pooled_summary$L_lower[ind1] = thetas_9MS[ind2, paste('L','2.5%',sep='')]
+  MS_pooled_summary$L_median[ind1] = thetas_9MS[ind2, paste('L','50%',sep='')]
   
   ## Summaries for recrudescence
-  C_cols = grep('C',colnames(Thetas_full_post))
-  MS_pooled_summary$C_upper[ind1] = quantile(unlist(Thetas_full_post[ind2,C_cols]),
-                                             probs=upperCI, na.rm = T)
-  MS_pooled_summary$C_lower[ind1] = quantile(unlist(Thetas_full_post[ind2,C_cols]),
-                                             probs=lowerCI, na.rm = T)
-  MS_pooled_summary$C_median[ind1] = quantile(unlist(Thetas_full_post[ind2,C_cols]),
-                                              probs=0.5, na.rm = T)
+  C_cols = grep('C',colnames(thetas_9MS))
+  MS_pooled_summary$C_upper[ind1] = thetas_9MS[ind2, paste('C','97.5%',sep='')]
+  MS_pooled_summary$C_lower[ind1] = thetas_9MS[ind2, paste('C','2.5%',sep='')]
+  MS_pooled_summary$C_median[ind1] = thetas_9MS[ind2, paste('C','50%',sep='')]
   
   ## Summaries for reinfection
-  I_cols = grep('I',colnames(Thetas_full_post))
-  MS_pooled_summary$I_upper[ind1] = quantile(unlist(Thetas_full_post[ind2,I_cols]),
-                                             probs=upperCI, na.rm = T)
-  MS_pooled_summary$I_lower[ind1] = quantile(unlist(Thetas_full_post[ind2,I_cols]),
-                                             probs=lowerCI, na.rm = T)
-  MS_pooled_summary$I_median[ind1] = quantile(unlist(Thetas_full_post[ind2,I_cols]),
-                                              probs=0.5, na.rm = T)
+  I_cols = grep('I',colnames(thetas_9MS))
+  MS_pooled_summary$I_upper[ind1] = thetas_9MS[ind2, paste('I','97.5%',sep='')]
+  MS_pooled_summary$I_lower[ind1] = thetas_9MS[ind2, paste('I','2.5%',sep='')]
+  MS_pooled_summary$I_median[ind1] = thetas_9MS[ind2, paste('I','50%',sep='')]
   
   # Just going to classify on relapse versus reinfection
   if(!is.na(MS_pooled_summary$L_upper[ind1])){
@@ -1052,6 +976,10 @@ for(ep in episodes_full_model){
     MS_pooled_summary$L_or_C_state[ind1] = NA
   }
 }
+```
+
+
+```{r}
 ####******** Complex cases *******####################
 # Now iterate through the complex ones
 for(i in 1:length(IDs_remaining)){
@@ -1061,30 +989,30 @@ for(i in 1:length(IDs_remaining)){
   for(ep in unique(Doubles_Thetas$Second_EpNumber)){
     # indices on the MS_pooled_summary
     ind1 = which(MS_pooled_summary$ID==id & MS_pooled_summary$Episode==ep)
-    # indices on DOubles thetas: looking for relapse evidence
+    # indices on Doubles thetas: looking for relapse evidence
     ind2 = which(Doubles_Thetas$Second_EpNumber == ep)
     # index for recrudescence evidence
     ind3 = which(Doubles_Thetas$Second_EpNumber == ep &
                    Doubles_Thetas$First_EpNumber == (ep-1))
     
-    best_match_relapse = which.max(Doubles_Thetas$L_median[ind2])
+    best_match_relapse = which.max(Doubles_Thetas[ind2, paste('L','50%',sep='')])
     if(length(best_match_relapse)>0){
       # Relapse probability
-      MS_pooled_summary$L_lower[ind1] = Doubles_Thetas$L_min[ind2[best_match_relapse]]
-      MS_pooled_summary$L_upper[ind1] = Doubles_Thetas$L_max[ind2[best_match_relapse]]
-      MS_pooled_summary$L_median[ind1] = Doubles_Thetas$L_median[ind2[best_match_relapse]]
+      MS_pooled_summary$L_lower[ind1] = Doubles_Thetas[ind2[best_match_relapse], paste('L','2.5%',sep='')]
+      MS_pooled_summary$L_upper[ind1] = Doubles_Thetas[ind2[best_match_relapse], paste('L','97.5%',sep='')]
+      MS_pooled_summary$L_median[ind1] = Doubles_Thetas[ind2[best_match_relapse], paste('L','50%',sep='')]
       
       # Reinfection probability
-      MS_pooled_summary$I_lower[ind1] = Doubles_Thetas$I_min[ind2[best_match_relapse]]
-      MS_pooled_summary$I_upper[ind1] = Doubles_Thetas$I_max[ind2[best_match_relapse]]
-      MS_pooled_summary$I_median[ind1] = Doubles_Thetas$I_median[ind2[best_match_relapse]]
+      MS_pooled_summary$I_lower[ind1] = Doubles_Thetas[ind2[best_match_relapse], paste('I','2.5%',sep='')]
+      MS_pooled_summary$I_upper[ind1] = Doubles_Thetas[ind2[best_match_relapse], paste('I','97.5%',sep='')]
+      MS_pooled_summary$I_median[ind1] = Doubles_Thetas[ind2[best_match_relapse], paste('I','50%',sep='')]
       
       # Recrudescence probability
       if(length(ind3)>0){ 
         # we can compute using previous episode
-        MS_pooled_summary$C_lower[ind1] = Doubles_Thetas$C_min[ind3]
-        MS_pooled_summary$C_upper[ind1] = Doubles_Thetas$C_max[ind3]
-        MS_pooled_summary$C_median[ind1] = Doubles_Thetas$C_median[ind3]
+        MS_pooled_summary$C_lower[ind1] = Doubles_Thetas[ind3, paste('C','2.5%',sep='')]
+        MS_pooled_summary$C_upper[ind1] = Doubles_Thetas[ind3, paste('C','97.5%',sep='')]
+        MS_pooled_summary$C_median[ind1] = Doubles_Thetas[ind3, paste('C','50%',sep='')]
       }  
       if(is.na(MS_pooled_summary$C_median[ind1])){
         MS_pooled_summary$C_lower[ind1] =
@@ -1125,6 +1053,8 @@ MS_pooled_summary$Plotting_pch_Values =
 MS_pooled_summary$Plotting_col_Values = 
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = 1:3))
 ```
+
+
 ```{r}
 # How many too complex to generate estimate for? 
 ind_recur = MS_pooled_summary$Episode > 1 # Filter out enrollment
@@ -1420,9 +1350,9 @@ writeLines(sprintf('In primaquine treated individuals (BPD), the weighted averag
                    length(ind_PMQ_BPD)))
 
 writeLines(sprintf('In primaquine treated individuals (BPD), the weighted average of recrudescences is %s (%s-%s), for %s recurrences',
-                   round(100*sum(MS_final$C_median[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
-                   round(100*sum(MS_final$C_lower[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
-                   round(100*sum(MS_final$C_upper[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),1),
+                   round(100*sum(MS_final$C_median[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),3),
+                   round(100*sum(MS_final$C_lower[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),3),
+                   round(100*sum(MS_final$C_upper[ind_PMQ_BPD],na.rm=T)/length(ind_PMQ_BPD),3),
                    length(ind_PMQ_BPD)))
 
 writeLines(sprintf('In primaquine treated individuals (BPD), the weighted average of reinfections is %s (%s-%s), for %s recurrences',
@@ -1438,6 +1368,7 @@ writeLines(sprintf('In primaquine treated individuals (BPD), the weighted averag
 We want to know how often our model estimates evidence of relapse across pairs of episodes when the episodes are in different people (i.e. have no possibility of being a relapse)
 
 ```{r}
+FORCE_RERUN = T
 if(RUN_MODELS_FALSE_POSITIVE){
   # check if the massive pairwise dataset has been made, if not make it 
   # (takes a long time ~20hours)
@@ -1812,6 +1743,17 @@ Now we calculate a compressed dataset and failure for each individual
 # now we calculate the primaquine failure rate
 # For individuals with two episodes: P(failure) = 1 - P(Rec 1 = I)*P(Rec 2 = I)
 Summary_data = Combined_Time_Data[!duplicated(Combined_Time_Data$patientid),]
+Summary_data$N_typed = NA
+for(id in unique(Summary_data$patientid)){
+  if(!(id %in% MS_pooled$ID)){
+    Summary_data$N_typed[Summary_data$patientid==id]=0
+  } else {
+    Summary_data$N_typed[Summary_data$patientid==id] =  
+      sum(apply(MS_pooled[MS_pooled$ID==id, MSs_all],2, 
+                function(x) sum(is.na(x))) == 0)
+  }
+}
+
 Summary_data$Failure_UL = Summary_data$Failure_LL = 
   Summary_data$Failure = Summary_data$CPMQ = 
   Summary_data$CPMQ = NA
@@ -1879,11 +1821,11 @@ BPD_data = Summary_data[grep('BPD', Summary_data$patientid),]
 BPD_data$Failure_UL_gene_only = BPD_data$Failure_LL_gene_only = BPD_data$Failure_gene_only = 0
 for(i in 1:nrow(BPD_data)){
   pid = BPD_data$patientid[i]
-  ind = grep(paste0(pid,'_'), rownames(Tagnostic_BPD)) 
+  ind = grep(paste0(pid,'_'), thetas_9MS_Tagnostic$Episode_Identifier) 
   if(any(ind)){
-    BPD_data$Failure_gene_only[i] = 1-prod(Tagnostic_BPD$I[ind])
-    BPD_data$Failure_UL_gene_only[i] = 1-prod(Tagnostic_BPD$`I97.5%`[ind])
-    BPD_data$Failure_LL_gene_only[i] = 1-prod(Tagnostic_BPD$`I2.5%`[ind])
+    BPD_data$Failure_gene_only[i] = 1-prod(thetas_9MS_Tagnostic$I[ind])
+    BPD_data$Failure_UL_gene_only[i] = 1-prod(thetas_9MS_Tagnostic$`I97.5%`[ind])
+    BPD_data$Failure_LL_gene_only[i] = 1-prod(thetas_9MS_Tagnostic$`I2.5%`[ind])
   }
 }
 
@@ -1897,23 +1839,33 @@ P_Failure_LL_time_only = 100*sum(BPD_data$Failure_UL_time_only)/nrow(BPD_data)
 P_Failure_UL_gene_only = 100*sum(BPD_data$Failure_LL_gene_only)/nrow(BPD_data)
 P_Failure_LL_gene_only = 100*sum(BPD_data$Failure_UL_gene_only)/nrow(BPD_data)
 
-writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+writeLines(sprintf('The primaquine failure rate, based on the joint model, in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
                    nrow(BPD_data), round(P_Failure,2),
                    round(P_Failure_LL,2),
                    round(P_Failure_UL,2), round(sum(BPD_data$FU_time)/365)))
 
-writeLines(sprintf('The primaquine failure rate based on time-to-event only in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+writeLines(sprintf('The primaquine failure rate, based on time-to-event model only, in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
                    nrow(BPD_data), round(P_Failure_time_only,2),
                    round(P_Failure_LL_time_only,2),
                    round(P_Failure_UL_time_only,2), round(sum(BPD_data$FU_time)/365)))
 
-writeLines(sprintf('The primaquine failure rate based on genetic data only in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+writeLines(sprintf('The primaquine failure rate, based on genetic model only, in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
                    nrow(BPD_data), round(P_Failure_gene_only,2),
                    round(P_Failure_LL_gene_only,2),
                    round(P_Failure_UL_gene_only,2), round(sum(BPD_data$FU_time)/365)))
 ```
 
 
+```{r genetic_vers_timing_BPD}
+par(las=1)
+ind = BPD_data$Failure_gene_only>0
+plot(BPD_data$Failure_time_only[ind],
+     BPD_data$Failure_gene_only[ind],
+     xlab='Time to event estimate', ylab = 'Genetic alone estimate',
+     xlim=c(0,1),ylim=c(0,1), col  = BPD_data$N_typed[ind])
+lines(0:1,0:1,lty=2)
+legend('bottomright', pch = 1, col = c(3,9), legend = c('3 markers', '9 markers'))
+```
 
 # Extra Analyses
 
