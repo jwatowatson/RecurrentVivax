@@ -51,7 +51,7 @@ load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
 
 Ncores = 6 # number of cores to use for model estimation
 
-EXCLUDE_COMPLEX = T # There are XX complex ones that considerably increase computation time
+EXCLUDE_COMPLEX = F # There are 9 complex ones that considerably increase computation time
 if(EXCLUDE_COMPLEX) {
   f_name_prefix = '../RData/GeneticModel/Excluding_Complex_Cases' 
   Ksamples_min = 100 
@@ -59,21 +59,20 @@ if(EXCLUDE_COMPLEX) {
 } else{ 
   f_name_prefix = '../RData/GeneticModel/Including_Complex_Cases'
   Ksamples_min = 10 
-
 }
 
 # runs the model for 100 random draws from the Time model posterior on those that can be directly computed
-RUN_MODELS_FULL_POSTERIOR = F # can do on laptop (4.5 hours)
+RUN_MODELS_FULL_POSTERIOR = F #
 
 # runs time-agnostic (with random draws from  allele frequency distribution ) 
 # whose output used for genetic only efficacy estimate
-RUN_MODELS_FULL_POSTERIOR_TAGNOSTIC = F # can do on laptop (20 mins)
+RUN_MODELS_FULL_POSTERIOR_TAGNOSTIC = F 
 
 # runs the model for 100 random draws from the Time model posterior on those that cannot be directly computed
-RUN_MODELS_FULL_POSTERIOR_INFLATED = F # cluster is better (10 hours)
+RUN_MODELS_FULL_POSTERIOR_INFLATED = F
 
 # Does the false positive discovery estimation
-RUN_MODELS_FALSE_POSITIVE = F          # only cluster (1 day with 42 cores)
+RUN_MODELS_FALSE_POSITIVE = F          # only cluster (1 week with 42 cores)
 
 # generates plots
 CREATE_PLOTS = T
@@ -158,7 +157,7 @@ no_of_epi_per_person_typed_VHX = All_VHX_epi_count[names(All_VHX_epi_count) %in%
 no_of_epi_per_person_typed_BPD = All_BPD_epi_count[names(All_BPD_epi_count) %in% names(no_of_typed_epi_per_person_typed_BPD)]
 
 #-------------------------
-# VHX data set summary: breif because genotyping VHX was not exhaustive
+# VHX data set summary: brief because genotyping VHX was not exhaustive
 #-------------------------
 X0 = length(no_of_typed_epi_per_person_typed_VHX) # Number of people typed
 ind_untyped = no_of_epi_per_person_typed_VHX != no_of_typed_epi_per_person_typed_VHX
@@ -805,8 +804,6 @@ if(CREATE_PLOTS){
                  y1 = thetas_9MS[ordered$ix[i],CI_cols[1]],
                  col = drug_cols2[thetas_9MS$drug[ordered$ix[i]]])
       }
-      
-      
     }
     
     # Plot genetic with time-agnostic prior
