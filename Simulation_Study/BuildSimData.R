@@ -6,7 +6,7 @@
 #' @param N The number of individuals
 #' @param N_alleles The number of alleles per microsatellite 
 #' (this is the same across all markers for simplicity)
-#' @param relatedness The type of relatedness between episodes in the simulated data, 
+#' @param relationship The type of relationship between episodes in the simulated data, 
 #' this is either: 'clone': clonal (exact replicates); 'sibling': IBD of a half, 
 #' e.g. probability of a half of being the copied with probability one per marker; 
 #' 'stranger': new draw at random from background frequencies.
@@ -18,13 +18,13 @@
 
 BuildSimData = function(Tn = 2, # Currently we consider only 2 
                         COIs, M, N, N_alleles=10, 
-                        relatedness = c('Clone','Sibling','Stranger')){
+                        relationship = c('Clone','Sibling','Stranger')){
   # Check the inputs
   if(length(COIs) != Tn & Tn > 1){
     stop('wrong inputs:COIs need to be of length Tn and Tn needs to be greater than 1')
   }
-  if(!relatedness %in% c('Clone','Sibling','Stranger')){ 
-    stop('Please specify relatedness from the list of: Clone, Sibling, Stranger')
+  if(!relationship %in% c('Clone','Sibling','Stranger')){ 
+    stop('Please specify relationship from the list of: Clone, Sibling, Stranger')
   }
   
   # Make the vector of markers and their allele frequencies
@@ -63,7 +63,7 @@ BuildSimData = function(Tn = 2, # Currently we consider only 2
       
       ###############################################
       # We copy one line from infection 1
-      if(relatedness == 'Clone'){
+      if(relationship == 'Clone'){
         
         # For the second infection we copy the first row of the first infection
         MS_data_sim[inf_Rec_ind[1], MS_markers] = MS_data_sim[inf_1_ind[1], MS_markers]
@@ -79,7 +79,7 @@ BuildSimData = function(Tn = 2, # Currently we consider only 2
       
       ###############################################
       # We copy with probability 0.5 from infection 1
-      if(relatedness == 'Sibling'){
+      if(relationship == 'Sibling'){
         IBD = sample(c(T,F), size = M, replace = T)
         MS_data_sim[inf_Rec_ind[1], MS_markers[IBD]] = MS_data_sim[inf_1_ind[1], MS_markers[IBD]]
         MS_data_sim[inf_Rec_ind[1], MS_markers[!IBD]] = sample(1:N_alleles, size =  sum(!IBD), replace = T)
@@ -94,7 +94,7 @@ BuildSimData = function(Tn = 2, # Currently we consider only 2
       
       ###############################################
       # Random data: same as for infection 1
-      if(relatedness == 'Stranger'){
+      if(relationship == 'Stranger'){
         for(ms in 1:M){ # First we do the polyallelic markers
           MS_data_sim[inf_Rec_ind,MS_markers[ms]] = sample(1:N_alleles, size = COIs[inf], replace = T)
         }
@@ -109,13 +109,13 @@ BuildSimData = function(Tn = 2, # Currently we consider only 2
 
 # # Some examples of how to use this function
 xsclone=BuildSimData(Tn = 3,COIs = c(3,3,1),M = 3,N = 10,
-                     relatedness = 'Clone',
+                     relationship = 'Clone',
                      N_alleles = 10)
 
 xs_sib=BuildSimData(Tn = 3,COIs = c(3,3,1), M = 3, N = 10,
-                    relatedness = 'Sibling',
+                    relationship = 'Sibling',
                     N_alleles = 10)
 
 xs_str=BuildSimData(Tn = 3,COIs = c(3,3,1), M = 3, N = 10,
-                    relatedness = 'Stranger',
+                    relationship = 'Stranger',
                     N_alleles = 10)
