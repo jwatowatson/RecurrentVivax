@@ -16,7 +16,7 @@ Load R packages, functions and data.
 #==========================================================================
 # Set up
 #==========================================================================
-knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
+knitr::opts_chunk$set(cache = F, cache.comments = FALSE, 
                       include = TRUE, 
                       fig.width = 7, fig.height = 7,
                       fig.pos = 'H', 

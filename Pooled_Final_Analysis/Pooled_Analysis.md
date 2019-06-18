@@ -81,7 +81,7 @@ no_of_epi_per_person_typed_VHX = All_VHX_epi_count[names(All_VHX_epi_count) %in%
 no_of_epi_per_person_typed_BPD = All_BPD_epi_count[names(All_BPD_epi_count) %in% names(no_of_typed_epi_per_person_typed_BPD)]
 
 #-------------------------
-# VHX data set summary: breif because genotyping VHX was not exhaustive
+# VHX data set summary: brief because genotyping VHX was not exhaustive
 #-------------------------
 X0 = length(no_of_typed_epi_per_person_typed_VHX) # Number of people typed
 ind_untyped = no_of_epi_per_person_typed_VHX != no_of_typed_epi_per_person_typed_VHX
@@ -279,15 +279,15 @@ for(ms in MSs_all){
 ```
 
 ```
-## The effective cardinality for PV.3.502 with 13 observed alleles is 7.02
-## The effective cardinality for PV.3.27 with 33 observed alleles is 13.71
-## The effective cardinality for PV.ms8 with 46 observed alleles is 28.44
-## The effective cardinality for PV.1.501 with 17 observed alleles is 12.97
+## The effective cardinality for PV.3.502 with 13 observed alleles is 6.99
+## The effective cardinality for PV.3.27 with 33 observed alleles is 13.74
+## The effective cardinality for PV.ms8 with 46 observed alleles is 28.53
+## The effective cardinality for PV.1.501 with 17 observed alleles is 12.98
 ## The effective cardinality for PV.ms1 with 7 observed alleles is 4.31
-## The effective cardinality for PV.ms5 with 24 observed alleles is 12.04
-## The effective cardinality for PV.ms6 with 25 observed alleles is 11.83
-## The effective cardinality for PV.ms7 with 14 observed alleles is 6.93
-## The effective cardinality for PV.ms16 with 39 observed alleles is 20.24
+## The effective cardinality for PV.ms5 with 24 observed alleles is 11.97
+## The effective cardinality for PV.ms6 with 25 observed alleles is 11.89
+## The effective cardinality for PV.ms7 with 14 observed alleles is 6.91
+## The effective cardinality for PV.ms16 with 39 observed alleles is 20.27
 ```
 
 ```r
@@ -299,7 +299,7 @@ writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s
 ```
 
 ```
-## The mean effective marker cardinality is 13.03, range: 4.3 to 28.4
+## The mean effective marker cardinality is 13.07, range: 4.3 to 28.5
 ```
 
 
@@ -392,10 +392,6 @@ if(EXCLUDE_COMPLEX){
 }
 ```
 
-```
-## This is excluding data from 9 individuals, totalling 54 vivax episodes
-```
-
 
 ### Full posterior computation: non-complex cases
 #### Using the time-to-event prior
@@ -437,15 +433,15 @@ Plotted by radical cure versus no radical cure, as that is the most informative 
 ![](Pooled_Analysis_files/figure-html/Supplementary_TimeEffect_onPosterior-1.png)<!-- -->
 
 ```
-## Based on time-to-event alone, 62 of 63 No PMQ classified as relapse
+## Based on time-to-event alone, 65 of 66 No PMQ classified as relapse
 ```
 
 ```
-## Based on genetic alone, 19 of 63 No PMQ classified as relapse
+## Based on genetic alone, 19 of 66 No PMQ classified as relapse
 ```
 
 ```
-## Based on all available data, 59 of 63 No PMQ classified as relapse
+## Based on all available data, 61 of 66 No PMQ classified as relapse
 ```
 
 ```
@@ -457,7 +453,7 @@ Plotted by radical cure versus no radical cure, as that is the most informative 
 ```
 
 ```
-## Based on all available data, 14 of 120 PMQ+ classified as relapse
+## Based on all available data, 13 of 120 PMQ+ classified as relapse
 ```
 
 Probability of states, ordered from most to least likely:
@@ -480,7 +476,7 @@ writeLines(sprintf('individuals with more than two recurrences: %s',length(IDs_r
 ```
 
 ```
-## individuals with more than two recurrences: 57
+## individuals with more than two recurrences: 54
 ```
 
 We blow up the pooled analysis into all pairs within individuals:
@@ -662,16 +658,8 @@ MS_pooled_summary$Episode_Identifier[ind_recur][ind_complex_recur]
 ```
 
 ```
-##  [1] "VHX_16_2"   "VHX_16_3"   "VHX_16_4"   "VHX_16_5"   "VHX_16_6"  
-##  [6] "VHX_16_7"   "VHX_16_8"   "VHX_225_2"  "VHX_225_3"  "VHX_225_4" 
-## [11] "VHX_225_5"  "VHX_225_6"  "VHX_225_7"  "VHX_225_8"  "VHX_225_9" 
-## [16] "VHX_225_10" "VHX_239_2"  "VHX_33_2"   "VHX_33_3"   "VHX_33_4"  
-## [21] "VHX_33_5"   "VHX_33_6"   "VHX_33_7"   "VHX_33_8"   "VHX_33_9"  
-## [26] "VHX_39_2"   "VHX_461_2"  "VHX_52_2"   "VHX_551_2"  "VHX_551_3" 
-## [31] "VHX_551_4"  "VHX_583_2"  "VHX_583_3"  "VHX_646_2"  "VHX_646_3" 
-## [36] "VHX_646_4"  "VHX_646_5"  "VHX_646_6"  "VHX_646_7"  "VHX_646_8" 
-## [41] "VHX_646_9"  "VHX_646_10" "VHX_646_11" "VHX_646_12" "VHX_646_13"
-## [46] "VHX_646_14"
+## [1] "VHX_239_2" "VHX_33_2"  "VHX_39_2"  "VHX_461_2" "VHX_52_2"  "VHX_551_2"
+## [7] "VHX_583_2"
 ```
 
 ```r
@@ -690,14 +678,14 @@ writeLines(sprintf('Of %s recurrences analysed, %s were too complex to estimate 
 ```
 
 ```
-## Of 493 recurrences analysed, 46 were too complex to estimate recurrence state probabilities, resulting in probability estimates for a total of 447 recurrences from 202 individuals (77 BPD and 125 VHX)
+## Of 493 recurrences analysed, 7 were too complex to estimate recurrence state probabilities, resulting in probability estimates for a total of 486 recurrences from 208 individuals (77 BPD and 131 VHX)
 ```
 
 
 ![](Pooled_Analysis_files/figure-html/CoatneyStylePLot-1.png)<!-- -->
 
 ```
-## The Coatney style plot is showing 447 recurrences in 202 individuals
+## The Coatney style plot is showing 486 recurrences in 208 individuals
 ```
 
 We show a histogram representation of these classification outputs as suggested by reviewer:
@@ -799,62 +787,62 @@ The summaries of the final dataset. Results for all those genotyped who did not 
 ```
 ## 
 ##  AS CHQ PMQ 
-##  11  83 108
+##  11  88 109
 ```
 
 
 ```
-## In no-primaquine individuals, the weighted average of relapse is 99.1 (94.9-99.9), for 327 recurrences
+## In no-primaquine individuals, the weighted average of relapse is 99 (96.5-99.8), for 365 recurrences
 ```
 
 ```
-## In no-primaquine individuals, the weighted average of recrudescences is 0.2 (0.2-0.4), for 327 recurrences
+## In no-primaquine individuals, the weighted average of recrudescences is 0.3 (0.2-0.5), for 365 recurrences
 ```
 
 ```
-## In no-primaquine individuals, the weighted average of reinfections is 0.7 (0-4.9), for 327 recurrences
+## In no-primaquine individuals, the weighted average of reinfections is 0.9 (0.1-3.4), for 365 recurrences
 ```
 
 Results for all those genotyped who did receive primaquine (VHX and BPD studies combined):
 
 ```
-## In primaquine treated individuals, the weighted average of relapses is 16.8 (13.9-21.1), for 120 recurrences
+## In primaquine treated individuals, the weighted average of relapses is 17 (14.4-20.7), for 121 recurrences
 ```
 
 ```
-## In primaquine treated individuals, the weighted average of recrudescences is 0 (0-0), for 120 recurrences
+## In primaquine treated individuals, the weighted average of recrudescences is 0 (0-0), for 121 recurrences
 ```
 
 ```
-## In primaquine treated individuals, the weighted average of reinfections is 83.2 (78.9-86.1), for 120 recurrences
+## In primaquine treated individuals, the weighted average of reinfections is 83 (79.3-85.6), for 121 recurrences
 ```
 
 Results for all those genotyped who did receive primaquine in the VHX study (unknown denominator)
 
 ```
-## In primaquine treated individuals (VHX), the weighted average of relapses is 11 (8.7-14.7), for 33 recurrences
+## In primaquine treated individuals (VHX), the weighted average of relapses is 10.8 (8.8-13.3), for 34 recurrences
 ```
 
 ```
-## In primaquine treated individuals (VHX), the weighted average of recrudescences is 0 (0-0), for 33 recurrences
+## In primaquine treated individuals (VHX), the weighted average of recrudescences is 0 (0-0), for 34 recurrences
 ```
 
 ```
-## In primaquine treated individuals (VHX), the weighted average of reinfections is 89 (85.3-91.3), for 33 recurrences
+## In primaquine treated individuals (VHX), the weighted average of reinfections is 89.2 (86.7-91.2), for 34 recurrences
 ```
 
 Results for all those genotyped who did receive primaquine in the BPD study (known denominator)
 
 ```
-## In primaquine treated individuals (BPD), the weighted average of relapses is 19 (15.8-23.5), for 87 recurrences
+## In primaquine treated individuals (BPD), the weighted average of relapses is 19.4 (16.6-23.7), for 87 recurrences
 ```
 
 ```
-## In primaquine treated individuals (BPD), the weighted average of recrudescences is 0.007 (0.002-0.018), for 87 recurrences
+## In primaquine treated individuals (BPD), the weighted average of recrudescences is 0.007 (0.003-0.017), for 87 recurrences
 ```
 
 ```
-## In primaquine treated individuals (BPD), the weighted average of reinfections is 81 (76.5-84.1), for 87 recurrences
+## In primaquine treated individuals (BPD), the weighted average of reinfections is 80.6 (76.3-83.4), for 87 recurrences
 ```
 
 # False positive rate of relapse
@@ -1022,7 +1010,7 @@ writeLines(sprintf('Of those recurrent genotyped at additional markers: %s of %s
 ```
 
 ```
-## Of those recurrent genotyped at additional markers: 227 of 236 (96 percent, 218 VHX, 9 BPD) classified as relapse
+## Of those recurrent genotyped at additional markers: 248 of 257 (96 percent, 239 VHX, 9 BPD) classified as relapse
 ```
 
 ```r
@@ -1032,7 +1020,7 @@ table(recur_add_typed_class)
 ```
 ## recur_add_typed_class
 ##         3 L         4 L         5 L         6 I         6 L 6 Uncertain 
-##           1           2           8           4         216           5
+##           1           2           8           5         237           4
 ```
 
 Plots over classified recurrent samples 
@@ -1205,29 +1193,29 @@ summary(mod)
 ##    Data: Combined_Time_Data[ind_keep, ]
 ## 
 ##      AIC      BIC   logLik deviance df.resid 
-##    127.4    145.8    -59.7    119.4      717 
+##    137.1    155.4    -64.6    129.1      717 
 ## 
 ## Scaled residuals: 
 ##     Min      1Q  Median      3Q     Max 
-## -0.5591 -0.1376 -0.1145 -0.0929 13.3987 
+## -0.5542 -0.1433 -0.1226 -0.1042 11.7415 
 ## 
 ## Random effects:
-##  Groups    Name        Variance Std.Dev.
-##  patientid (Intercept) 1e-14    1e-07   
+##  Groups    Name        Variance  Std.Dev. 
+##  patientid (Intercept) 2.557e-15 5.056e-08
 ## Number of obs: 721, groups:  patientid, 639
 ## 
 ## Fixed effects:
-##                  Estimate Std. Error z value Pr(>|z|)    
-## (Intercept)       2.59877    1.74458   1.490 0.136324    
-## log10_carboxyPMQ -1.68066    0.48422  -3.471 0.000519 ***
-## NumberDaysPMQ    -0.20040    0.08818  -2.273 0.023051 *  
+##                  Estimate Std. Error z value Pr(>|z|)   
+## (Intercept)       2.04111    1.72815   1.181  0.23757   
+## log10_carboxyPMQ -1.56314    0.48069  -3.252  0.00115 **
+## NumberDaysPMQ    -0.16660    0.08352  -1.995  0.04609 * 
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## Correlation of Fixed Effects:
 ##             (Intr) l10_PM
-## lg10_crbPMQ -0.870       
-## NumbrDysPMQ -0.723  0.325
+## lg10_crbPMQ -0.875       
+## NumbrDysPMQ -0.720  0.329
 ## convergence code: 0
 ## boundary (singular) fit: see ?isSingular
 ```
@@ -1309,21 +1297,21 @@ summary(mod_No_Outliers)
 ##    Data: Combined_Time_Data[ind_keep & !outliers14 & !outliers7, ]
 ## 
 ##      AIC      BIC   logLik deviance df.resid 
-##     48.5     60.5    -21.3     42.5      393 
+##     58.7     70.6    -26.3     52.7      393 
 ## 
 ## Scaled residuals: 
 ##     Min      1Q  Median      3Q     Max 
-## -0.2931 -0.1136 -0.0856 -0.0675 17.9880 
+## -0.2235 -0.1255 -0.1055 -0.0913 12.3212 
 ## 
 ## Random effects:
-##  Groups    Name        Variance  Std.Dev.
-##  patientid (Intercept) 2.102e-14 1.45e-07
+##  Groups    Name        Variance  Std.Dev. 
+##  patientid (Intercept) 3.074e-14 1.753e-07
 ## Number of obs: 396, groups:  patientid, 352
 ## 
 ## Fixed effects:
 ##                  Estimate Std. Error z value Pr(>|z|)
-## (Intercept)         2.404      4.488   0.536    0.592
-## log10_carboxyPMQ   -2.760      1.832  -1.507    0.132
+## (Intercept)      -0.03691    4.20642  -0.009    0.993
+## log10_carboxyPMQ -1.68141    1.66438  -1.010    0.312
 ## 
 ## Correlation of Fixed Effects:
 ##             (Intr)
@@ -1412,7 +1400,7 @@ writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%
 ```
 
 ```
-## The primaquine failure rate in the 655 individuals is 3% (2.33-3.99) over the course of 522 years total follow-up.
+## The primaquine failure rate in the 655 individuals is 3.05% (2.43-4.02) over the course of 522 years total follow-up.
 ```
 
 The above failure rate is based on all available data. Next we consider rates based on adjustments using time and genetic only. 
@@ -1485,7 +1473,7 @@ writeLines(sprintf('The primaquine failure rate, based on the joint model, in th
 ```
 
 ```
-## The primaquine failure rate, based on the joint model, in the 655 individuals is 3% (2.33-3.99) over the course of 522 years total follow-up.
+## The primaquine failure rate, based on the joint model, in the 655 individuals is 3.05% (2.43-4.02) over the course of 522 years total follow-up.
 ```
 
 ```r
@@ -1507,7 +1495,7 @@ writeLines(sprintf('The primaquine failure rate, based on genetic model only, in
 ```
 
 ```
-## The primaquine failure rate, based on genetic model only, in the 655 individuals is 4.79% (4.66-4.95) over the course of 522 years total follow-up.
+## The primaquine failure rate, based on genetic model only, in the 655 individuals is 4.79% (4.68-4.88) over the course of 522 years total follow-up.
 ```
 
 
@@ -1599,7 +1587,7 @@ toc()
 ```
 
 ```
-## 15.213 sec elapsed
+## 12.046 sec elapsed
 ```
 
 
