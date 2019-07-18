@@ -422,7 +422,20 @@ Prior_params_M2 = c(Prior_params_M1,
                     Hyper_logit_mean_pPMQ_mean = logit(0.95),
                     Hyper_logit_mean_pPMQ_sd = .25,
                     Hyper_logit_sd_pPMQ_lambda = 1)
+
+writeLines(sprintf('The prior specification for Model 2 gives a PMQ+ failure rate of %s%% (%s-%s)',
+                  round(100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean),1),
+                  round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean +
+                                              1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1),
+                  round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean -
+                                              1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1)))
 ```
+
+```
+## The prior specification for Model 2 gives a PMQ+ failure rate of 95% (3.1-7.9)
+```
+
+
 
 # Run Model
 
@@ -1737,6 +1750,7 @@ save(Post_samples_matrix, file = '../RData/TimingModel/MOD2_Posterior_samples.RD
 
 
 
+
 ```r
 ## Threshold value for classification
 Epsilon_upper = 0.7
@@ -1748,48 +1762,40 @@ transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
 # Order by difference in posterior interval
 Combined_Time_Data = Combined_Time_Data[order(-log10(Combined_Time_Data$Relapse_mean_theta)),]
 
-par(las = 1, mfcol=c(2,2), bty='n', family = 'serif')
+par(las = 1, bty='n', family = 'serif')
+layout(mat= matrix(data = c(1,2,3,3),nrow = 2,byrow = T))
 ## No PMQ group
 ind = Combined_Time_Data$arm_num!='CHQ/PMQ' & !Combined_Time_Data$Censored
 plot(log10(Combined_Time_Data$Relapse_mean_theta[ind]), 
      ylim = c(min(log10(Combined_Time_Data$Relapse_025_theta[ind]),na.rm = T), 0),
-     type='l',yaxt='n', main ='No PMQ',
+     type='p',yaxt='n', main ='No PMQ',pch=20,cex=.3,
      ylab = 'Probability of relapse', xlab = '',panel.first = grid(),
-     lwd=2, col = drug_cols2[2], xaxt='n')
+     col = drug_cols3[Combined_Time_Data$arm_num[ind]], xaxt='n')
 Nrecs = length(Combined_Time_Data$Relapse_mean_theta[ind])
 polygon(x = c(0,Nrecs,Nrecs,0),
         y = log10(c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper)),
         col = transparent_pink_band, border = NA)
 axis(1, at = c(1, 400, 800, 1200))
 mtext(text = 'Recurrence rank',side = 1, line = 3)
-axis(2, at = c(0:(-1),log10(0.5),log10(0.05)), labels = c(10^(0:(-1)),0.5,0.05))
+axis(2, at = c(0:(-2),log10(0.5),log10(0.05)), labels = c(10^(0:(-2)),0.5,0.05))
 polygon(c(1:sum(ind), rev(1:sum(ind))), 
         y = c(log10(Combined_Time_Data$Relapse_025_theta[ind]),
               rev(log10(Combined_Time_Data$Relapse_975_theta[ind]))), 
         border = NA, col = adjustcolor(drug_cols2[2],alpha.f = 0.2))
-lines(log10(Combined_Time_Data$Relapse_mean_theta[ind]), 
-      lwd=2, col = drug_cols2[2])
-# Time of event versus uncertainty in the interval
-df = data.frame(time=Combined_Time_Data$Time_to_event[ind],
-                uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
-                  log10(Combined_Time_Data$Relapse_025_theta[ind]))
-ymax = max(df$uncertainty)
-plot(df$time,df$uncertainty,  xaxt='n',
-     ylab = expression('Log'[10]*' uncertainty'), panel.first = grid(),
-     col = drug_cols2[as.integer(Combined_Time_Data$arm_num[ind] == 'CHQ/PMQ') + 2],
-     pch=20, xlab='', main = 'No PMQ', ylim=c(0,ymax))
-axis(1, at = seq(0,360, by = 60), labels = seq(0,360,by=60)/30)
-f = loess(uncertainty ~ time, df)
-lines(0:400, predict(f, data.frame(time=0:400)),lwd=2)
-mtext(text = 'Months from last episode',side = 1, line = 3)
+legend('bottomleft',legend = c('Artesunate',
+                                'Chloroquine',
+                                'Primaquine+'),
+       col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white',
+       family('serif'), inset = 0.03, lty=NA, cex=0.9)
+
 
 #PMQ group
 ind = Combined_Time_Data$arm_num=='CHQ/PMQ' & !Combined_Time_Data$Censored
 plot(log10(Combined_Time_Data$Relapse_mean_theta[ind]), 
      ylim = c(min(log10(Combined_Time_Data$Relapse_025_theta[ind])), 0),
-     type='l',yaxt='n', xlab = '',lwd=2,col=drug_cols2[3],
+     type='p',cex=.3, yaxt='n', xlab = '',col=drug_cols2[3],
      ylab = 'Probability of relapse',panel.first = grid(),
-     main = 'PMQ+')
+     main = 'PMQ+', pch=20)
 Nrecs = length(Combined_Time_Data$Relapse_mean_theta[ind])
 polygon(x = c(0,Nrecs,Nrecs,0),
         y = log10(c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper)),
@@ -1800,20 +1806,36 @@ polygon(c(1:sum(ind), rev(1:sum(ind))),
         y = c(log10(Combined_Time_Data$Relapse_025_theta[ind]),
               rev(log10(Combined_Time_Data$Relapse_975_theta[ind]))), 
         border = NA, col = adjustcolor(drug_cols2[3],alpha.f = 0.2))
-lines(log10(Combined_Time_Data$Relapse_mean_theta[ind]), 
-      lwd=2,col=drug_cols2[3])
+
+#****** Time of event versus uncertainty in the interval ******
 # Time of event versus uncertainty in the interval
+## No PMQ
+ind = Combined_Time_Data$arm_num!='CHQ/PMQ' & !Combined_Time_Data$Censored
 df = data.frame(time=Combined_Time_Data$Time_to_event[ind],
                 uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
-                  log10(Combined_Time_Data$Relapse_025_theta[ind]))
-plot(df$time, df$uncertainty,  
+                  log10(Combined_Time_Data$Relapse_025_theta[ind]), 
+                col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=1)
+ind = Combined_Time_Data$arm_num=='CHQ/PMQ' & !Combined_Time_Data$Censored
+df = rbind(df, data.frame(time=Combined_Time_Data$Time_to_event[ind],
+                uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
+                  log10(Combined_Time_Data$Relapse_025_theta[ind]),
+                col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=2))
+# permute the rows for better visualisation
+set.seed(653467)
+df = df[sample(1:nrow(df), size = nrow(df), replace = F),]
+
+plot(df$time,df$uncertainty,  xaxt='n',
      ylab = expression('Log'[10]*' uncertainty'), panel.first = grid(),
-     col = drug_cols2[3], xaxt='n',ylim=c(0,ymax),
-     pch=20, xlab='', main = 'PMQ+')
+     col = df$col,pch=20, xlab='', main = '')
 axis(1, at = seq(0,360, by = 60), labels = seq(0,360,by=60)/30)
 mtext(text = 'Months from last episode',side = 1, line = 3)
-f = loess(uncertainty ~ time, df, span = .32)
-lines((0:400), predict(f, data.frame(time=0:400)),lwd=2)
+
+# add spline fits to show trends
+f = loess(uncertainty ~ time, df[df$group==2,], span = .32)
+lines((0:400), predict(f, data.frame(time=0:400)),lwd=2,lty=2, col = drug_cols2['CHQ/PMQ'])
+
+f = loess(uncertainty ~ time, df[df$group==1,])
+lines(0:400, predict(f, data.frame(time=0:400)),lwd=2,lty=2, col = drug_cols2['AS'])
 ```
 
 ![](TimingModelStan_files/figure-html/UncertaintyOutputsModel2-1.png)<!-- -->

@@ -30,7 +30,6 @@ if(length(new.pkg) > 0){ # Install using .R script
 }else{
   sapply(pkgs, require, character.only = TRUE) # Load all packages
 }
-
 tic()
 load('../RData/TimingModel/MOD2_theta_estimates.RData')
 load('../RData/TimingModel/MOD2_Posterior_samples.RData')
@@ -72,7 +71,7 @@ RUN_MODELS_FULL_POSTERIOR_TAGNOSTIC = F
 RUN_MODELS_FULL_POSTERIOR_INFLATED = F
 
 # Does the false positive discovery estimation
-RUN_MODELS_FALSE_POSITIVE = F          # only cluster (1 week with 42 cores)
+RUN_MODELS_FALSE_POSITIVE = F          # 13 hours to run
 
 # generates plots
 CREATE_PLOTS = T
@@ -134,6 +133,15 @@ writeLines(sprintf('\nFrom BPD trial there are %s individuals with total of %s e
                                            'Episode_Identifier'])), 
                    length(unique(MS_pooled[grepl('BPD',MS_pooled$ID) & MS_pooled$Episode > 1,
                                            'Episode_Identifier']))))
+
+writeLines('\nWithin BPD: breakdown by partner drug (BPD individuals typed):')
+MS_pooled$PMQ_partner = NA
+for(i in 1:nrow(MS_pooled)){
+  MS_pooled$PMQ_partner[i] = unique(Combined_Time_Data$PMQ_partner[Combined_Time_Data$patientid==MS_pooled$ID[i]])
+}
+table(MS_pooled$PMQ_partner[!duplicated(MS_pooled$ID) & 
+                            1:nrow(MS_pooled)%in% grep('BPD',MS_pooled$ID)])
+
 
 writeLines(sprintf('From VHX trial there are %s individuals with total of %s episodes typed (enrollment: %s; recurrent %s)',
                    length(unique(MS_pooled$ID[grep('VHX',MS_pooled$ID)])),
@@ -1416,7 +1424,8 @@ if(RUN_MODELS_FALSE_POSITIVE){
 ```{r, echo=FALSE}
 writeLines(sprintf('The false-positive discovery rate of the genetic model is estimated as %s percent. 
                    \nThis is based on %s pairwise comparisons',
-                   round(100*sum( Inflated_Results$L > Epsilon_upper )/nrow(Inflated_Results),2),
+                   round(100*sum( Inflated_Results$L > Epsilon_upper,
+                                  na.rm = T)/sum(!is.na(Inflated_Results$L)),2),
                    nrow(Inflated_Results)))
 ```
 
@@ -1572,9 +1581,10 @@ polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
 
 
 
-# Analysis of radical cure efficacy in BPD
+# Analysis of radical cure efficacy in BPD and VHX
 
-Almost all episodes in BPD were typed. Therefore we can estimate the true efficacy comparing with historical controls (VHX).
+Almost all recurrences in BPD were typed. The majority (34 out of 40) of the recurrences in VHX were typed also.
+Therefore we can estimate the true efficacy of high-dose primaquine by adjusting for the background reinfection rates in both studies.
 
 ```{r}
 # Add an episode identifier
@@ -1629,6 +1639,7 @@ for(i in 1:nrow(Combined_Time_Data)){
 
 ```
 
+## PK analysis with carboxy primaquine
 
 Now we look at whether the PK (carboxy-primaquine) can predict failure:
 First we add the carboxy to the dataset:
@@ -1751,6 +1762,8 @@ points(Combined_Time_Data$log10_carboxyPMQ[outliers14|outliers7]*Combined_Time_D
        Combined_Time_Data$Failure_YN[outliers14|outliers7], cex=2)
 ```
 
+## Failures after PMQ+
+
 Now we calculate a compressed dataset and failure for each individual
 
 ```{r}
@@ -1778,17 +1791,36 @@ for(i in 1:nrow(Summary_data)){
   Summary_data$Failure_LL[i] = 1-prod(Combined_Time_Data$Reinfection_Probability_LL[ind],na.rm=T)
   Summary_data$CPMQ[i] = median(Combined_Time_Data$log10_carboxyPMQ[ind],na.rm=T)
 }
-BPD_data = Summary_data[grep('BPD', Summary_data$patientid),]
+VHX_PMQ_data = filter(Summary_data, Study_Period==1, arm_num=='CHQ/PMQ')
+BPD_data = filter(Summary_data, Study_Period==1)
 
 P_Failure=100*sum(BPD_data$Failure)/nrow(BPD_data)
 # invert the intervals here - optimistic for not failure = pessimistic for failure
 P_Failure_UL = 100*sum(BPD_data$Failure_LL)/nrow(BPD_data)
 P_Failure_LL = 100*sum(BPD_data$Failure_UL)/nrow(BPD_data)
 
-writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+writeLines(sprintf('In BPD, the primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
                    nrow(BPD_data), round(P_Failure,2),
                    round(P_Failure_LL,2),
                    round(P_Failure_UL,2), round(sum(BPD_data$FU_time)/365)))
+
+P_Failure_VHX=100*sum(VHX_PMQ_data$Failure)/nrow(VHX_PMQ_data)
+# invert the intervals here - optimistic for not failure = pessimistic for failure
+P_Failure_UL_VHX = 100*sum(VHX_PMQ_data$Failure_LL)/nrow(VHX_PMQ_data)
+P_Failure_LL_VHX = 100*sum(VHX_PMQ_data$Failure_UL)/nrow(VHX_PMQ_data)
+
+writeLines(sprintf('In BPD, the primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+                   nrow(VHX_PMQ_data), round(P_Failure_VHX,2),
+                   round(P_Failure_LL_VHX,2),
+                   round(P_Failure_UL_VHX,2), round(sum(VHX_PMQ_data$FU_time)/365)))
+
+mean(Combined_Time_Data$Reinfection_Probability[Combined_Time_Data$Study_Period==1 &
+                                                  Combined_Time_Data$arm_num=='CHQ/PMQ' &
+                                                  Combined_Time_Data$Censored==0],na.rm=T)
+
+mean(Combined_Time_Data$Reinfection_Probability[Combined_Time_Data$Study_Period==2 &
+                                                  Combined_Time_Data$arm_num=='CHQ/PMQ' &
+                                                  Combined_Time_Data$Censored==0],na.rm=T)
 ```
 
 The above failure rate is based on all available data. Next we consider rates based on adjustments using time and genetic only. 
@@ -1879,6 +1911,11 @@ plot(BPD_data$Failure_time_only[ind],
      xlim=c(0,1),ylim=c(0,1), col  = BPD_data$N_typed[ind])
 lines(0:1,0:1,lty=2)
 legend('bottomright', pch = 1, col = c(3,9), legend = c('3 markers', '9 markers'))
+```
+
+save augmented summary data for other analyses
+```{r}
+save(Summary_data, file = '../RData/Summary_data_ModelResults.RData')
 ```
 
 # Extra Analyses

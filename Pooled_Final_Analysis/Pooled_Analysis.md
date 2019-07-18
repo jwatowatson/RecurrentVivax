@@ -62,6 +62,17 @@ Summary of the data and the whole of the VHX data set versus the subset typed (i
 ```
 
 ```
+## 
+## Within BPD: breakdown by partner drug (BPD individuals typed):
+```
+
+```
+## 
+## CHQ  DP 
+##  46  34
+```
+
+```
 ## From VHX trial there are 137 individuals with total of 543 episodes typed (enrollment: 137; recurrent 406)
 ```
 
@@ -279,15 +290,15 @@ for(ms in MSs_all){
 ```
 
 ```
-## The effective cardinality for PV.3.502 with 13 observed alleles is 6.99
-## The effective cardinality for PV.3.27 with 33 observed alleles is 13.74
-## The effective cardinality for PV.ms8 with 46 observed alleles is 28.53
-## The effective cardinality for PV.1.501 with 17 observed alleles is 12.98
-## The effective cardinality for PV.ms1 with 7 observed alleles is 4.31
-## The effective cardinality for PV.ms5 with 24 observed alleles is 11.97
-## The effective cardinality for PV.ms6 with 25 observed alleles is 11.89
-## The effective cardinality for PV.ms7 with 14 observed alleles is 6.91
-## The effective cardinality for PV.ms16 with 39 observed alleles is 20.27
+## The effective cardinality for PV.3.502 with 13 observed alleles is 7
+## The effective cardinality for PV.3.27 with 33 observed alleles is 13.77
+## The effective cardinality for PV.ms8 with 46 observed alleles is 28.28
+## The effective cardinality for PV.1.501 with 17 observed alleles is 13.03
+## The effective cardinality for PV.ms1 with 7 observed alleles is 4.32
+## The effective cardinality for PV.ms5 with 24 observed alleles is 11.94
+## The effective cardinality for PV.ms6 with 25 observed alleles is 11.94
+## The effective cardinality for PV.ms7 with 14 observed alleles is 6.94
+## The effective cardinality for PV.ms16 with 39 observed alleles is 20.23
 ```
 
 ```r
@@ -299,7 +310,7 @@ writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s
 ```
 
 ```
-## The mean effective marker cardinality is 13.07, range: 4.3 to 28.5
+## The mean effective marker cardinality is 13.03, range: 4.3 to 28.3
 ```
 
 
@@ -771,13 +782,13 @@ print(MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 ## 356                    0                  0        1       5        2
 ## 357                   21                 21        1       5        3
 ## 358                  309                330        1       5        3
-##     PV.ms1 PV.ms16 PV.ms5 PV.ms6 PV.ms7 PV.ms8
-## 60       4      27     24     15      5     17
-## 61       4      27     24     15      5     17
-## 62       4      27     24     15      5     17
-## 355      3      23     13      9     10     12
-## 356      3      23     13     15     10     33
-## 357      4      20     13      9     10     12
+##     PV.ms1 PV.ms16 PV.ms5 PV.ms6 PV.ms7 PV.ms8 PMQ_partner
+## 60       4      27     24     15      5     17         CHQ
+## 61       4      27     24     15      5     17         CHQ
+## 62       4      27     24     15      5     17         CHQ
+## 355      3      23     13      9     10     12            
+## 356      3      23     13     15     10     33            
+## 357      4      20     13      9     10     12            
 ## 358      4      23     11     15     10     12
 ```
 
@@ -883,9 +894,9 @@ if(RUN_MODELS_FALSE_POSITIVE){
 
 
 ```
-## The false-positive discovery rate of the genetic model is estimated as 2.15 percent. 
+## The false-positive discovery rate of the genetic model is estimated as 2.17 percent. 
 ##                    
-## This is based on 90194 pairwise comparisons
+## This is based on 247262 pairwise comparisons
 ```
 
 
@@ -1074,9 +1085,10 @@ polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
 
 
 
-# Analysis of radical cure efficacy in BPD
+# Analysis of radical cure efficacy in BPD and VHX
 
-Almost all episodes in BPD were typed. Therefore we can estimate the true efficacy comparing with historical controls (VHX).
+Almost all recurrences in BPD were typed. The majority (34 out of 40) of the recurrences in VHX were typed also.
+Therefore we can estimate the true efficacy of high-dose primaquine by adjusting for the background reinfection rates in both studies.
 
 
 ```r
@@ -1131,6 +1143,7 @@ for(i in 1:nrow(Combined_Time_Data)){
 }
 ```
 
+## PK analysis with carboxy primaquine
 
 Now we look at whether the PK (carboxy-primaquine) can predict failure:
 First we add the carboxy to the dataset:
@@ -1358,6 +1371,8 @@ points(Combined_Time_Data$log10_carboxyPMQ[outliers14|outliers7]*Combined_Time_D
 
 ![](Pooled_Analysis_files/figure-html/CarboxyPredictionFailure_NoOutliers-1.png)<!-- -->
 
+## Failures after PMQ+
+
 Now we calculate a compressed dataset and failure for each individual
 
 
@@ -1386,21 +1401,38 @@ for(i in 1:nrow(Summary_data)){
   Summary_data$Failure_LL[i] = 1-prod(Combined_Time_Data$Reinfection_Probability_LL[ind],na.rm=T)
   Summary_data$CPMQ[i] = median(Combined_Time_Data$log10_carboxyPMQ[ind],na.rm=T)
 }
-BPD_data = Summary_data[grep('BPD', Summary_data$patientid),]
+VHX_PMQ_data = filter(Summary_data, Study_Period==1, arm_num=='CHQ/PMQ')
+BPD_data = filter(Summary_data, Study_Period==1)
 
 P_Failure=100*sum(BPD_data$Failure)/nrow(BPD_data)
 # invert the intervals here - optimistic for not failure = pessimistic for failure
 P_Failure_UL = 100*sum(BPD_data$Failure_LL)/nrow(BPD_data)
 P_Failure_LL = 100*sum(BPD_data$Failure_UL)/nrow(BPD_data)
 
-writeLines(sprintf('The primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+writeLines(sprintf('In BPD, the primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
                    nrow(BPD_data), round(P_Failure,2),
                    round(P_Failure_LL,2),
                    round(P_Failure_UL,2), round(sum(BPD_data$FU_time)/365)))
 ```
 
 ```
-## The primaquine failure rate in the 655 individuals is 3.05% (2.43-4.02) over the course of 522 years total follow-up.
+## In BPD, the primaquine failure rate in the 644 individuals is 56.2% (44.06-67.02) over the course of 485 years total follow-up.
+```
+
+```r
+P_Failure_VHX=100*sum(VHX_PMQ_data$Failure)/nrow(VHX_PMQ_data)
+# invert the intervals here - optimistic for not failure = pessimistic for failure
+P_Failure_UL_VHX = 100*sum(VHX_PMQ_data$Failure_LL)/nrow(VHX_PMQ_data)
+P_Failure_LL_VHX = 100*sum(VHX_PMQ_data$Failure_UL)/nrow(VHX_PMQ_data)
+
+writeLines(sprintf('In BPD, the primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+                   nrow(VHX_PMQ_data), round(P_Failure_VHX,2),
+                   round(P_Failure_LL_VHX,2),
+                   round(P_Failure_UL_VHX,2), round(sum(VHX_PMQ_data$FU_time)/365)))
+```
+
+```
+## In BPD, the primaquine failure rate in the 198 individuals is 2.37% (1.74-3.29) over the course of 155 years total follow-up.
 ```
 
 The above failure rate is based on all available data. Next we consider rates based on adjustments using time and genetic only. 
@@ -1473,7 +1505,7 @@ writeLines(sprintf('The primaquine failure rate, based on the joint model, in th
 ```
 
 ```
-## The primaquine failure rate, based on the joint model, in the 655 individuals is 3.05% (2.43-4.02) over the course of 522 years total follow-up.
+## The primaquine failure rate, based on the joint model, in the 655 individuals is 56.2% (44.06-67.02) over the course of 522 years total follow-up.
 ```
 
 ```r
@@ -1512,6 +1544,12 @@ legend('bottomright', pch = 1, col = c(3,9), legend = c('3 markers', '9 markers'
 ```
 
 ![](Pooled_Analysis_files/figure-html/genetic_vers_timing_BPD-1.png)<!-- -->
+
+save augmented summary data for other analyses
+
+```r
+save(Summary_data, file = '../RData/Summary_data_ModelResults.RData')
+```
 
 # Extra Analyses
 
@@ -1580,14 +1618,14 @@ legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20,
 abline(h=0,lty=2)
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-43-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-44-1.png)<!-- -->
 
 ```r
 toc()
 ```
 
 ```
-## 12.046 sec elapsed
+## 12.786 sec elapsed
 ```
 
 
