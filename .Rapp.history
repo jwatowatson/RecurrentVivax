@@ -1,0 +1,14 @@
+# This iterates through the list of necessary packages, loads and installs them if missing#
+#
+ipak = function(pkg){#
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]#
+  if (length(new.pkg)) #
+    install.packages(new.pkg, dependencies = TRUE)#
+  sapply(pkg, require, character.only = TRUE)#
+}#
+#
+load('./RData/RPackages_List.RData')#
+ipak(pkgs)#
+devtools::session_info() # See packages loaded
+y
+install.packages('devtools')
