@@ -5,6 +5,9 @@
 # need to iterate over cardinalities, relationships, different 
 # individuals nor numbers of markers 
 # (just need to specify to sim data, then replace by missing)
+# Not that recrudescence has zero probability when diversity exceeds
+# that of previous infection, 
+# i.e. some COI patterns are incompatible with recrudescence under the model
 ####################################################################
 
 # Set up
@@ -80,9 +83,8 @@ if(RUN_MODELS){
 }
 
 
-# Not that recrudescence has zero probability when diversity excceds
-# that of previous infection, hence some COI patterns have zero probability
-# of being a recrudescence under the model: 
+# Not that recrudescence has zero probability when diversity exceeds
+# that of previous infection, i.e. some COI patterns are incompatible with recrudescence under the model: 
 load('SimulationOutputs/Sim_Genetic_Results/PriorReturnCheck.RData')
 print(dlply(thetas_all, 'COI_pattern'))
 
