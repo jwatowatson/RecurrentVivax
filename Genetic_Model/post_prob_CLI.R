@@ -18,6 +18,8 @@
 #
 # Future iterations that use a dynamic approach to phasing should render Max_Hap_genotypes 
 # obsolete
+# At present post_prob_CLI encounters dimension problems when only one marker is provided
+# To overcome this problem, one can provide a dummy marker column whose entries are all NA
 ##############################################################################################
 
 post_prob_CLI = function(MSdata, # MS data 
