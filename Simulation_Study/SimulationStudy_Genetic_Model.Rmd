@@ -74,6 +74,12 @@ settings$COI_pattern <- paste(settings$COI_1, settings$COI_2, sep = "_") # Store
 rownames(settings) = NULL
 jobs_cor = which(settings$COI_pattern != '3_1') # Indices of core simulation jobs
 jobs_add = which(settings$COI_pattern == '3_1') # Indices of addn simulation jobs
+
+## Threshold for classification and pink band
+Epsilon_upper = 0.7
+Epsilon_lower = 0.3
+Dark2 = brewer.pal(8, 'Dark2')
+transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
 ```
 
 ```{r, echo=FALSE}
@@ -94,7 +100,7 @@ if(SIM_DATA){ # Simulate data for core jobs with cardinalities 4 and 13
                                   M = settings$M[job], # Number of markers from settings 
                                   N = N_indivs, # Number of individuals
                                   N_alleles = cardinality, 
-                                  relatedness = relationship)
+                                  relationship = relationship)
         
         # Save a copy of the simulated data 
         save(sim_output, file=sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality%s_M%s_COIs%s_%s.RData', 
@@ -125,9 +131,9 @@ if(SIM_DATA_ERROR){ # Simulate erroneous data for cor jobs with cardinality 13 o
       
       # Add error
       MSs = names(sim_output$FS)
-      data_dim = dim(sim_output$MS_data_sim[, MSs])
+      data_dim = dim(sim_output$MS_data_sim[, MSs, drop = FALSE])
       errors = sample(-2:2, size = prod(data_dim), prob = error_probs, replace = T)
-      MSdata_with_error = sim_output$MS_data_sim[, MSs] + array(errors, dim = data_dim)
+      MSdata_with_error = sim_output$MS_data_sim[, MSs, drop = FALSE] + array(errors, dim = data_dim)
       sim_output$MS_data_sim[, MSs] = MSdata_with_error
       
       # save a copy of the erronenous data
@@ -155,7 +161,7 @@ if(SIM_DATA_COIs3_1){ # Simulate data for additional jobs with cardinality 13 on
                                 M = settings$M[job], # Number of markers from settings 
                                 N = N_indivs, # Number of individuals
                                 N_alleles = 13, 
-                                relatedness = relationship)
+                                relationship = relationship)
       
       # Save a copy of the simulated data
       save(sim_output, file=sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality13_M%s_COIs%s_%s.RData', 
@@ -607,11 +613,17 @@ if(PLOT_RESULTS){
         })
         
         colnames(X) = settings[JOBS_pattern,'M']
-        
+      
         # Barplot
         Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
                     ylab = '', xlab = '', cex.names=1.5,cex.axis = 1.5,
-                    main = relationship_names[relationship], names.arg = seq(3,12,3))
+                    main = relationship_names[relationship], names.arg = Ms)
+        
+        polygon(col = transparent_pink_band, 
+                x = c(min(Z)-1,max(Z)+1,max(Z)+1,min(Z)-1),
+                y = c(Epsilon_lower, Epsilon_lower, Epsilon_upper, Epsilon_upper), 
+                border = NA)
+        
         mtext(text = 'Probability', side = 2, line=3.5, cex=1, las=3)
         mtext(text = 'Number of markers', side = 1, line=3, cex=1.3)
         if(relationship=='Clone'){
@@ -633,6 +645,7 @@ if(PLOT_RESULTS){
                      y0 = X[state,] - sds[state,], y1 = X[state,] + sds[state,])
           }
         }
+        
         
         cat("\n")
       }
@@ -682,7 +695,13 @@ if(PLOT_RESULTS){
       # Barplot
       Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
                   ylab = '', xlab = '', cex.names=1.5,cex.axis = 1.5,
-                  main = relationship_names[relationship],names.arg = seq(3,12,3))
+                  main = relationship_names[relationship],names.arg = Ms)
+      
+      polygon(col = transparent_pink_band, 
+                x = c(min(Z)-1,max(Z)+1,max(Z)+1,min(Z)-1),
+                y = c(Epsilon_lower, Epsilon_lower, Epsilon_upper, Epsilon_upper), 
+                border = NA)
+      
       mtext(text = 'Probability', side = 2, line=3.5, cex=1, las=3)
       mtext(text = 'Number of markers', side = 1, line=3, cex=1.3)
       if(relationship=='Clone'){
@@ -751,7 +770,13 @@ if(PLOT_RESULTS){
       # Barplot
       Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
                   ylab = '', xlab = '', cex.names=1.5,cex.axis = 1.5,
-                  main = relationship_names[relationship], names.arg = seq(3,12,3))
+                  main = relationship_names[relationship], names.arg = Ms)
+      
+      polygon(col = transparent_pink_band, 
+                x = c(min(Z)-1,max(Z)+1,max(Z)+1,min(Z)-1),
+                y = c(Epsilon_lower, Epsilon_lower, Epsilon_upper, Epsilon_upper), 
+                border = NA)
+      
       mtext(text = 'Probability', side = 2, line=3.5, cex=1, las=3)
       mtext(text = 'Number of markers', side = 1, line=3, cex=1.3)
       if(relationship=='Clone'){
