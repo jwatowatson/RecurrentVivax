@@ -290,15 +290,15 @@ for(ms in MSs_all){
 ```
 
 ```
-## The effective cardinality for PV.3.502 with 13 observed alleles is 7
+## The effective cardinality for PV.3.502 with 13 observed alleles is 7.02
 ## The effective cardinality for PV.3.27 with 33 observed alleles is 13.77
-## The effective cardinality for PV.ms8 with 46 observed alleles is 28.28
-## The effective cardinality for PV.1.501 with 17 observed alleles is 13.03
-## The effective cardinality for PV.ms1 with 7 observed alleles is 4.32
-## The effective cardinality for PV.ms5 with 24 observed alleles is 11.94
-## The effective cardinality for PV.ms6 with 25 observed alleles is 11.94
-## The effective cardinality for PV.ms7 with 14 observed alleles is 6.94
-## The effective cardinality for PV.ms16 with 39 observed alleles is 20.23
+## The effective cardinality for PV.ms8 with 46 observed alleles is 28.41
+## The effective cardinality for PV.1.501 with 17 observed alleles is 13
+## The effective cardinality for PV.ms1 with 7 observed alleles is 4.31
+## The effective cardinality for PV.ms5 with 24 observed alleles is 11.92
+## The effective cardinality for PV.ms6 with 25 observed alleles is 11.89
+## The effective cardinality for PV.ms7 with 14 observed alleles is 6.89
+## The effective cardinality for PV.ms16 with 39 observed alleles is 20.18
 ```
 
 ```r
@@ -310,7 +310,7 @@ writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s
 ```
 
 ```
-## The mean effective marker cardinality is 13.03, range: 4.3 to 28.3
+## The mean effective marker cardinality is 13.04, range: 4.3 to 28.4
 ```
 
 
@@ -1402,7 +1402,7 @@ for(i in 1:nrow(Summary_data)){
   Summary_data$CPMQ[i] = median(Combined_Time_Data$log10_carboxyPMQ[ind],na.rm=T)
 }
 VHX_PMQ_data = filter(Summary_data, Study_Period==1, arm_num=='CHQ/PMQ')
-BPD_data = filter(Summary_data, Study_Period==1)
+BPD_data = filter(Summary_data, Study_Period==2)
 
 P_Failure=100*sum(BPD_data$Failure)/nrow(BPD_data)
 # invert the intervals here - optimistic for not failure = pessimistic for failure
@@ -1410,13 +1410,13 @@ P_Failure_UL = 100*sum(BPD_data$Failure_LL)/nrow(BPD_data)
 P_Failure_LL = 100*sum(BPD_data$Failure_UL)/nrow(BPD_data)
 
 writeLines(sprintf('In BPD, the primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
-                   nrow(BPD_data), round(P_Failure,2),
-                   round(P_Failure_LL,2),
-                   round(P_Failure_UL,2), round(sum(BPD_data$FU_time)/365)))
+                   nrow(BPD_data), round(P_Failure,1),
+                   round(P_Failure_LL,1),
+                   round(P_Failure_UL,1), round(sum(BPD_data$FU_time)/365)))
 ```
 
 ```
-## In BPD, the primaquine failure rate in the 644 individuals is 56.2% (44.06-67.02) over the course of 485 years total follow-up.
+## In BPD, the primaquine failure rate in the 655 individuals is 3% (2.4-4) over the course of 522 years total follow-up.
 ```
 
 ```r
@@ -1425,14 +1425,51 @@ P_Failure_VHX=100*sum(VHX_PMQ_data$Failure)/nrow(VHX_PMQ_data)
 P_Failure_UL_VHX = 100*sum(VHX_PMQ_data$Failure_LL)/nrow(VHX_PMQ_data)
 P_Failure_LL_VHX = 100*sum(VHX_PMQ_data$Failure_UL)/nrow(VHX_PMQ_data)
 
-writeLines(sprintf('In BPD, the primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
-                   nrow(VHX_PMQ_data), round(P_Failure_VHX,2),
-                   round(P_Failure_LL_VHX,2),
-                   round(P_Failure_UL_VHX,2), round(sum(VHX_PMQ_data$FU_time)/365)))
+writeLines(sprintf('In VHX, the primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+                   nrow(VHX_PMQ_data), round(P_Failure_VHX,1),
+                   round(P_Failure_LL_VHX,1),
+                   round(P_Failure_UL_VHX,1), round(sum(VHX_PMQ_data$FU_time)/365)))
 ```
 
 ```
-## In BPD, the primaquine failure rate in the 198 individuals is 2.37% (1.74-3.29) over the course of 155 years total follow-up.
+## In VHX, the primaquine failure rate in the 198 individuals is 2.4% (1.7-3.3) over the course of 155 years total follow-up.
+```
+
+```r
+mean(Combined_Time_Data$Reinfection_Probability[Combined_Time_Data$Study_Period==1 &
+                                                  Combined_Time_Data$arm_num=='CHQ/PMQ' &
+                                                  Combined_Time_Data$Censored==0],na.rm=T)
+```
+
+```
+## [1] 0.9526366
+```
+
+```r
+mean(Combined_Time_Data$Reinfection_Probability[Combined_Time_Data$Study_Period==2 &
+                                                  Combined_Time_Data$arm_num=='CHQ/PMQ' &
+                                                  Combined_Time_Data$Censored==0],na.rm=T)
+```
+
+```
+## [1] 0.973358
+```
+
+```r
+PMQ_data = filter(Summary_data, arm_num == 'CHQ/PMQ')
+
+P_Failure_all=100*sum(PMQ_data$Failure)/nrow(PMQ_data)
+# invert the intervals here - optimistic for not failure = pessimistic for failure
+P_Failure_UL_all = 100*sum(PMQ_data$Failure_LL)/nrow(PMQ_data)
+P_Failure_LL_all = 100*sum(PMQ_data$Failure_UL)/nrow(PMQ_data)
+writeLines(sprintf('In all primaquine treated individuals, the failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+                   nrow(PMQ_data), round(P_Failure_all,1),
+                   round(P_Failure_LL_all,1),
+                   round(P_Failure_UL_all,1), round(sum(PMQ_data$FU_time)/365)))
+```
+
+```
+## In all primaquine treated individuals, the failure rate in the 853 individuals is 2.9% (2.3-3.8) over the course of 677 years total follow-up.
 ```
 
 The above failure rate is based on all available data. Next we consider rates based on adjustments using time and genetic only. 
@@ -1505,7 +1542,7 @@ writeLines(sprintf('The primaquine failure rate, based on the joint model, in th
 ```
 
 ```
-## The primaquine failure rate, based on the joint model, in the 655 individuals is 56.2% (44.06-67.02) over the course of 522 years total follow-up.
+## The primaquine failure rate, based on the joint model, in the 655 individuals is 3.05% (2.43-4.02) over the course of 522 years total follow-up.
 ```
 
 ```r
@@ -1625,7 +1662,7 @@ toc()
 ```
 
 ```
-## 12.786 sec elapsed
+## 13.177 sec elapsed
 ```
 
 

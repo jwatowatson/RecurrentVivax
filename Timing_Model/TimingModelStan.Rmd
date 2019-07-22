@@ -115,7 +115,7 @@ This model is still in development and not currently functional.
 ```{r}
 load('../RData/TimingModel/Combined_Time_Event.RData')
 # Get rid of the very short durations 
-Combined_Time_Data = filter(Combined_Time_Data, !(Censored > -1 & Time_to_event < 5))
+Combined_Time_Data = filter(Combined_Time_Data, Censored > -1, Time_to_event >= 5)
 # Turn drug into a numeric vector
 Combined_Time_Data$numeric_drug = as.integer(revalue(Combined_Time_Data$arm_num,
                                                      c('AS'='0','CHQ'='1','CHQ/PMQ'='2')))

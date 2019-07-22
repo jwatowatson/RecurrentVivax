@@ -338,7 +338,7 @@ This model is still in development and not currently functional.
 ```r
 load('../RData/TimingModel/Combined_Time_Event.RData')
 # Get rid of the very short durations 
-Combined_Time_Data = filter(Combined_Time_Data, !(Censored > -1 & Time_to_event < 5))
+Combined_Time_Data = filter(Combined_Time_Data, Censored > -1, Time_to_event >= 5)
 # Turn drug into a numeric vector
 Combined_Time_Data$numeric_drug = as.integer(revalue(Combined_Time_Data$arm_num,
                                                      c('AS'='0','CHQ'='1','CHQ/PMQ'='2')))
@@ -423,7 +423,7 @@ Prior_params_M2 = c(Prior_params_M1,
                     Hyper_logit_mean_pPMQ_sd = .25,
                     Hyper_logit_sd_pPMQ_lambda = 1)
 
-writeLines(sprintf('The prior specification for Model 2 gives a PMQ+ failure rate of %s%% (%s-%s)',
+writeLines(sprintf('The prior specification for Model 2 is a PMQ+ failure rate of %s%% (%s-%s)',
                   round(100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean),1),
                   round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean +
                                               1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1),
@@ -432,7 +432,7 @@ writeLines(sprintf('The prior specification for Model 2 gives a PMQ+ failure rat
 ```
 
 ```
-## The prior specification for Model 2 gives a PMQ+ failure rate of 95% (3.1-7.9)
+## The prior specification for Model 2 is a PMQ+ failure rate of 95% (3.1-7.9)
 ```
 
 

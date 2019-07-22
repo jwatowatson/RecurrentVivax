@@ -1792,7 +1792,7 @@ for(i in 1:nrow(Summary_data)){
   Summary_data$CPMQ[i] = median(Combined_Time_Data$log10_carboxyPMQ[ind],na.rm=T)
 }
 VHX_PMQ_data = filter(Summary_data, Study_Period==1, arm_num=='CHQ/PMQ')
-BPD_data = filter(Summary_data, Study_Period==1)
+BPD_data = filter(Summary_data, Study_Period==2)
 
 P_Failure=100*sum(BPD_data$Failure)/nrow(BPD_data)
 # invert the intervals here - optimistic for not failure = pessimistic for failure
@@ -1800,19 +1800,19 @@ P_Failure_UL = 100*sum(BPD_data$Failure_LL)/nrow(BPD_data)
 P_Failure_LL = 100*sum(BPD_data$Failure_UL)/nrow(BPD_data)
 
 writeLines(sprintf('In BPD, the primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
-                   nrow(BPD_data), round(P_Failure,2),
-                   round(P_Failure_LL,2),
-                   round(P_Failure_UL,2), round(sum(BPD_data$FU_time)/365)))
+                   nrow(BPD_data), round(P_Failure,1),
+                   round(P_Failure_LL,1),
+                   round(P_Failure_UL,1), round(sum(BPD_data$FU_time)/365)))
 
 P_Failure_VHX=100*sum(VHX_PMQ_data$Failure)/nrow(VHX_PMQ_data)
 # invert the intervals here - optimistic for not failure = pessimistic for failure
 P_Failure_UL_VHX = 100*sum(VHX_PMQ_data$Failure_LL)/nrow(VHX_PMQ_data)
 P_Failure_LL_VHX = 100*sum(VHX_PMQ_data$Failure_UL)/nrow(VHX_PMQ_data)
 
-writeLines(sprintf('In BPD, the primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
-                   nrow(VHX_PMQ_data), round(P_Failure_VHX,2),
-                   round(P_Failure_LL_VHX,2),
-                   round(P_Failure_UL_VHX,2), round(sum(VHX_PMQ_data$FU_time)/365)))
+writeLines(sprintf('In VHX, the primaquine failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+                   nrow(VHX_PMQ_data), round(P_Failure_VHX,1),
+                   round(P_Failure_LL_VHX,1),
+                   round(P_Failure_UL_VHX,1), round(sum(VHX_PMQ_data$FU_time)/365)))
 
 mean(Combined_Time_Data$Reinfection_Probability[Combined_Time_Data$Study_Period==1 &
                                                   Combined_Time_Data$arm_num=='CHQ/PMQ' &
@@ -1821,6 +1821,17 @@ mean(Combined_Time_Data$Reinfection_Probability[Combined_Time_Data$Study_Period=
 mean(Combined_Time_Data$Reinfection_Probability[Combined_Time_Data$Study_Period==2 &
                                                   Combined_Time_Data$arm_num=='CHQ/PMQ' &
                                                   Combined_Time_Data$Censored==0],na.rm=T)
+
+PMQ_data = filter(Summary_data, arm_num == 'CHQ/PMQ')
+
+P_Failure_all=100*sum(PMQ_data$Failure)/nrow(PMQ_data)
+# invert the intervals here - optimistic for not failure = pessimistic for failure
+P_Failure_UL_all = 100*sum(PMQ_data$Failure_LL)/nrow(PMQ_data)
+P_Failure_LL_all = 100*sum(PMQ_data$Failure_UL)/nrow(PMQ_data)
+writeLines(sprintf('In all primaquine treated individuals, the failure rate in the %s individuals is %s%% (%s-%s) over the course of %s years total follow-up.',
+                   nrow(PMQ_data), round(P_Failure_all,1),
+                   round(P_Failure_LL_all,1),
+                   round(P_Failure_UL_all,1), round(sum(PMQ_data$FU_time)/365)))
 ```
 
 The above failure rate is based on all available data. Next we consider rates based on adjustments using time and genetic only. 
