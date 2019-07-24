@@ -603,7 +603,7 @@ writeLines(sprintf('Of those successfully genotyped at additional (non-core) mar
 # Now we remove MS data for indiviuduals who miss paired enrolment and recurrent data in preparation for recurrent state inference
 
 ```{r}
-# First we remove MS data for which there are either no recurrent data or no enrolment data
+# First we remove MS data for which there are either no recurrent data or no enrolment data 
 IDs_Enrolment_n_Recurrent_typed = sapply(unique(MS_pooled_summary$ID), function(id){
   inds = MS_pooled_summary$ID == id
   episodes = MS_pooled_summary$Episode[inds] 
@@ -611,6 +611,9 @@ IDs_Enrolment_n_Recurrent_typed = sapply(unique(MS_pooled_summary$ID), function(
   if(!length(episodes) > 1){print(sprintf('recurrent missing for %s',id))}
   if(length(episodes) > 1 & 1 %in% episodes){id}else{NA}  # one or more recurrent and contains and enrolment episode 
   })
+
+# Check that 'BPD_564' had only a single recurrence thus unanalzable: yes
+MS_pooled$Episode[MS_pooled$ID == 'BPD_564'] 
 
 writeLines(sprintf('\nIndividuals removed due to missing enrolment or no recurrent data: \n %s', 
 paste(IDs_Enrolment_n_Recurrent_typed[is.na(IDs_Enrolment_n_Recurrent_typed)], collapse = ' ')))
@@ -624,22 +627,22 @@ MS_typd = MS_pooled_summary # Rename before relaplacing allele information with 
 MS_typd[,MSs_all][!is.na(MS_typd[,MSs_all])] = 1 # Replace allele information with binary
 
 recur_ind = MS_pooled$Episode > 1
-writeLines('\nNumber of individuals with at least one enrolment-paired recurrence typed by treatment:')
+writeLines('\nNumber of individuals with at least one paired recurrence typed by treatment:')
 table(MS_pooled$trial_arm_partner[recur_ind][!duplicated(MS_pooled$ID[recur_ind])])[treatment_order]
-writeLines('\nPercent of Nr individuals with at least one enrolment-paired recurrence typed by treatment:') 
+writeLines('\nPercent of Nr individuals with at least one paired recurrence typed by treatment:') 
 round(100*table(MS_pooled$trial_arm_partner[recur_ind][!duplicated(MS_pooled$ID[recur_ind])])[names(Nr)]/Nr)[treatment_order]
 
 recur_ind = MS_pooled_summary$Episode > 1
-writeLines('\nNumber of enrolment-paired recurrences typed by treatment:')
+writeLines('\nNumber of paired recurrences typed by treatment:')
 table(MS_pooled_summary$trial_arm_partner[recur_ind])[treatment_order]
-writeLines('\nPercent of enrolment-paired recurrences typed by treatment:') 
+writeLines('\nPercent of paired recurrences typed by treatment:') 
 round(100*table(MS_pooled_summary$trial_arm_partner[recur_ind])[names(R)]/R)[treatment_order] 
 
-writeLines(sprintf('\nNumber of individuals with one or more enrolment-paired recurrence: %s',
+writeLines(sprintf('\nNumber of individuals with one or more paired recurrence: %s',
                    length(unique(MS_pooled$ID))))
-writeLines(sprintf('Number of episodes in individuals with one or more enrolment-paired recurrence: %s',
+writeLines(sprintf('Number of episodes in individuals with one or more paired recurrence: %s',
                    length(unique(MS_pooled$Episode_Identifier))))
-writeLines(sprintf('Number of enrolment-paired recurrences: %s',
+writeLines(sprintf('Number of paired recurrences: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
 
 # To add to Table 3
@@ -839,8 +842,6 @@ thetas_9MS_Tagnostic$drug = Time_Estimates_1$arm_num # Add drug
 
 Plotted by radical cure versus no radical cure, as that is the most informative distinction here.
 
-XXX Not sure about where the CI bug arises from
-
 ```{r Supplementary_TimeEffect_onPosterior, fig.width=7, fig.height=7, echo=FALSE}
 if(CREATE_PLOTS){
   par(mfrow=c(2,2),las=1, bty='n',family='serif')
@@ -945,7 +946,8 @@ writeLines(sprintf('Based on all available data, %s of %s PMQ+ classified as rel
 ```
 
 Probability of states, ordered from most to least likely:
-XXX Need to sort CI bug
+
+XXX Need to sort plotting bug - apprently appears only after first run
 
 ```{r, fig.height=6, echo=FALSE}
 if(CREATE_PLOTS){
@@ -1244,19 +1246,49 @@ MS_pooled_summary$Plotting_col_Values =
 # How many too complex to generate estimate for? 
 ind_recur = MS_pooled_summary$Episode > 1 # Filter out enrollment
 ind_complex_recur = is.na(MS_pooled_summary$L_median[ind_recur])
-MS_pooled_summary$Episode_Identifier[ind_recur][ind_complex_recur]
 no_complex_recur = sum(ind_complex_recur) # Recurrences with NAs
+recur_removed = MS_pooled_summary$Episode_Identifier[ind_recur][ind_complex_recur]
 
 # How many of the complex infections result in the loss of an individual
-no_indiv_removed = sum(N_episodes_typed[MS_pooled_summary$ID[ind_recur][ind_complex_recur]] <= 2) 
+N_episodes_typed = table(MS_pooled_summary$ID)
+indiv_removed = names(which(N_episodes_typed[MS_pooled_summary$ID[ind_recur][ind_complex_recur]] <= 2)) 
+no_indiv_removed = length(indiv_removed)
+
 # Final number of people with recurrences analysed total and by trial
 indiv_recur_analysed = length(unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur])) 
 BPD_indiv_recur_analysed = sum(grepl('BPD', unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur])))
 VHX_indiv_recur_analysed = sum(grepl('VHX', unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur]))) 
 
-writeLines(sprintf('Of %s recurrences analysed, %s were too complex to estimate recurrence state probabilities, resulting in probability estimates for a total of %s recurrences from %s individuals (%s BPD and %s VHX)',
-                   sum(ind_recur), no_complex_recur,  sum(!ind_complex_recur), 
+writeLines(sprintf('\nOf %s recurrences analysed, %s were too complex to estimate recurrence state probabilities: \n%s, \nresulting in probability estimates for a total of %s recurrences from %s individuals (%s BPD and %s VHX)',
+                   sum(ind_recur), no_complex_recur,  
+                   paste(recur_removed, collapse = ' '), 
+                   sum(!ind_complex_recur), 
                    indiv_recur_analysed, BPD_indiv_recur_analysed, VHX_indiv_recur_analysed))
+
+# Which drug arms do the unanalysed recurrences/individuals come from? 
+X0 = filter(MS_pooled_summary[MS_pooled_summary$Episode == 1,], ID %in% indiv_removed)
+X1 = X0$trial_arm_partner; names(X1) = X0$ID
+writeLines('\nIndividuals ommited due to computation complexity: ')
+X1
+
+X0 = filter(MS_pooled_summary, Episode_Identifier %in% recur_removed)
+X1 = X0$trial_arm_partner; names(X1) = X0$Episode_Identifier
+writeLines('\nRecurrences ommited due to computation complexity:')
+X1
+
+recur_ind = MS_pooled_summary$Episode > 1
+X0 = filter(MS_pooled_summary[recur_ind,], !ID %in% indiv_removed)
+writeLines('\nNumber of individuals with at least one paired recurrence typed and analysed by treatment:')
+table(X0[!duplicated(X0$ID),'trial_arm_partner'])[treatment_order]
+writeLines('\nPercent of Nr individuals with at least one paired recurrence typed  and analysed by treatment:') 
+round(100*table(X0[!duplicated(X0$ID),'trial_arm_partner'])[names(Nr)]/Nr)[treatment_order]
+
+recur_ind = MS_pooled_summary$Episode > 1
+X0 = filter(MS_pooled_summary[recur_ind,], !Episode_Identifier %in% recur_removed)
+writeLines('\nNumber of paired recurrences typed by treatment:')
+table(X0$trial_arm_partner)[treatment_order]
+writeLines('\nPercent of paired recurrences typed by treatment:') 
+round(100*table(X0$trial_arm_partner)[names(R)]/R)[treatment_order] 
 ```
 
 
@@ -1331,7 +1363,7 @@ par(las=1, mfcol=c(3,2))
 hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==1 &
                                    MS_final$Treatment != 'PMQ'],
      main = 'No PMQ: classified relapses', xlab = 'Months from start of study',
-     xaxt='n', ylab = 'Number of recurrences',
+     xaxt='n', ylab = 'Number of recurrences',  col = 'black', border = 'white',
      breaks = seq(0, 390, by = 14))
 axis(1, at = 30*(0:12), labels = 0:12)
 hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==2 &
@@ -1347,7 +1379,7 @@ hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==1 &
                                    MS_final$Treatment == 'PMQ'],
      main = 'PMQ+: classified relapses', ylab = 'Number of recurrences',
      xlab = 'Months from start of study', xaxt='n',yaxt='n',
-     breaks = seq(0, 390, by = 14))
+     breaks = seq(0, 390, by = 14), col = 'black', border = 'white')
 axis(1, at = 30*(0:12), labels = 0:12)
 axis(2, at = 0:2)
 hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==2 &
@@ -1361,7 +1393,7 @@ hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==3 &
                                    MS_final$Treatment == 'PMQ'],
      main = 'PMQ+: classified reinfections',ylab = 'Number of recurrences', 
      xlab = 'Months from start of study', xaxt='n',
-     col = alpha('grey',0.4),breaks = seq(0, 390, by = 14))
+     breaks = seq(0, 390, by = 14))
 axis(1, at = 30*(0:12), labels = 0:12)
 ```
 
