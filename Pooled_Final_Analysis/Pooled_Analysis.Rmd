@@ -463,7 +463,7 @@ Fs_Combined = sapply(Alpha_Posteriors, function(x){x/sum(x)})
 # relatedness estimation (this was analysed elsewhere)
 #==================================================================
 monoclonal_names = rownames(COIs)[COIs$MOI == 1]
-monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
+#monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
 # save(monoclonal_data, Fs_Combined, file = '../RData/Data_for_relatedness.RData')
 ```
 
@@ -486,6 +486,10 @@ writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s
                    round(mean(unlist(Effective_Allele_size)),2), 
                    round(min(unlist(Effective_Allele_size)),2), 
                    round(max(unlist(Effective_Allele_size)),2)))
+
+# Equivalent number of biallelic SNPs
+sum(logb(unlist(Effective_Allele_size), base = 1.5)) # realistic SNPs
+sum(logb(unlist(Effective_Allele_size), base = 2)) # ideal SNPs
 ```
 
 
@@ -646,8 +650,10 @@ writeLines(sprintf('Number of paired recurrences: %s',
                    length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
 
 # To add to Table 3
-MS_addn_count = length(MS_addn) - rowSums(is.na(MS_typd[,MS_addn])) # Extract the number of additional markers typed per episode
-writeLines(sprintf('\nNumbers of %s recurrent samples partioned by number of non-core markers successfully typed:', sum(table(MS_addn_count_recurrent) )))
+# Re-extract number of add. markers typed per episode
+MS_addn_count_recurrent = length(MS_addn) - rowSums(is.na(MS_typd[MS_typd$Episode > 1,MS_addn])) 
+names(MS_addn_count_recurrent) = MS_typd[MS_typd$Episode > 1,'Episode_Identifier']
+writeLines(sprintf('\nNumbers of %s paired recurrent samples partioned by number of non-core markers successfully typed:', sum(table(MS_addn_count_recurrent))))
 table(MS_addn_count_recurrent) 
 ```
 
@@ -1630,10 +1636,9 @@ writeLines(sprintf('The false-positive discovery rate of the genetic model is es
 
 ```{r}
 # Check that the episodes missing from MS_final are only those that were too complex: yes
-inds = MS_typd$Episode[which(!MS_typd$Episode_Identifier %in% MS_final$Episode_Identifier)] > 1 # Six too complex
-# MS_typd$Episode_Identifier[which(!MS_typd$Episode_Identifier %in% MS_final$Episode_Identifier)][inds] 
-# missing: "VHX_239_2" "VHX_33_2"  "VHX_39_2"  "VHX_461_2" "VHX_52_2"  "VHX_583_2"
-# too complex: "VHX_239_2" "VHX_33_2"  "VHX_39_2"  "VHX_461_2" "VHX_52_2"  "VHX_583_2"
+inds = MS_typd$Episode[which(!MS_typd$Episode_Identifier %in% MS_final$Episode_Identifier)] > 1 
+missing_from_MS_final = MS_typd$Episode_Identifier[which(!MS_typd$Episode_Identifier %in% MS_final$Episode_Identifier)][inds] 
+all(recur_removed == missing_from_MS_final)
 
 #==========================================================================
 # Classification of recurrent episodes genotyped at any markers
@@ -1641,34 +1646,42 @@ inds = MS_typd$Episode[which(!MS_typd$Episode_Identifier %in% MS_final$Episode_I
 ind_classified = MS_final$Episode_Identifier %in% names(MS_typd_count)
 recur_count = MS_typd_count[MS_final$Episode_Identifier[ind_classified]]
 recur_typed_class = paste(recur_count, MS_final$L_or_C_state[ind_classified])
-# table(recur_typed_class) # Table of number additional successful and classification
+#table(recur_typed_class) # Table of number marks successful and classification
 
 #==========================================================================
 # Classification of recurrent episodes genotyped at additional markers
 #==========================================================================
-names_additional = names(MS_addn_count[MS_addn_count > 0]) # Names of all additionally typed (inc. )
-ind_add_classified = MS_final$Episode_Identifier %in% names_additional
-recur_add_count = MS_addn_count[MS_final$Episode_Identifier[ind_add_classified]]
-recur_add_typed_class = paste(recur_add_count, MS_final$L_or_C_state[ind_add_classified])
+names_additional = names(MS_addn_count_recurrent) # Names of all 
+ind_classified = MS_final$Episode_Identifier %in% names_additional
+recur_add_count = MS_addn_count_recurrent[MS_final$Episode_Identifier[ind_classified]]
+recur_add_typed_class = paste(recur_add_count, MS_final$L_or_C_state[ind_classified])
+ind_add_classified = MS_final$Episode_Identifier %in% names(which(MS_addn_count_recurrent > 1))
 
 BPD_ind = grepl('BPD_', MS_final$ID) # Index for BPD individuals
 VHX_ind = grepl('VHX_', MS_final$ID) # Index for VHX individuals
 
-writeLines(sprintf('Of those recurrent genotyped at additional markers: %s of %s (%s percent, %s VHX, %s BPD) classified as relapse',
+writeLines(sprintf('\nParition of %s recurrences analysed partioned by number of additional markers successfully typed:',
+                   sum(table(recur_add_count))))
+table(recur_add_count)
+
+
+writeLines(sprintf('\nClassification of %s recurrences analysed partioned by number of additional markers successfully typed:',
+                   sum(table(recur_add_typed_class))))
+table(recur_add_typed_class)
+
+writeLines(sprintf('\nOf those recurrent genotyped at additional markers: %s of %s (%s percent, %s VHX, %s BPD) classified as relapse',
                    sum(MS_final$L_or_C_state[ind_add_classified] == 'L'), 
                    sum(ind_add_classified),
                    round(100*sum(MS_final$L_or_C_state[ind_add_classified] == 'L')/sum(ind_add_classified)), 
                    sum(MS_final$L_or_C_state[VHX_ind][ind_add_classified[VHX_ind]] == 'L'),
                    sum(MS_final$L_or_C_state[BPD_ind][ind_add_classified[BPD_ind]] == 'L'))) 
-
-table(recur_add_typed_class)
 ```
 
 Plots over classified recurrent samples 
 
 ```{r}
 #==========================================================================
-# Classification plots: why are some points beyon the uncertainity zone classified 
+# Classification plots: why are some points beyond the uncertainity zone classified 
 # as uncertain
 #==========================================================================
 par(mfrow = c(2,1), family = 'serif')
