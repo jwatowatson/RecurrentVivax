@@ -474,7 +474,7 @@ N = 10^6
 Effective_Allele_size = list()
 for(ms in MSs_all){
   n = 1/sum(Fs_Combined[[ms]]^2)
-  writeLines(sprintf('The effective cardinality for %s with %s observed alleles is %s (%s)', ms, n_obs_alleles, round(n,2)))
+  writeLines(sprintf('The effective cardinality for %s with %s observed alleles is %s', ms, n_obs_alleles, round(n,2)))
   
   Effective_Allele_size[[ms]] = round(n,1)
 }
