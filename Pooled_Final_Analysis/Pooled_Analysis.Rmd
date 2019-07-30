@@ -16,7 +16,7 @@ Load R packages, functions and data.
 #==========================================================================
 # Set up
 #==========================================================================
-knitr::opts_chunk$set(cache = F, cache.comments = FALSE, 
+knitr::opts_chunk$set(cache = T, cache.comments = FALSE, 
                       include = TRUE, 
                       fig.width = 7, fig.height = 7,
                       fig.pos = 'H', 
@@ -474,7 +474,7 @@ N = 10^6
 Effective_Allele_size = list()
 for(ms in MSs_all){
   n = 1/sum(Fs_Combined[[ms]]^2)
-  writeLines(sprintf('The effective cardinality for %s with %s observed alleles is %s', ms, n_obs_alleles, round(n,2)))
+  writeLines(sprintf('The effective cardinality for %s with %s observed alleles is %s', ms, length(Fs_Combined[[ms]]), round(n,2)))
   
   Effective_Allele_size[[ms]] = round(n,1)
 }
