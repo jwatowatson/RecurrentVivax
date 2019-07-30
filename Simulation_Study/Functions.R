@@ -3,7 +3,7 @@ generate_relapse_time = function(drug, params){
   
   type=NA
   next_event = NA
-  if(runif(1) < inv.logit(params$logit_EarlyL)){ 
+  if(runif(1) < params$EarlyL){ 
     # early relapse event
     if(drug %in% c('CHQ/PMQ', 'CHQ')){
       next_event = round(rweibull(1, shape = params$CQ_shape, scale = params$CQ_scale))
@@ -174,9 +174,9 @@ generate_patient_data_Model1 = function(params, follow_up=360, drug, ID=1,
   # randomly generate the propensity to relapse
   p = inv.logit(rnorm(1,mean = params$logit_mean_p,sd = params$logit_sd_p))
   if(drug=='CHQ') { 
-    c1 = inv.logit(params$logit_c1_CQ) 
+    c1 = params$c1_CQ
   } else if(drug=='AS') { 
-    c1 = inv.logit(params$logit_c1_AS) 
+    c1 = params$c1_AS
   }
   
   R_event = NA
@@ -234,9 +234,9 @@ generate_patient_data_Model2 = function(params, follow_up=360, drug, ID=1,
   p_PMQ = inv.logit(rnorm(1,mean = params$logit_mean_p_PMQ,sd = params$logit_sd_p_PMQ))
   
   if(drug=='CHQ' | drug == 'CHQ/PMQ') { 
-    c1 = inv.logit(params$logit_c1_CQ)
+    c1 = params$c1_CQ
   } else if(drug=='AS') { 
-    c1 = inv.logit(params$logit_c1_AS)
+    c1 = params$c1_AS
   }
   
   while(!passed_EOF){
@@ -306,7 +306,7 @@ generate_patient_data_Model1_Seasonal = function(params, follow_up=360, drug, ID
   passed_EOF = FALSE # passed end of follow-up
   # randomly generate the propensity to relapse
   p = inv.logit(rnorm(1,mean = params$logit_mean_p,sd = params$logit_sd_p))
-  if(drug=='CHQ') { c1 = params$logit_c1_CQ } else if(drug=='AS') { c1 = params$logit_c1_AS}
+  if(drug=='CHQ') { c1 = params$c1_CQ } else if(drug=='AS') { c1 = params$c1_AS}
   
   R_event = NA
   while(!passed_EOF){
@@ -373,9 +373,9 @@ generate_patient_data_Model2_Seasonal = function(params, follow_up=360,
   p_PMQ = inv.logit(rnorm(1,mean = params$logit_mean_p_PMQ,sd = params$logit_sd_p_PMQ))
   
   if(drug=='CHQ' | drug == 'CHQ/PMQ') { 
-    c1 = params$logit_c1_CQ 
+    c1 = params$c1_CQ 
   } else if(drug=='AS') { 
-    c1 = params$logit_c1_AS
+    c1 = params$c1_AS
   }
   
   while(!passed_EOF){
@@ -509,10 +509,10 @@ generate_inital_values_M2 = function(Prior_params_M2, N_noPMQ, N_PMQ){
 
 ###************ Plotting output of models with respect to priors *********
 ## Output of stan model 1
-plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_params_M1){
+plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_params_M1, params_M1){
   par(las=1)
   par(mfrow=c(2,2))
-  
+  col_prior = 'green'
   # Time to reinfection
   hist(thetas$lambda, main='Reinfection rate (Period 1)', xlab='lambda', 
        freq = F, breaks = 20)
@@ -522,7 +522,9 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dgamma(x = xs, 
                    Prior_params_M1$Hyper_lambda_shape,
                    Prior_params_M1$Hyper_lambda_rate),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
+  legend('topleft', legend = c('True value','Mean estimated value','Prior'), col = c('red','blue',col_prior),lwd=2)
+  
   hist(thetas$rate_decrease, main='Decrease in reinfection rate (Period 2)', xlab='decrease proportion', 
        freq = F, breaks = 20)
   abline(v=params_M1$rate_decrease,col='red',lwd=3)
@@ -531,48 +533,53 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   Prior_params_M1$Hyper_mean_rate_decrease,
                   Prior_params_M1$Hyper_sd_rate_decrease),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   
   # Time to late relapse
-  hist(thetas$gamma, main='Mean time to late reLapse', 
+  hist(thetas$gamma, main='Mean time to late relapse', 
        freq=F,xlab='1/gamma (days)')
   abline(v=params_M1$gamma,col='red',lwd=3)
   xs=quantile(x = thetas$gamma,probs = seq(0,1,by=0.005))
   lines(xs, dgamma(x = xs, 
                    Prior_params_M1$Hyper_gamma_shape,
                    Prior_params_M1$Hyper_gamma_rate),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   abline(v=mean(thetas$gamma),col='blue',lwd=3)
   
   # Proportion early/late relapse
   hist(thetas$logit_EarlyL, main='Logit early relapse', xlab='', freq = F)
-  abline(v=params_M1$logit_EarlyL,col='red',lwd=3)
+  abline(v=logit(params_M1$EarlyL),col='red',lwd=3)
   xs=quantile(x = thetas$logit_EarlyL,probs = seq(0,1,by=0.005))
   lines(xs, dnorm(x = xs, 
                   Prior_params_M1$Early_L_logit_mean,
                   Prior_params_M1$Early_L_logit_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   abline(v=mean(thetas$logit_EarlyL),col='blue',lwd=3)
   
   par(mfrow=c(2,2))
-  # recrudescence proportion
-  hist(thetas$logit_c1_AS, main='Logit c1 AS', xlab='',freq=F)
-  abline(v=logit(params_M1$logit_c1_AS),col='red',lwd=3)
+  # recrudescence proportion AS
+  hist(thetas$logit_c1_AS, main='Logit c1 AS', xlab='',freq=F,
+       xlim = range(c(thetas$logit_c1_AS),logit(params_M1$c1_AS)))
+  abline(v=logit(params_M1$c1_AS),col='red',lwd=3)
   abline(v=mean(thetas$logit_c1_AS),col='blue',lwd=3)
   xs=quantile(x = thetas$logit_c1_AS,probs = seq(0,1,by=0.005))
   lines(xs, dnorm(x = xs, 
                   Prior_params_M1$Hyper_logit_c1_mean,
                   Prior_params_M1$Hyper_logit_c1_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
+  legend('topleft', legend = c('True value','Mean estimated value','Prior'), col = c('red','blue',col_prior),lwd=2)
   
-  hist(thetas$logit_c1_CQ, main='Logit c1 CQ', xlab='',freq=F)
+  # recrudescence proportion CQ
+  hist(thetas$logit_c1_CQ, main='Logit c1 CQ', xlab='',freq=F,
+       xlim = range(c(thetas$logit_c1_CQ),logit(params_M1$c1_AS)))
   lines(xs, dnorm(x = xs, 
                   Prior_params_M1$Hyper_logit_c1_mean,
                   Prior_params_M1$Hyper_logit_c1_sd),
-        lwd=3,col='red')
-  abline(v=logit(params_M1$logit_c1_CQ),col='red',lwd=3)
+        lwd=3,col=col_prior)
+  abline(v=logit(params_M1$c1_CQ),col='red',lwd=3)
   abline(v=mean(thetas$logit_c1_CQ),col='blue',lwd=3)
   
+  # recrudescence rate
   hist(thetas$lambda_recrud, main='Recrudescence rate', xlab='',freq=F)
   abline(v=params_M1$lambda_recrud,col='red',lwd=3)
   abline(v=mean(thetas$lambda_recrud),col='blue',lwd=3)
@@ -580,7 +587,7 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dgamma(x = xs, 
                    shape=Prior_params_M1$Hyper_lambda_recrud_shape,
                    rate=Prior_params_M1$Hyper_lambda_recrud_rate),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   
   
   par(mfrow=c(2,2))
@@ -592,7 +599,8 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   mean=Prior_params_M1$Hyper_AS_shape_mean,
                   sd=Prior_params_M1$Hyper_AS_shape_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
+  legend('topleft', legend = c('True value','Mean estimated value','Prior'), col = c('red','blue',col_prior),lwd=2)
   
   hist(thetas$AS_scale, main='AS scale', xlab='',freq=F)
   abline(v=params_M1$AS_scale,col='red',lwd=3)
@@ -601,7 +609,8 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   mean=Prior_params_M1$Hyper_AS_scale_mean,
                   sd=Prior_params_M1$Hyper_AS_scale_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
+  
   # shape and scale for CQ early relapse
   hist(thetas$CQ_shape, main='CQ shape', xlab='',freq=F)
   abline(v=(params_M1$CQ_shape),col='red',lwd=3)
@@ -610,7 +619,7 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   mean=Prior_params_M1$Hyper_CQ_shape_mean,
                   sd=Prior_params_M1$Hyper_CQ_shape_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   
   hist(thetas$CQ_scale, main='CQ scale', xlab='',freq=F)
   abline(v=(params_M1$CQ_scale),col='red',lwd=3)
@@ -619,7 +628,7 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   mean=Prior_params_M1$Hyper_CQ_scale_mean,
                   sd=Prior_params_M1$Hyper_CQ_scale_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   
   par(mfrow=c(2,2))
   # proportion reinfection
@@ -630,14 +639,15 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   Prior_params_M1$Hyper_logit_mean_p_mean,
                   Prior_params_M1$Hyper_logit_mean_p_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
+  legend('topleft', legend = c('True value','Mean estimated value','Prior'), col = c('red','blue',col_prior),lwd=2)
   
   hist(thetas$logit_sd_p, main='Logit sd p', xlab='',freq=F)
   abline(v=(params_M1$logit_sd_p),col='red',lwd=3)
   abline(v=mean(thetas$logit_sd_p),col='blue',lwd=3)
   xs=quantile(x = thetas$logit_sd_p,probs = seq(0,1,by=0.005))
   lines(xs, dexp(x = xs,Prior_params_M1$Hyper_logit_sd_p_lambda),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   # individual estimates versus true params for proportion reinfection
   p_estimates = apply(thetas$logit_p,2,mean)
   true_p_estimates= logit(Simulation_truth$True_p[!duplicated(Simulation_truth$ID) &
@@ -652,9 +662,10 @@ plot_output_model1 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
 }
 
 ## Output of stan model 2
-plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_params_M2){
+plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_params_M2, params_M2){
   par(las=1)
   par(mfrow=c(2,2))
+  col_prior = 'green'
   
   # Time to reinfection
   hist(thetas$lambda, main='Reinfection rate', xlab='lambda', 
@@ -665,7 +676,17 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dgamma(x = xs, 
                    Prior_params_M2$Hyper_lambda_shape,
                    Prior_params_M2$Hyper_lambda_rate),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
+  legend('topleft', legend = c('True value','Mean estimated value','Prior'), col = c('red','blue',col_prior),lwd=2)
+  
+  hist(thetas$rate_decrease, main = 'Rate decrease', xlab = '%',freq=F, breaks = 20)
+  abline(v=params_M2$rate_decrease,col='red',lwd=3)
+  abline(v=mean(thetas$rate_decrease),col='blue',lwd=3)
+  xs=quantile(x = thetas$rate_decrease,probs = seq(0,1,by=0.01))
+  lines(xs, dgamma(x = xs, 
+                   Prior_params_M2$Hyper_mean_rate_decrease,
+                   Prior_params_M2$Hyper_sd_rate_decrease),
+        lwd=3,col=col_prior)
   # Time to late relapse
   hist(thetas$gamma, main='Mean time to late reLapse', freq=F,
        xlab='1/gamma (days)')
@@ -674,36 +695,37 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dgamma(x = xs, 
                    Prior_params_M2$Hyper_gamma_shape,
                    Prior_params_M2$Hyper_gamma_rate),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   abline(v=mean(thetas$gamma),col='blue',lwd=3)
   
   # Proportion early/late relapse
   hist(thetas$logit_EarlyL, main='Logit early relapse', xlab='', freq = F)
-  abline(v=logit(params_M2$logit_EarlyL),col='red',lwd=3)
+  abline(v=logit(params_M2$EarlyL),col='red',lwd=3)
   xs=quantile(x = thetas$logit_EarlyL,probs = seq(0,1,by=0.005))
   lines(xs, dnorm(x = xs, 
                   Prior_params_M2$Early_L_logit_mean,
                   Prior_params_M2$Early_L_logit_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   abline(v=mean(thetas$logit_EarlyL),col='blue',lwd=3)
   
   par(mfrow=c(2,2))
   # recrudescence proportion
   hist(thetas$logit_c1_AS, main='Logit c1 AS', xlab='',freq=F)
-  abline(v=logit(params_M2$logit_c1_AS),col='red',lwd=3)
+  abline(v=logit(params_M2$c1_AS),col='red',lwd=3)
   abline(v=mean(thetas$logit_c1_AS),col='blue',lwd=3)
   xs=quantile(x = thetas$logit_c1_AS,probs = seq(0,1,by=0.005))
   lines(xs, dnorm(x = xs, 
                   Prior_params_M2$Hyper_logit_c1_mean,
                   Prior_params_M2$Hyper_logit_c1_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
+  legend('topleft', legend = c('True value','Mean estimated value','Prior'), col = c('red','blue',col_prior),lwd=2)
   
   hist(thetas$logit_c1_CQ, main='Logit c1 CQ', xlab='',freq=F)
   lines(xs, dnorm(x = xs, 
                   Prior_params_M2$Hyper_logit_c1_mean,
                   Prior_params_M2$Hyper_logit_c1_sd),
-        lwd=3,col='red')
-  abline(v=logit(params_M2$logit_c1_CQ),col='red',lwd=3)
+        lwd=3,col=col_prior)
+  abline(v=logit(params_M2$c1_CQ),col='red',lwd=3)
   abline(v=mean(thetas$logit_c1_CQ),col='blue',lwd=3)
   
   hist(thetas$lambda_recrud, main='Recrudescence rate', xlab='',freq=F)
@@ -713,7 +735,7 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dgamma(x = xs, 
                    shape=Prior_params_M2$Hyper_lambda_recrud_shape,
                    rate=Prior_params_M2$Hyper_lambda_recrud_rate),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   
   
   par(mfrow=c(2,2))
@@ -725,7 +747,8 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   mean=Prior_params_M2$Hyper_AS_shape_mean,
                   sd=Prior_params_M2$Hyper_AS_shape_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
+  legend('topleft', legend = c('True value','Mean estimated value','Prior'), col = c('red','blue',col_prior),lwd=2)
   
   hist(thetas$AS_scale, main='AS scale', xlab='',freq=F)
   abline(v=params_M2$AS_scale,col='red',lwd=3)
@@ -734,7 +757,8 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   mean=Prior_params_M2$Hyper_AS_scale_mean,
                   sd=Prior_params_M2$Hyper_AS_scale_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
+  
   # shape and scale for CQ early relapse
   hist(thetas$CQ_shape, main='CQ shape', xlab='',freq=F)
   abline(v=(params_M2$CQ_shape),col='red',lwd=3)
@@ -743,7 +767,7 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   mean=Prior_params_M2$Hyper_CQ_shape_mean,
                   sd=Prior_params_M2$Hyper_CQ_shape_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   
   hist(thetas$CQ_scale, main='CQ scale', xlab='',freq=F)
   abline(v=(params_M2$CQ_scale),col='red',lwd=3)
@@ -752,7 +776,7 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   mean=Prior_params_M2$Hyper_CQ_scale_mean,
                   sd=Prior_params_M2$Hyper_CQ_scale_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   
   par(mfrow=c(2,2))
   # proportion reinfection when no primaquine
@@ -763,7 +787,7 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   Prior_params_M2$Hyper_logit_mean_p_mean,
                   Prior_params_M2$Hyper_logit_mean_p_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   
   # proportion reinfection when given primaquine
   hist(thetas$logit_mean_p_PMQ, main='Logit mean p', xlab='', freq=F)
@@ -773,14 +797,16 @@ plot_output_model2 = function(thetas, Simulation_truth, Simdata_Model, Prior_par
   lines(xs, dnorm(x = xs, 
                   Prior_params_M2$Hyper_logit_mean_pPMQ_mean,
                   Prior_params_M2$Hyper_logit_mean_pPMQ_sd),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
   
   hist(thetas$logit_sd_p, main='Logit sd p', xlab='',freq=F)
   abline(v=(params_M2$logit_sd_p),col='red',lwd=3)
   abline(v=mean(thetas$logit_sd_p),col='blue',lwd=3)
   xs=quantile(x = thetas$logit_sd_p,probs = seq(0,1,by=0.005))
   lines(xs, dexp(x = xs,Prior_params_M2$Hyper_logit_sd_p_lambda),
-        lwd=3,col='red')
+        lwd=3,col=col_prior)
+
+  par(mfrow=c(1,2))
   # individual estimates versus true params for proportion reinfection
   p_estimates = apply(thetas$logit_p,2,mean)
   pPMQ_estimates = apply(thetas$logit_p_PMQ,2,mean)

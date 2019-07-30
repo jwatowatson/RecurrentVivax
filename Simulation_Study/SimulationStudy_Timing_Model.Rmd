@@ -1,18 +1,21 @@
 ---
 title: "Simulation Study for Timing Model"
 author: "James Watson"
-date: "07/05/2019"
 output:
-  pdf_document: default
-  html_document: default
+  html_document:
+    df_print: paged
+    keep_md: yes
+    toc: yes
 ---
+
+# Preamble 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
-                      echo = TRUE, include = TRUE, 
+                      echo = F, include = TRUE, 
                       fig.width = 7, fig.height = 7,
                       fig.pos = 'H', 
-                      dev = c('png'), dpi = 300)
+                      dev = 'png', dpi = 300)
 
 load('../RData/RPackages_List.RData')
 new.pkg <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
@@ -34,7 +37,7 @@ RUN_MODELS = F
 ```
 
 Global options for stan model runs
-```{r}
+```{r, echo=TRUE}
 Chains = 4
 options(mc.cores = Chains)
 IT = 10^4
@@ -44,16 +47,16 @@ Sim_Iterations = 50
 ```
 
 Global simulation sample sizes and follow-up time
-```{r}
+```{r, echo=TRUE}
 N_PMQ = 800
 N_AS = 200
 N_CQ = 200
 FUP_time = 300
 ```
 
-## Data simulation functions
+# Data simulation functions
 
-We explore a few scenarios of increasing complexity to check:
+We explore a few scenarios of increasing complexity to check whether:
 
 * The model can recover correct parameters when the data generating process is correctly specified (sanity check)
 * The effect of a mis-specified data generating process. For this we look at the impact of seasonality
@@ -64,13 +67,13 @@ We explore a few scenarios of increasing complexity to check:
 This simulates data under the assumptions of Model 1.
 
 We set the simulation parameters:
-```{r}
+```{r, echo=TRUE}
 params_M1 = list(lambda = 1/1200,
                  gamma = 1/80,
                  lambda_recrud = 1/10,
-                 logit_EarlyL = 0.5,
-                 logit_c1_CQ = 0.01,
-                 logit_c1_AS = 0.01,
+                 EarlyL = 0.5,
+                 c1_CQ = 0.01,
+                 c1_AS = 0.01,
                  logit_mean_p = logit(0.2),
                  logit_sd_p = (-logit(0.2)+logit(0.8))/1.96,
                  AS_shape = 10,
@@ -82,7 +85,7 @@ params_M1 = list(lambda = 1/1200,
 
 
 Generate data with these parameters:
-```{r}
+```{r, echo=TRUE}
 set.seed(475732)
 out1 = simulate_dataset(N_PMQ = N_PMQ, N_CQ = N_CQ, 
                         N_AS = N_AS,FUP_time = FUP_time,
@@ -127,9 +130,9 @@ Prior_params_M1 = list(Hyper_lambda_shape = 100,
                        Hyper_logit_mean_p_mean = params_M1$logit_mean_p,
                        Hyper_logit_mean_p_sd = 1,
                        Hyper_logit_sd_p_lambda = 1,
-                       Hyper_logit_c1_mean = params_M1$logit_c1_AS,
+                       Hyper_logit_c1_mean = logit(params_M1$c1_AS),
                        Hyper_logit_c1_sd = .25,
-                       Early_L_logit_mean = params_M1$logit_EarlyL,
+                       Early_L_logit_mean = logit(params_M1$EarlyL),
                        Early_L_logit_sd = .5,
                        Hyper_mean_rate_decrease = params_M1$rate_decrease,
                        Hyper_sd_rate_decrease = 0.25)
@@ -159,14 +162,26 @@ if(RUN_MODELS){
 thetas_mod1 = extract(mod1_Fit)
 ```
 
-Plot output, comparing prior, ground truth and model estimate. This gives a qualitative assessement but for a single simulation run.
+Plot output, comparing prior, ground truth and model estimate. This gives a qualitative assessement for a single simulation run.
+
 ```{r plotModel1_fit}
-plot_output_model1(thetas_mod1,Simulation_truth1,
-                   Simdata_Model1,Prior_params_M1)
+plot_output_model1(thetas = thetas_mod1,
+                   Simulation_truth = Simulation_truth1,
+                   Simdata_Model = Simdata_Model1,
+                   Prior_params_M1,
+                   params_M1 = params_M1)
 ```
 
 
 #### Multiple random simulations to assess systematic bias 
+
+We run 50 iterations of:
+
+1. Generate a random dataset under the model assumptions
+2. Fit the model to the data
+
+This allows us to compare model estimates versus true values to detect systematic bias.
+
 
 ```{r, include=FALSE}
 params_interest = c('lambda','gamma','logit_mean_p','rate_decrease',
@@ -200,10 +215,15 @@ if(RUN_MODELS){
 ```
 
 ```{r full_shebang_results_mod1}
+par(las=1,mfrow=c(3,2))
 for(p in params_interest){
   hist(comparison_matrix[,which(p==params_interest),1], main=p)
-  abline(v=unique(comparison_matrix[,which(p==params_interest),2]),
-         lwd=3,col='red')
+  if(p=='logit_EarlyL'){
+    abline(v= logit(params_M1$EarlyL),lwd=3,col='red')
+  } else {
+    abline(v=unique(comparison_matrix[,which(p==params_interest),2]),
+           lwd=3,col='red')
+  }
 }
 ```
 
@@ -280,22 +300,23 @@ thetas_mod2 = extract(mod2_Fit)
 
 Plot output, comparing prior, ground truth and model estimate:
 ```{r plotModel2_fit}
-plot_output_model2(thetas_mod2,Simulation_truth2,Simdata_Model2,Prior_params_M2)
+plot_output_model2(thetas = thetas_mod2,Simulation_truth = Simulation_truth2,
+                   Simdata_Model = Simdata_Model2,Prior_params_M2 = Prior_params_M2,
+                   params_M2 = params_M2)
 ```
 
 Compare summary statistics from simulated data and estimated:
 ```{r}
-# the true failure rate in the primaquine arm
-sum(Simulation_truth2$True_state[Simulation_truth2$Drug=="CHQ/PMQ"] != 'Reinfection')/sum(Simulation_truth2$Drug=="CHQ/PMQ")
-
-classification_mod2 = apply(thetas_mod2$prob_labels,c(2,3),quantile, probs=0.975)
-1-sum(classification_mod2[Simdata_Model2$Drug==2,1])/sum(Simdata_Model2$Drug==2)
-
+classification_mod2_upper = apply(thetas_mod2$prob_labels,c(2,3),quantile, probs=0.975)
 classification_mod2 = apply(thetas_mod2$prob_labels,c(2,3),median)
-1-sum(classification_mod2[Simdata_Model2$Drug==2,1])/sum(Simdata_Model2$Drug==2)
+classification_mod2_lower = apply(thetas_mod2$prob_labels,c(2,3),quantile, probs=0.025)
 
-classification_mod2 = apply(thetas_mod2$prob_labels,c(2,3),quantile, probs=0.025)
-1-sum(classification_mod2[Simdata_Model2$Drug==2,1])/sum(Simdata_Model2$Drug==2)
+writeLines(sprintf('The true failure rate in the simulated data is %s%%. Model 2 estimates the failure rate to be %s%% (95%% CI: %s-%s)',
+                   # the true failure rate in the primaquine arm
+                   round(100*sum(Simulation_truth2$True_state[Simulation_truth2$Drug=="CHQ/PMQ"] != 'Reinfection')/sum(Simulation_truth2$Drug=="CHQ/PMQ"),1),
+                   round(100*(1-sum(classification_mod2[Simdata_Model2$Drug==2,1])/sum(Simdata_Model2$Drug==2)),1),
+                   round(100*(1-sum(classification_mod2_upper[Simdata_Model2$Drug==2,1])/sum(Simdata_Model2$Drug==2)),1),
+                   round(100*(1-sum(classification_mod2_lower[Simdata_Model2$Drug==2,1])/sum(Simdata_Model2$Drug==2)),1)))
 ```
 
 
@@ -337,15 +358,16 @@ if(RUN_MODELS){
 ```
 
 ```{r full_shebang_results_mod2}
+par(las=1, mfrow=c(3,2))
 for(p in params_interest){
   hist(simulation_full_results_mod2$comparison_matrix[,which(p==params_interest),1], main=p)
   abline(v=unique(simulation_full_results_mod2$comparison_matrix[,which(p==params_interest),2]),col='red',lwd=3)
 }
-
+par(mfrow=c(1,1))
 plot(100*simulation_full_results_mod2$failure_matrix[,1],
      100*simulation_full_results_mod2$failure_matrix[,2],
-     xlab='True PMQ failure rate', ylab = 'Estimated PMQ failure rate')
-lines(c(0,1),c(0,1))
+     xlab='True PMQ failure rate in simulated data', ylab = 'Estimated PMQ failure rate')
+lines(c(0,100),c(0,100))
 ```
 
 
@@ -419,8 +441,11 @@ thetas_mod_seasonal = extract(mod_seasonal_Fit)
 
 Plot output, comparing prior, ground truth and model estimate:
 ```{r plotModel_Seasonal_fit}
-plot_output_model1(thetas_mod_seasonal,Simulation_truth_Seasonal,
-                   Simdata_Model_Seasonal,Prior_params_M1)
+plot_output_model2(thetas = thetas_mod_seasonal,
+                   Simulation_truth = Simulation_truth_Seasonal,
+                   Simdata_Model = Simdata_Model_Seasonal,
+                   Prior_params_M2 = Prior_params_M2, 
+                   params_M2 = params_M2)
 ```
 
 ### Run multiple random iterations to assess model fit and bias
@@ -463,16 +488,26 @@ if(RUN_MODELS){
 
 
 ```{r full_shebang_results_mod_seasonal}
+par(las=1, mfrow=c(2,3))
 for(p in params_interest){
-  writeLines(sprintf('For parameter %s, %s%% are below the true parameter',p,100*sum(res$comparison_matrix[,which(p==params_interest),1]<
-                                                                                       unique(res$comparison_matrix[,which(p==params_interest),2]))/Sim_Iterations))
+  
   hist(res$comparison_matrix[,which(p==params_interest),1], main=p)
-  abline(v=unique(res$comparison_matrix[,which(p==params_interest),2]),col='red',lwd=3)
+  if(p == 'logit_EarlyL'){
+    abline(v=logit(params_M2$EarlyL), col='red',lwd=3)
+    writeLines(sprintf('For parameter %s, %s%% are below the true parameter',
+                       p,100*sum(res$comparison_matrix[,which(p==params_interest),1]<                                                                                  logit(params_M2$EarlyL))/Sim_Iterations))
+  } else {
+    abline(v=unique(res$comparison_matrix[,which(p==params_interest),2]),col='red',lwd=3)
+    writeLines(sprintf('For parameter %s, %s%% are below the true parameter',
+                       p,100*sum(res$comparison_matrix[,which(p==params_interest),1]<                                                                                  unique(res$comparison_matrix[,which(p==params_interest),2]))/Sim_Iterations))
+  }
 }
-
+par(mfrow=c(1,1))
 plot(100*res$failure_matrix[,1],100*res$failure_matrix[,2],
      xlab='True PMQ failure rate',ylab = 'Estimated PMQ failure rate')
 lines(c(0,100),c(0,100))
+writeLines(sprintf('%s%% of the simulations overestimate the failure rate of PMQ',
+                   100*sum(res$failure_matrix[,1]< res$failure_matrix[,2])/nrow(res$failure_matrix)))
 ```
 
 
@@ -483,7 +518,6 @@ In this section we simulate data from the posterior predictive for Model 2. We t
 ```{r}
 load('../RData/TimingModel/Posterior_theta_samples.RData')
 load('../RData/TimingModel/Combined_Time_Event.RData')
-
 
 PMQ_FUP = Combined_Time_Data$FU_time[!duplicated(Combined_Time_Data$patientid)&
                                        Combined_Time_Data$arm_num=='CHQ/PMQ']
@@ -501,12 +535,18 @@ N_PMQ_BPD = sum(Combined_Time_Data$arm_num=='CHQ/PMQ'&
                   Combined_Time_Data$Study_Period==2 &
                   !duplicated(Combined_Time_Data$patientid))
 
-set.seed(4543758)
+set.seed(4993758)
 params_M2_posterior = list()
 i = sample(1:nrow(thetas2_matrix),1)
+colnames(thetas2_matrix)[colnames(thetas2_matrix)=='logit_EarlyL']='EarlyL'
+colnames(thetas2_matrix)[colnames(thetas2_matrix)=='logit_c1_AS']='c1_AS'
+colnames(thetas2_matrix)[colnames(thetas2_matrix)=='logit_c1_CQ']='c1_CQ'
 for(p in names(params_M2)){
   params_M2_posterior[[p]] = thetas2_matrix[i,p]
 }
+params_M2_posterior$EarlyL = inv.logit(params_M2_posterior$EarlyL)
+params_M2_posterior$c1_CQ = inv.logit(params_M2_posterior$c1_CQ)
+params_M2_posterior$c1_AS = inv.logit(params_M2_posterior$c1_AS)
 
 dat_posterior =
   simulate_dataset(N_PMQ = N_PMQ,N_CQ = N_CQ,N_AS = N_AS,
@@ -580,64 +620,117 @@ legend('bottomright',col=c('red','blue'),
 ```
 
 ```{r }
-Sim_Iterations = 200
-res = array(dim = c(Sim_Iterations,3))
-pb = txtProgressBar(min=1, max = Sim_Iterations,style = 3)
-for(Sim in 1:Sim_Iterations){
+Sim_Iterations = 500
+if(RUN_MODELS){
   
-  params_M2_posterior = list()
-  i = sample(1:nrow(thetas2_matrix),1)
-  for(p in names(params_M2)){
-    params_M2_posterior[[p]] = thetas2_matrix[i,p]
+  res = array(dim = c(Sim_Iterations,3))
+  pb = txtProgressBar(min=1, max = Sim_Iterations,style = 3)
+  for(Sim in 1:Sim_Iterations){
+    
+    params_M2_posterior = list()
+    i = sample(1:nrow(thetas2_matrix),1)
+    for(p in names(params_M2)){
+      params_M2_posterior[[p]] = thetas2_matrix[i,p]
+    }
+    params_M2_posterior$EarlyL = inv.logit(params_M2_posterior$EarlyL)
+    params_M2_posterior$c1_CQ = inv.logit(params_M2_posterior$c1_CQ)
+    params_M2_posterior$c1_AS = inv.logit(params_M2_posterior$c1_AS)
+    
+    dat_posterior =
+      simulate_dataset(N_PMQ = N_PMQ,N_CQ = N_CQ,N_AS = N_AS,
+                       FUP_time = c(sample(x = PMQ_FUP,size = length(PMQ_FUP),replace = T),
+                                    sample(x = CQ_FUP,size = length(CQ_FUP),replace = T),
+                                    sample(x = AS_FUP,size = length(AS_FUP),replace = T)),
+                       Study_Period = c(rep(2,N_PMQ_BPD),rep(2,N_PMQ-N_PMQ_BPD),rep(1,N_CQ+N_AS)),
+                       data_generation_function = generate_patient_data_Model2,
+                       params = params_M2_posterior)
+    
+    AS_ind = dat_posterior$Simdata$Drug==0 & 
+      dat_posterior$Simdata$Censored==0
+    CQ_ind = dat_posterior$Simdata$Drug==1 & 
+      dat_posterior$Simdata$Censored==0
+    PMQ_ind = dat_posterior$Simdata$Drug==2 & dat_posterior$Simdata$Censored==0
+    
+    # compute recurrences per follow-up year
+    res[Sim,1] = length(dat_posterior$Simdata$Durations[AS_ind])/
+      (sum(dat_posterior$Simdata$Durations[dat_posterior$Simdata$Drug==0])/365)
+    res[Sim,2] = length(dat_posterior$Simdata$Durations[CQ_ind])/
+      (sum(dat_posterior$Simdata$Durations[dat_posterior$Simdata$Drug==1])/365)
+    res[Sim,3] = length(dat_posterior$Simdata$Durations[PMQ_ind])/
+      (sum(dat_posterior$Simdata$Durations[dat_posterior$Simdata$Drug==2])/365)
+    setTxtProgressBar(pb,value = Sim)
   }
-  dat_posterior =
-    simulate_dataset(N_PMQ = N_PMQ,N_CQ = N_CQ,N_AS = N_AS,
-                     FUP_time = c(sample(x = PMQ_FUP,size = length(PMQ_FUP),replace = T),
-                                  sample(x = CQ_FUP,size = length(CQ_FUP),replace = T),
-                                  sample(x = AS_FUP,size = length(AS_FUP),replace = T)),
-                     Study_Period = c(rep(2,N_PMQ_BPD),rep(2,N_PMQ-N_PMQ_BPD),rep(1,N_CQ+N_AS)),
-                     data_generation_function = generate_patient_data_Model2,
-                     params = params_M2_posterior)
-  
-  AS_ind = dat_posterior$Simdata$Drug==0 & 
-    dat_posterior$Simdata$Censored==0
-  CQ_ind = dat_posterior$Simdata$Drug==1 & 
-    dat_posterior$Simdata$Censored==0
-  PMQ_ind = dat_posterior$Simdata$Drug==2 & dat_posterior$Simdata$Censored==0
-  
-  # compute recurrences per follow-up year
-  res[Sim,1] = length(dat_posterior$Simdata$Durations[AS_ind])/
-    (sum(dat_posterior$Simdata$Durations[dat_posterior$Simdata$Drug==0])/360)
-  res[Sim,2] = length(dat_posterior$Simdata$Durations[CQ_ind])/
-    (sum(dat_posterior$Simdata$Durations[dat_posterior$Simdata$Drug==1])/360)
-  res[Sim,3] = length(dat_posterior$Simdata$Durations[PMQ_ind])/
-    (sum(dat_posterior$Simdata$Durations[dat_posterior$Simdata$Drug==2])/360)
-  setTxtProgressBar(pb,value = Sim)
+  save(res, file = '../RData/TimingModel/PosteriorPredictivePvals.RData')
+} else {
+  load('../RData/TimingModel/PosteriorPredictivePvals.RData')
 }
 ```
 
 ```{r posterior_pred_pvalues}
 par(mfrow=c(1,3))
-hist(res[,1], xlab = 'Recurrences per person (%)', main = 'Artesunate monotherapy')
+hist(res[,1], xlab = 'Recurrences per person-year (%)', main = 'Artesunate monotherapy')
 true_stat_AS = length(Combined_Time_Data$Time_to_event[AS_ind_true])/
-  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='AS'])/360)
+  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='AS'])/365)
 abline(v = true_stat_AS, col='blue',lwd=3)
 
-hist(res[,2], xlab = 'Recurrences per person (%)', main = 'Chloroquine monotherapy')
+hist(res[,2], xlab = 'Recurrences per person-year (%)', main = 'Chloroquine monotherapy')
 true_stat_CQ = length(Combined_Time_Data$Time_to_event[CQ_ind_true])/
-  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ'])/360)
+  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ'])/365)
 abline(v = true_stat_CQ,  col='blue',lwd=3)
 
-hist(res[,3], xlab = 'Recurrences per person (%)', main = 'Primaquine+')
+hist(res[,3], xlab = 'Recurrences per person-year (%)', main = 'Primaquine+')
 true_stat_PMQ = length(Combined_Time_Data$Time_to_event[PMQ_ind_true])/
-  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'])/360)
+  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'])/365)
 abline(v = true_stat_PMQ,col='blue',lwd=3)
 
-PP_pval_AS = 1-sum(res[,1]>true_stat_AS)/Sim_Iterations
-writeLines(sprintf('The posterior predictive p value for the number of recurrences per person in the AS arm is %s',PP_pval_AS))
-PP_pval_CQ = 1-sum(res[,2]>true_stat_CQ)/Sim_Iterations
-writeLines(sprintf('The posterior predictive p value for the number of recurrences per person in the CQ arm is %s',PP_pval_CQ))
-PP_pval_PMQ = 1-sum(res[,3]>true_stat_PMQ)/Sim_Iterations
-writeLines(sprintf('The posterior predictive p value for the number of recurrences per person in the PMQ+ arm is %s',PP_pval_PMQ))
+PP_pval_AS = min(sum(res[,1]>true_stat_AS)/Sim_Iterations, 1-sum(res[,1]>true_stat_AS)/Sim_Iterations)*2
+writeLines(sprintf('The posterior predictive p value for the number of recurrences per person-year in the AS arm is %s',PP_pval_AS))
+PP_pval_CQ = min(sum(res[,2]>true_stat_CQ)/Sim_Iterations,1-sum(res[,2]>true_stat_CQ)/Sim_Iterations)*2
+writeLines(sprintf('The posterior predictive p value for the number of recurrences per person-year in the CQ arm is %s',PP_pval_CQ))
+PP_pval_PMQ = min(sum(res[,3]>true_stat_PMQ)/Sim_Iterations,1-sum(res[,3]>true_stat_PMQ)/Sim_Iterations)*2
+writeLines(sprintf('The posterior predictive p value for the number of recurrences per person-year in the PMQ+ arm is %s',PP_pval_PMQ))
+```
+
+
+## Summary plot
+
+This is a plot to summarise the simulation based model checking (sup material).
+
+```{r summary_timing_model_check}
+par(las=1, bty='n', mar=c(4,5,6,3))
+layout(mat = matrix(data = c(1,1,1,2,2,2,
+                             3,3,4,4,5,5), nrow = 2, byrow = T))
+
+# Model 2 on well-specified data
+load('../RData/TimingModel/simulation_full_results_mod2.RData')
+plot(100*simulation_full_results_mod2$failure_matrix[,1],
+     100*simulation_full_results_mod2$failure_matrix[,2], pch=16,
+     xlab='True PMQ failure rate in simulated data', ylab = 'Estimated PMQ failure rate')
+title('Well-specified model')
+lines(c(0,100),c(0,100))
+
+# Seasonal data - model misspecification
+load('../RData/TimingModel/simulation_full_results_mod_seasonal.RData')
+plot(100*res$failure_matrix[,1],100*res$failure_matrix[,2],pch=16,
+     xlab='True PMQ failure rate in simulated data',ylab = 'Estimated PMQ failure rate')
+lines(c(0,100),c(0,100))
+title('Mis-specified model')
+
+# Posterior model checks
+load('../RData/TimingModel/PosteriorPredictivePvals.RData')
+hist(res[,1], xlab = 'Recurrences per person-year (%)', main = 'Artesunate monotherapy',col = 'grey')
+true_stat_AS = length(Combined_Time_Data$Time_to_event[AS_ind_true])/
+  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='AS'])/365)
+abline(v = true_stat_AS, col='blue',lwd=3)
+
+hist(res[,2], xlab = 'Recurrences per person-year (%)', main = 'Chloroquine monotherapy',col='grey')
+true_stat_CQ = length(Combined_Time_Data$Time_to_event[CQ_ind_true])/
+  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ'])/365)
+abline(v = true_stat_CQ,  col='blue',lwd=3)
+
+hist(res[,3], xlab = 'Recurrences per person-year (%)', main = 'Primaquine+',col='grey')
+true_stat_PMQ = length(Combined_Time_Data$Time_to_event[PMQ_ind_true])/
+  (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'])/365)
+abline(v = true_stat_PMQ,col='blue',lwd=3)
 ```
 

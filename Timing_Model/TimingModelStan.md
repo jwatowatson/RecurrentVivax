@@ -143,23 +143,15 @@ output:
 ```
 
 ```
-## Loading required package: ggplot2
-```
-
-```
-## Registered S3 methods overwritten by 'ggplot2':
-##   method         from 
-##   [.quosures     rlang
-##   c.quosures     rlang
-##   print.quosures rlang
-```
-
-```
 ## Loading required package: StanHeaders
 ```
 
 ```
-## rstan (Version 2.18.2, GitRev: 2e1f913d3ca3)
+## Loading required package: ggplot2
+```
+
+```
+## rstan (Version 2.19.2, GitRev: 2e1f913d3ca3)
 ```
 
 ```
@@ -1782,12 +1774,6 @@ polygon(c(1:sum(ind), rev(1:sum(ind))),
         y = c(log10(Combined_Time_Data$Relapse_025_theta[ind]),
               rev(log10(Combined_Time_Data$Relapse_975_theta[ind]))), 
         border = NA, col = adjustcolor(drug_cols2[2],alpha.f = 0.2))
-legend('bottomleft',legend = c('Artesunate',
-                                'Chloroquine',
-                                'Primaquine+'),
-       col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white',
-       family('serif'), inset = 0.03, lty=NA, cex=0.9)
-
 
 #PMQ group
 ind = Combined_Time_Data$arm_num=='CHQ/PMQ' & !Combined_Time_Data$Censored
@@ -1810,16 +1796,21 @@ polygon(c(1:sum(ind), rev(1:sum(ind))),
 #****** Time of event versus uncertainty in the interval ******
 # Time of event versus uncertainty in the interval
 ## No PMQ
-ind = Combined_Time_Data$arm_num!='CHQ/PMQ' & !Combined_Time_Data$Censored
+ind = Combined_Time_Data$arm_num=='AS' & !Combined_Time_Data$Censored
 df = data.frame(time=Combined_Time_Data$Time_to_event[ind],
                 uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
                   log10(Combined_Time_Data$Relapse_025_theta[ind]), 
                 col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=1)
-ind = Combined_Time_Data$arm_num=='CHQ/PMQ' & !Combined_Time_Data$Censored
+ind = Combined_Time_Data$arm_num=='CHQ' & !Combined_Time_Data$Censored
 df = rbind(df, data.frame(time=Combined_Time_Data$Time_to_event[ind],
                 uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
                   log10(Combined_Time_Data$Relapse_025_theta[ind]),
                 col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=2))
+ind = Combined_Time_Data$arm_num=='CHQ/PMQ' & !Combined_Time_Data$Censored
+df = rbind(df, data.frame(time=Combined_Time_Data$Time_to_event[ind],
+                uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
+                  log10(Combined_Time_Data$Relapse_025_theta[ind]),
+                col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=3))
 # permute the rows for better visualisation
 set.seed(653467)
 df = df[sample(1:nrow(df), size = nrow(df), replace = F),]
@@ -1831,11 +1822,19 @@ axis(1, at = seq(0,360, by = 60), labels = seq(0,360,by=60)/30)
 mtext(text = 'Months from last episode',side = 1, line = 3)
 
 # add spline fits to show trends
-f = loess(uncertainty ~ time, df[df$group==2,], span = .32)
-lines((0:400), predict(f, data.frame(time=0:400)),lwd=2,lty=2, col = drug_cols2['CHQ/PMQ'])
 
 f = loess(uncertainty ~ time, df[df$group==1,])
-lines(0:400, predict(f, data.frame(time=0:400)),lwd=2,lty=2, col = drug_cols2['AS'])
+lines(0:400, predict(f, data.frame(time=0:400)),lwd=2,lty=2, col = drug_cols3['AS'])
+f = loess(uncertainty ~ time, df[df$group==2,], span = .32)
+lines((0:400), predict(f, data.frame(time=0:400)),lwd=2,lty=2, col = drug_cols3['CHQ'])
+f = loess(uncertainty ~ time, df[df$group==3,], span = .32)
+lines((0:400), predict(f, data.frame(time=0:400)),lwd=2,lty=2, col = drug_cols3['CHQ/PMQ'])
+
+legend('topleft',legend = c('Artesunate',
+                                'Chloroquine',
+                                'Primaquine+'),
+       col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white',lty=1,
+       family('serif'), inset = 0.03, cex=0.9)
 ```
 
 ![](TimingModelStan_files/figure-html/UncertaintyOutputsModel2-1.png)<!-- -->
