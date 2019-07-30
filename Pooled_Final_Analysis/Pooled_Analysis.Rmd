@@ -2,10 +2,10 @@
 title: "Pooled Analysis"
 author: "Aimee Taylor and James Watson"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
     keep_md: yes
-  pdf_document: default
 ---
 
 # Preamble
@@ -65,7 +65,7 @@ upperCI=0.975
 Dark2 = brewer.pal(8, 'Dark2')
 drug_cols2 = array(Dark2[c(2,2,1)], dim = 3, dimnames = list(c('AS','CHQ','CHQ/PMQ')))
 drug_cols_light2 = sapply(drug_cols2, adjustcolor, alpha.f = 0.5)
-transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
+transparent_blue_band = adjustcolor('blue', alpha.f = 0.1)
 
 Ncores = 6 # number of cores to use for model estimation
 
@@ -869,7 +869,7 @@ if(CREATE_PLOTS){
                 Epsilon_lower,
                 Epsilon_upper,
                 Epsilon_upper),
-          col = transparent_pink_band, border = NA)
+          col = transparent_blue_band, border = NA)
   
   polygon(y = c(range(thetas_9MS$L, na.rm = T),
                 rev(range(thetas_9MS$L, na.rm = T))),
@@ -877,7 +877,7 @@ if(CREATE_PLOTS){
                 Epsilon_lower,
                 Epsilon_upper,
                 Epsilon_upper),
-          col = transparent_pink_band, border = NA)
+          col = transparent_blue_band, border = NA)
   
   plot(x = thetas_9MS_Tagnostic$I, 
        y = thetas_9MS$I, 
@@ -908,7 +908,7 @@ if(CREATE_PLOTS){
                 Epsilon_lower,
                 Epsilon_upper,
                 Epsilon_upper),
-          col = transparent_pink_band, border = NA)
+          col = transparent_blue_band, border = NA)
   
   polygon(y = c(range(thetas_9MS$L, na.rm = T),
                 rev(range(thetas_9MS$L, na.rm = T))),
@@ -916,7 +916,7 @@ if(CREATE_PLOTS){
                 Epsilon_lower,
                 Epsilon_upper,
                 Epsilon_upper),
-          col = transparent_pink_band, border = NA)
+          col = transparent_blue_band, border = NA)
   
   
   plot(x = Time_Estimates_1$ReInfection_mean_theta,
@@ -1242,7 +1242,7 @@ for(id in MS_pooled_summary$ID){
   MS_pooled_summary$FU[ind] = Combined_Time_Data$FU_time[Combined_Time_Data$patientid==id][1]
 }
 MS_pooled_summary$Plotting_pch_Values = 
-  as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = c(17,15,1)))
+  as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = c(17,15,25)))
 MS_pooled_summary$Plotting_col_Values = 
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = 1:3))
 ```
@@ -1305,9 +1305,10 @@ MS_final = arrange(MS_final, desc(Drug), desc(FU), desc(TotalEpisodes))
 ids = unique(MS_final$ID)
 
 if(CREATE_PLOTS){
+  
   ## Time series data colored by genetic STATE: classification
-  mycols_states_bg = c('#FFFFFF',Dark2[4],'#000000') # colors for states - need uncertain ones as well
-  mycols_states_fg = c(Dark2[8],Dark2[4],'#000000') # colors for states - need uncertain ones as well
+  mycols_states_bg = c('#000000FF',"#0000FFFF",'#FFFFFFFF') # colors for states - inc. uncertain
+  mycols_states_fg = c("#000000FF","#0000FFFF",Dark2[8]) # colors for states - inc. uncertain 
   mycols_drugs = brewer.pal(n=3, name = 'Set1')
   par(las=1, bty='n', cex.axis=.3, mar=c(4,0,1,1), family = 'serif')
   plot(NULL, ylab = '', xlab = '',
@@ -1349,8 +1350,8 @@ if(CREATE_PLOTS){
   }
   lines(x = c(0,0), y = c(0,length(ids)),lwd=3)
   
-  legend('topright', col = c(mycols_states_fg[c(3,2,1)]), 
-         pch = c(17,15,1), cex = 1, bty = 'n', y.intersp = 0.75, title = 'Classification',
+  legend('topright', col = c(mycols_states_fg), 
+         pch = c(17,15,6), cex = 1, bty = 'n', y.intersp = 0.75, title = 'Classification',
          legend = c('Relapse','Uncertain','Reinfection'))
   
   legend('top', col = drug_cols2[2:3], 
@@ -1420,7 +1421,7 @@ if(CREATE_PLOTS){
   title(ylab = 'Relapse posterior probability', line = 3)
   polygon(x = c(-100,nrow(MS_final)+100,nrow(MS_final)+100,-100),
           y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
-          col = transparent_pink_band, border = NA)
+          col = transparent_blue_band, border = NA)
   
   
   segments(x0 = 1:nrow(MS_final), 
@@ -1452,7 +1453,7 @@ if(CREATE_PLOTS){
   polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
                 max(MS_final$timeSinceLastEpisode)+100,-10),
           y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
-          col = transparent_pink_band, border = NA)
+          col = transparent_blue_band, border = NA)
   for(i in 1:nrow(MS_final)){
     
     if(abs(MS_final$L_upper[i] - MS_final$L_lower[i]) > 0.005){
@@ -1687,7 +1688,7 @@ Plots over classified recurrent samples
 par(mfrow = c(2,1), family = 'serif')
 
 plot(x = recur_add_count + rnorm(length(recur_add_count), 0, 0.025), # Add jitter 
-     MS_final$L_median[ind_add_classified], 
+     y = MS_final$L_median[ind_classified], 
      panel.first = grid(), 
      pch = MS_final$Plotting_pch_Values[ind_add_classified], 
      bg=mycols_states_bg[MS_final$Plotting_col_Values[ind_add_classified]],
@@ -1695,13 +1696,13 @@ plot(x = recur_add_count + rnorm(length(recur_add_count), 0, 0.025), # Add jitte
      ylab = 'Relapse posterior probability', 
      xlab = 'Number of additional markers successfully typed', 
      xaxt = 'n') # Number additional successful vs median relapse probablity
-axis(side = 1, at = 3:6) # Add axis
+axis(side = 1, at = c(0,3:6)) # Add axis
 
 # Add zone of uncertainity
 polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
               max(MS_final$timeSinceLastEpisode)+100,-10),
         y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
-        col = transparent_pink_band, border = NA)
+        col = transparent_blue_band, border = NA)
 
 plot(x = recur_count + rnorm(length(recur_count), 0, 0.075), # Add jitter
      MS_final$L_median[ind_classified], 
@@ -1718,7 +1719,7 @@ axis(side = 1, at = 1:9) # Add axis
 polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
               max(MS_final$timeSinceLastEpisode)+100,-10),
         y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
-        col = transparent_pink_band, border = NA)
+        col = transparent_blue_band, border = NA)
 ```
 
 
