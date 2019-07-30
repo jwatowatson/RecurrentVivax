@@ -704,10 +704,10 @@ if(PLOT_RESULTS){
       
       mtext(text = 'Probability', side = 2, line=3.5, cex=1, las=3)
       mtext(text = 'Number of markers', side = 1, line=3, cex=1.3)
-      if(relationship=='Clone'){
-        legend(ifelse(BESIDES,'topleft','top'), fill = mycols[1:3], 
-               legend = State_names[States], inset = 0.01,cex = 1.3)
-      }
+      # if(relationship=='Clone'){ 
+      #   legend(ifelse(BESIDES,'topleft','top'), fill = mycols[1:3], 
+      #          legend = State_names[States], inset = 0.01,cex = 1.3)
+      # }
       
       # Title
       mtext(text = sprintf('Marker cardinality: %s \n COI of first and second infection: %s and %s, respectively', 
