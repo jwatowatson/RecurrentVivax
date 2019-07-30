@@ -1374,7 +1374,7 @@ hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==2 &
                                    MS_final$Treatment != 'PMQ'],
      main = 'No PMQ: uncertain classification',  ylab = 'Number of recurrences',
      xlab = 'Months from start of study', xaxt='n', yaxt='n',
-     breaks = seq(0, 390, by = 14), col = mycols_states_bg[2])
+     breaks = seq(0, 390, by = 14), col = mycols_states_bg[2], border = 'white')
 axis(1, at = 30*(0:12), labels = 0:12)
 axis(2, at = 0:2)
 plot(NA,NA,xlab='',ylab='',xlim=c(0,1),ylim=c(0,1),xaxt='n',yaxt='n',bty='n')
@@ -1390,7 +1390,7 @@ hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==2 &
                                    MS_final$Treatment == 'PMQ'],
      main = 'PMQ+: uncertain classification',ylab = 'Number of recurrences', 
      xlab = 'Months from start of study', xaxt='n',
-     col = mycols_states_bg[2],breaks = seq(0, 390, by = 14))
+     col = mycols_states_bg[2],breaks = seq(0, 390, by = 14), border = 'white')
 axis(1, at = 30*(0:12), labels = 0:12)
 
 hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==3 &
