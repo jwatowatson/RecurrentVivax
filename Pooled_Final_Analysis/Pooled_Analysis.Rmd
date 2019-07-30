@@ -473,12 +473,9 @@ Calculate the effective marker cardinality for each microsatellite marker using 
 N = 10^6
 Effective_Allele_size = list()
 for(ms in MSs_all){
-  n_obs_alleles = length(table(MS_pooled[Ind_Primary,ms]))
-  draw1 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
-  draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
-  x = mean(draw1 == draw2)
-  n = 1/x
-  writeLines(sprintf('The effective cardinality for %s with %s observed alleles is %s', ms, n_obs_alleles, round(n,2)))
+  n = 1/sum(Fs_Combined[[ms]]^2)
+  writeLines(sprintf('The effective cardinality for %s with %s observed alleles is %s (%s)', ms, n_obs_alleles, round(n,2)))
+  
   Effective_Allele_size[[ms]] = round(n,1)
 }
 # The mean and range in our data set
