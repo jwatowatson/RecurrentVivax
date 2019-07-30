@@ -2,10 +2,10 @@
 title: "Time-to-event model of vivax recurrence"
 author: "James Watson & Aimee Taylor"
 output:
+  pdf_document: default
   html_document:
     fig_caption: yes
     keep_md: yes
-  pdf_document: default
 ---
 ```{r, echo=F}
 knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
@@ -1284,7 +1284,7 @@ Epsilon_upper = 0.7
 Epsilon_lower = 0.3
 
 transp_grey = adjustcolor('grey', alpha.f = 0.5)
-transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
+transparent_blue_band = adjustcolor('blue', alpha.f = 0.1)
 
 # Order by difference in posterior interval
 Combined_Time_Data = Combined_Time_Data[order(-log10(Combined_Time_Data$Relapse_mean_theta)),]
@@ -1301,7 +1301,7 @@ plot(log10(Combined_Time_Data$Relapse_mean_theta[ind]),
 Nrecs = length(Combined_Time_Data$Relapse_mean_theta[ind])
 polygon(x = c(0,Nrecs,Nrecs,0),
         y = log10(c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper)),
-        col = transparent_pink_band, border = NA)
+        col = transparent_blue_band, border = NA)
 axis(1, at = c(1, 400, 800, 1200))
 mtext(text = 'Recurrence rank',side = 1, line = 3)
 axis(2, at = c(0:(-2),log10(0.5),log10(0.05)), labels = c(10^(0:(-2)),0.5,0.05))
@@ -1320,7 +1320,7 @@ plot(log10(Combined_Time_Data$Relapse_mean_theta[ind]),
 Nrecs = length(Combined_Time_Data$Relapse_mean_theta[ind])
 polygon(x = c(0,Nrecs,Nrecs,0),
         y = log10(c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper)),
-        col = transparent_pink_band, border = NA)
+        col = transparent_blue_band, border = NA)
 mtext(text = 'Recurrence rank',side = 1, line = 3)
 axis(2, at = c(0:(-2),log10(c(0.5,0.05))), labels = c(10^(0:(-2)),0.5,0.05))
 polygon(c(1:sum(ind), rev(1:sum(ind))), 
