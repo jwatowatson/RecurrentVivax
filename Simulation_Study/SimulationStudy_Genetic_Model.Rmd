@@ -5,9 +5,7 @@ output:
   html_document:
     df_print: paged
     keep_md: yes
-  word_document: default
-header-includes:
-   - \usepackage{float}  
+header-includes: \usepackage{float}
 ---
 
 <!-- Nine individuals from the VHX and BPD datasets were deemed to have data too complex to analyse under the model. They received drugs XXX. All nine individuals appear to have had multiple relapses, based on data visualization, which can be used to rapidly identify clonally compatible phases, where computational methods fail (Figure XXX). -->
