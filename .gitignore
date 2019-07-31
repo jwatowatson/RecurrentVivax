@@ -14,6 +14,8 @@ StanModels_mod*
 
 *.html
 *.tex
+# James: I don't think the pdf output files are very useful on github
+*.pdf
 
 Timing_Model/TimingModelStan_cache/*
 Pooled_Final_Analysis/*_cache/
@@ -22,7 +24,7 @@ Pooled_Final_Analysis/*_cache/
 RData/PK_data/TwoD6&Vivax Genotyping_ASscore*
 
 Simulation_Study/*_cache/
-Simulation_Study/*_files/
+# Simulation_Study/*_files/
 
 # Ignore all the DS_Stores
 **/.DS_Store

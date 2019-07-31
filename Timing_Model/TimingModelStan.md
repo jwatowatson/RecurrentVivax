@@ -5,7 +5,6 @@ output:
   html_document:
     fig_caption: yes
     keep_md: yes
-  pdf_document: default
 ---
 
 ```
@@ -416,11 +415,11 @@ Prior_params_M2 = c(Prior_params_M1,
                     Hyper_logit_sd_pPMQ_lambda = 1)
 
 writeLines(sprintf('The prior specification for Model 2 is a PMQ+ failure rate of %s%% (%s-%s)',
-                  round(100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean),1),
-                  round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean +
-                                              1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1),
-                  round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean -
-                                              1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1)))
+                   round(100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean),1),
+                   round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean +
+                                               1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1),
+                   round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean -
+                                               1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1)))
 ```
 
 ```
@@ -810,7 +809,7 @@ writeLines(sprintf('The estimated decrease in reinfection rate from the VHX to B
                    round(100-100*quantile(thetas_mod2$rate_decrease,probs = .5)),
                    round(100-100*quantile(thetas_mod2$rate_decrease,probs = .975)),
                    round(100-100*quantile(thetas_mod2$rate_decrease,probs = 0.025))
-                   ))
+))
 ```
 
 ```
@@ -822,7 +821,7 @@ writeLines(sprintf('The mean time to reinfection in the VHX study is estimated a
                    round((1/quantile(thetas_mod2$lambda,probs = .5))/365,1),
                    round((1/quantile(thetas_mod2$lambda,probs = .975))/365,1),
                    round((1/quantile(thetas_mod2$lambda,probs = .025))/365,1)
-                   ))
+))
 ```
 
 ```
@@ -837,7 +836,7 @@ writeLines(sprintf('The mean time to reinfection in the BPD study is estimated a
                                      probs = .975))/365,1),
                    round((1/quantile(thetas_mod2$lambda*thetas_mod2$rate_decrease,
                                      probs = .025))/365,1)
-                   ))
+))
 ```
 
 ```
@@ -1041,7 +1040,7 @@ hist(thetas_mod2$rate_decrease,freq = FALSE, main='',yaxt='n',
 xs = quantile(thetas_mod2$rate_decrease, probs = seq(0,1,by = 0.001))
 abline(v=mean(thetas_mod2$rate_decrease),lwd=3,col='blue')
 lines(xs, dnorm(x = xs,mean = Prior_params_M2$Hyper_mean_rate_decrease, 
-                 sd = Prior_params_M2$Hyper_sd_rate_decrease),
+                sd = Prior_params_M2$Hyper_sd_rate_decrease),
       col='black',lwd=3)
 
 # gamma: late relapse rate
@@ -1589,11 +1588,6 @@ axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
 axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.9)
 
-# lines(Ts, log10(prob_labels_raw_AS[2,]+prob_labels_raw_AS[3,]), col=drug_cols3[1], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQ[2,]+prob_labels_raw_CQ[3,]), col=drug_cols3[2], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQPMQ[2,]+prob_labels_raw_CQPMQ[3,]), col=drug_cols3[3], lwd=2, lty=2)
-
-
 #****************************** Recrudescence ****************************
 mean_labels_ReCrud = apply(labels2[,ind_plotting,4,drop=T], 2, mean)
 plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReCrud),
@@ -1609,11 +1603,6 @@ mtext(text = 'Probability',side = 2,line=3.5,cex=.8,las=3)
 axis(1, at = seq(0,12,by=2)*30, labels = seq(0,12,by=2))
 axis(side=2, at = c(-14, -12,-10,-8,-6,-4,-2,0), 
      c(expression(10^-14,10^-12, 10^-10, 10^-8, 10^-6, 10^-4, 10^-2),1))
-
-# lines(Ts, log10(prob_labels_raw_AS[4,]), col=drug_cols3[1], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQ[4,]), col=drug_cols3[2], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQPMQ[4,]), col=drug_cols3[3], lwd=2, lty=2)
-
 
 #****************************** Reinfection ******************************
 mean_labels_Reinfection = apply(labels2[,ind_plotting,1,drop=T], 2, mean)
@@ -1632,15 +1621,9 @@ axis(side=2, at = c(-3,-2,-1,0), c(expression(10^-3, 10^-2, 10^-1),1))
 axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
 axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
 axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
-legend('bottomright',legend = c('Artesunate',
-                                'Chloroquine',
-                                'Primaquine+'),
-       col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white',
-       family('serif'), inset = 0.01, lty=NA, cex=1.35)
-
-# lines(Ts, log10(prob_labels_raw_AS[1,]), col=drug_cols3[1], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQ[1,]), col=drug_cols3[2], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQPMQ[1,]), col=drug_cols3[3], lwd=2, lty=2)
+legend('bottomright',family('serif'), inset = 0.01, cex=1.35,
+       legend = c('Artesunate','Chloroquine','Primaquine+'),lty=1,
+       col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white')
 
 
 #******************** Plot of overall probability conditional on time to event ***********************
@@ -1650,32 +1633,39 @@ Recurrence_cols_noPMQ = brewer.pal(4,'Oranges')[2:4]
 LinesTypes = c(1,3,2)
 par(cex.lab=.7, cex.axis=.75)
 t_points = seq(0,360,by=1)/30
+
+# Behaviour for PMQ
 PMQ_labels = Label_probability(drug = 'PMQ+',t = t_points*30, thetas = thetas_mod2)
 plot(t_points, PMQ_labels[,1], lwd=2, type='l', ylim = c(0,1),
-     main = 'PMQ+', col=Recurrence_cols_PMQ[1],panel.first = grid(), 
+     main = 'PMQ+', col=drug_cols3['CHQ/PMQ'], panel.first = grid(), 
      xlab='', ylab='Recurrence probability',yaxt='n',xaxt='n',lty=LinesTypes[1])
-lines(t_points, PMQ_labels[,2], lwd=2,col=Recurrence_cols_PMQ[2],lty=LinesTypes[2])
-lines(t_points, PMQ_labels[,3], lwd=2,col=Recurrence_cols_PMQ[3],lty=LinesTypes[3])
+lines(t_points, PMQ_labels[,2], lwd=2,col=drug_cols3['CHQ/PMQ'], lty=LinesTypes[2])
+lines(t_points, PMQ_labels[,3], lwd=2,col=drug_cols3['CHQ/PMQ'], lty=LinesTypes[3])
 mtext(text='D', side = 3, adj = 0, line=0.5)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.65)
 axis(2, at = c(0,.25,.5,.75,1))
 axis(1, at = c(0,3,6,9,12))
 
+legend('right',inset = 0.01,col='black',pch = NA, bty='o',
+       legend = c('Relapse','Recrudescence', 'Reinfection'),
+       lwd=1,bg='white',lty=LinesTypes, cex=.6)
+
+# Behaviour for CQ and AS
 CQ_labels = Label_probability(drug = 'CHQ',t = t_points*30, thetas = thetas_mod2)
-plot(t_points, CQ_labels[,1], lwd=2, type='l', ylim = c(0,1),
-     main = 'CQ', col=Recurrence_cols_noPMQ[1],xlab='',lty=LinesTypes[1],
+AS_labels = Label_probability(drug = 'AS',t = t_points*30, thetas = thetas_mod2)
+plot(t_points, CQ_labels[,1], lwd=1, type='l', ylim = c(0,1),
+     main = 'No PMQ', col=drug_cols3['CHQ'], xlab='',lty=LinesTypes[1],
      panel.first = grid(), ylab = 'Recurrence probability',xaxt='n',yaxt='n')
 axis(2, at = c(0,.25,.5,.75,1))
 axis(1, at = c(0,3,6,9,12))
-lines(t_points, CQ_labels[,2], lwd=2,col=Recurrence_cols_noPMQ[2],lty=LinesTypes[2])
-lines(t_points, CQ_labels[,3], lwd=2,col=Recurrence_cols_noPMQ[3],lty=LinesTypes[3])
+lines(t_points, CQ_labels[,2], lwd=1,col=drug_cols3['CHQ'],lty=LinesTypes[2])
+lines(t_points, CQ_labels[,3], lwd=1,col=drug_cols3['CHQ'],lty=LinesTypes[3])
+
+lines(t_points, AS_labels[,1], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[1])
+lines(t_points, AS_labels[,2], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[2])
+lines(t_points, AS_labels[,3], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[3])
+
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.65)
-legend('right',legend = c('Relapse',
-                          'Recrudescence',
-                          'Reinfection'),
-       col='black',pch = NA, bty='o',
-       lwd=1,bg='white',lty=LinesTypes, cex=.6,
-       inset = 0.01)
 ```
 
 ![](TimingModelStan_files/figure-html/Model2FinalPlot-1.png)<!-- -->
@@ -1749,7 +1739,7 @@ Epsilon_upper = 0.7
 Epsilon_lower = 0.3
 
 transp_grey = adjustcolor('grey', alpha.f = 0.5)
-transparent_pink_band = adjustcolor(Dark2[4], alpha.f = 0.2)
+transparent_blue_band = adjustcolor('blue', alpha.f = 0.1)
 
 # Order by difference in posterior interval
 Combined_Time_Data = Combined_Time_Data[order(-log10(Combined_Time_Data$Relapse_mean_theta)),]
@@ -1766,7 +1756,7 @@ plot(log10(Combined_Time_Data$Relapse_mean_theta[ind]),
 Nrecs = length(Combined_Time_Data$Relapse_mean_theta[ind])
 polygon(x = c(0,Nrecs,Nrecs,0),
         y = log10(c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper)),
-        col = transparent_pink_band, border = NA)
+        col = transparent_blue_band, border = NA)
 axis(1, at = c(1, 400, 800, 1200))
 mtext(text = 'Recurrence rank',side = 1, line = 3)
 axis(2, at = c(0:(-2),log10(0.5),log10(0.05)), labels = c(10^(0:(-2)),0.5,0.05))
@@ -1785,7 +1775,7 @@ plot(log10(Combined_Time_Data$Relapse_mean_theta[ind]),
 Nrecs = length(Combined_Time_Data$Relapse_mean_theta[ind])
 polygon(x = c(0,Nrecs,Nrecs,0),
         y = log10(c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper)),
-        col = transparent_pink_band, border = NA)
+        col = transparent_blue_band, border = NA)
 mtext(text = 'Recurrence rank',side = 1, line = 3)
 axis(2, at = c(0:(-2),log10(c(0.5,0.05))), labels = c(10^(0:(-2)),0.5,0.05))
 polygon(c(1:sum(ind), rev(1:sum(ind))), 
@@ -1803,14 +1793,14 @@ df = data.frame(time=Combined_Time_Data$Time_to_event[ind],
                 col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=1)
 ind = Combined_Time_Data$arm_num=='CHQ' & !Combined_Time_Data$Censored
 df = rbind(df, data.frame(time=Combined_Time_Data$Time_to_event[ind],
-                uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
-                  log10(Combined_Time_Data$Relapse_025_theta[ind]),
-                col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=2))
+                          uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
+                            log10(Combined_Time_Data$Relapse_025_theta[ind]),
+                          col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=2))
 ind = Combined_Time_Data$arm_num=='CHQ/PMQ' & !Combined_Time_Data$Censored
 df = rbind(df, data.frame(time=Combined_Time_Data$Time_to_event[ind],
-                uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
-                  log10(Combined_Time_Data$Relapse_025_theta[ind]),
-                col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=3))
+                          uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
+                            log10(Combined_Time_Data$Relapse_025_theta[ind]),
+                          col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=3))
 # permute the rows for better visualisation
 set.seed(653467)
 df = df[sample(1:nrow(df), size = nrow(df), replace = F),]
@@ -1831,8 +1821,8 @@ f = loess(uncertainty ~ time, df[df$group==3,], span = .32)
 lines((0:400), predict(f, data.frame(time=0:400)),lwd=2,lty=2, col = drug_cols3['CHQ/PMQ'])
 
 legend('topleft',legend = c('Artesunate',
-                                'Chloroquine',
-                                'Primaquine+'),
+                            'Chloroquine',
+                            'Primaquine+'),
        col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white',lty=1,
        family('serif'), inset = 0.03, cex=0.9)
 ```
@@ -1880,7 +1870,7 @@ The labels on the observed recurrences along with 95% credible intervals:
 
 
 ```
-## Relapses are approximately  96 ( 94.4 - 97.3 ) % of recurrences after AS
+## Relapses are approximately  96.1 ( 94.3 - 97.3 ) % of recurrences after AS
 ```
 
 ```
@@ -1888,48 +1878,48 @@ The labels on the observed recurrences along with 95% credible intervals:
 ```
 
 ```
-## Reinfections are approximately  3.7 ( 2.4 - 5.3 ) % of recurrences after AS
+## Reinfections are approximately  3.6 ( 2.4 - 5.4 ) % of recurrences after AS
 ```
 
 ```
-## Relapses are approximately  95 ( 93 - 96.6 ) % of recurrences after CQ
+## Relapses are approximately  95 ( 92.9 - 96.7 ) % of recurrences after CQ
 ```
 
 ```
-## Recrudescences are approximately  0.2 ( 0.1 - 0.4 ) % of recurrences after CQ
+## Recrudescences are approximately  0.2 ( 0.1 - 0.3 ) % of recurrences after CQ
 ```
 
 ```
-## Reinfections are approximately  4.8 ( 3.2 - 6.8 ) % of recurrences after CQ
+## Reinfections are approximately  4.8 ( 3.1 - 6.9 ) % of recurrences after CQ
 ```
 
 ```
-## Relapses are approximately  12.2 ( 8.8 - 15.5 ) % of recurrences after PMQ+
+## Relapses are approximately  12.2 ( 9.2 - 15.5 ) % of recurrences after PMQ+
 ```
 
 ```
-## Recrudescences are approximately  0.01 ( 0.01 - 0.03 ) % of recurrences after PMQ+
+## Recrudescences are approximately  0.01 ( 0.01 - 0.02 ) % of recurrences after PMQ+
 ```
 
 ```
-## Reinfections are approximately  87.8 ( 84.5 - 91.2 ) % of recurrences after PMQ+
+## Reinfections are approximately  87.8 ( 84.5 - 90.8 ) % of recurrences after PMQ+
 ```
 
 ```
 ## 
-## VHX: Relapses are approximately  9.2 ( 6.2 - 12.1 ) % of recurrences after PMQ+
+## VHX: Relapses are approximately  9.2 ( 6.4 - 12.2 ) % of recurrences after PMQ+
 ```
 
 ```
-## VHX: Recrudescences are approximately  0.03 ( 0.02 - 0.06 ) % of recurrences after PMQ+
+## VHX: Recrudescences are approximately  0.03 ( 0.01 - 0.06 ) % of recurrences after PMQ+
 ```
 
 ```
-## VHX: Reinfections are approximately  90.7 ( 87.9 - 93.7 ) % of recurrences after PMQ+
+## VHX: Reinfections are approximately  90.8 ( 87.8 - 93.6 ) % of recurrences after PMQ+
 ```
 
 ```
-## BPD: Relapses are approximately  13.5 ( 9.8 - 17.3 ) % of recurrences after PMQ+
+## BPD: Relapses are approximately  13.5 ( 10.1 - 17.3 ) % of recurrences after PMQ+
 ```
 
 ```
@@ -1937,7 +1927,7 @@ The labels on the observed recurrences along with 95% credible intervals:
 ```
 
 ```
-## BPD: Reinfections are approximately  86.5 ( 82.7 - 90.2 ) % of recurrences after PMQ+
+## BPD: Reinfections are approximately  86.5 ( 82.7 - 89.9 ) % of recurrences after PMQ+
 ```
 
 
@@ -1947,5 +1937,5 @@ toc()
 ```
 
 ```
-## 31.182 sec elapsed
+## 83.479 sec elapsed
 ```

@@ -718,17 +718,20 @@ title('Mis-specified model')
 
 # Posterior model checks
 load('../RData/TimingModel/PosteriorPredictivePvals.RData')
-hist(res[,1], xlab = 'Recurrences per person-year (%)', main = 'Artesunate monotherapy',col = 'grey')
+hist(res[,1], xlab = 'Recurrences per person-year (%)', main = 'Artesunate monotherapy',
+     col = adjustcolor('grey',alpha.f = .4))
 true_stat_AS = length(Combined_Time_Data$Time_to_event[AS_ind_true])/
   (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='AS'])/365)
 abline(v = true_stat_AS, col='blue',lwd=3)
 
-hist(res[,2], xlab = 'Recurrences per person-year (%)', main = 'Chloroquine monotherapy',col='grey')
+hist(res[,2], xlab = 'Recurrences per person-year (%)', main = 'Chloroquine monotherapy',
+     col = adjustcolor('grey',alpha.f = .4))
 true_stat_CQ = length(Combined_Time_Data$Time_to_event[CQ_ind_true])/
   (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ'])/365)
 abline(v = true_stat_CQ,  col='blue',lwd=3)
 
-hist(res[,3], xlab = 'Recurrences per person-year (%)', main = 'Primaquine+',col='grey')
+hist(res[,3], xlab = 'Recurrences per person-year (%)', main = 'Primaquine+',
+     col = adjustcolor('grey',alpha.f = .4))
 true_stat_PMQ = length(Combined_Time_Data$Time_to_event[PMQ_ind_true])/
   (sum(Combined_Time_Data$Time_to_event[Combined_Time_Data$arm_num=='CHQ/PMQ'])/365)
 abline(v = true_stat_PMQ,col='blue',lwd=3)

@@ -2,7 +2,6 @@
 title: "Pooled Analysis"
 author: "Aimee Taylor and James Watson"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
     keep_md: yes
@@ -1727,7 +1726,7 @@ polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
 
 Almost all recurrences in BPD were typed. The majority (34 out of 40) of the recurrences in VHX were typed also.
 Therefore we can estimate the true efficacy of high-dose primaquine by adjusting for the background reinfection rates in both studies.
-
+We create a dataset with the overall estimates of the three states.
 ```{r}
 # Add an episode identifier
 Combined_Time_Data$Episode_Identifier = apply(Combined_Time_Data,1,
@@ -1778,8 +1777,43 @@ for(i in 1:nrow(Combined_Time_Data)){
     }
   }
 }
+```
+
+```{r}
+Observed_Rec = Combined_Time_Data
+N_PMQ = length(unique(Combined_Time_Data$patientid[Combined_Time_Data$arm_num=='CHQ/PMQ']))
+N_noPMQ = length(unique(Combined_Time_Data$patientid[Combined_Time_Data$arm_num!='CHQ/PMQ']))
+
+# need to readjust how the probabilities are coded - i.e. which row they are on
+for(id in unique(Observed_Rec$patientid)){
+  ind = which(Observed_Rec$patientid==id)
+  k_ind = length(ind)
+  Observed_Rec$Reinfection_Probability[ind] = c(NA, Observed_Rec$Reinfection_Probability[ind[1:(k_ind-1)]])
+  Observed_Rec$Reinfection_Probability_UL[ind] = c(NA, Observed_Rec$Reinfection_Probability_UL[ind[1:(k_ind-1)]])
+  Observed_Rec$Reinfection_Probability_LL[ind] = c(NA, Observed_Rec$Reinfection_Probability_LL[ind[1:(k_ind-1)]])
+}
+Observed_Rec = filter(Observed_Rec, Censored==0)
+Observed_Rec$Relapsed = Observed_Rec$Relapsed_UL = Observed_Rec$Relapsed_LL = NA
+for(id in unique(Observed_Rec$patientid)){
+  ind = which(Observed_Rec$patientid==id)
+  Observed_Rec$Relapsed[ind] = 1 - prod(Observed_Rec$Reinfection_Probability[ind])
+  Observed_Rec$Relapsed_LL[ind] = 1 - prod(Observed_Rec$Reinfection_Probability_UL[ind])
+  Observed_Rec$Relapsed_UL[ind] = 1 - prod(Observed_Rec$Reinfection_Probability_LL[ind])
+}
+Observed_Rec = Observed_Rec[!duplicated(Observed_Rec$patientid),]
+writeLines(sprintf('Out of %s patients who received high-dose primaquine, %s%% (%s-%s) had an observed relapse during follow-up.',
+                   N_PMQ,
+                   round(100*sum(Observed_Rec$Relapsed[Observed_Rec$arm_num=='CHQ/PMQ'])/N_PMQ,1),
+                   round(100*sum(Observed_Rec$Relapsed_LL[Observed_Rec$arm_num=='CHQ/PMQ'])/N_PMQ,1),
+                   round(100*sum(Observed_Rec$Relapsed_UL[Observed_Rec$arm_num=='CHQ/PMQ'])/N_PMQ,1)))
+writeLines(sprintf('Out of %s patients who did not receive high-dose primaquine, %s%% (%s-%s) had an observed relapse during follow-up.',
+                   N_noPMQ,
+                   round(100*sum(Observed_Rec$Relapsed[Observed_Rec$arm_num != 'CHQ/PMQ'])/N_noPMQ,1),
+                   round(100*sum(Observed_Rec$Relapsed_LL[Observed_Rec$arm_num != 'CHQ/PMQ'])/N_noPMQ,1),
+                   round(100*sum(Observed_Rec$Relapsed_UL[Observed_Rec$arm_num != 'CHQ/PMQ'])/N_noPMQ,1)))
 
 ```
+
 
 ## PK analysis with carboxy primaquine
 
@@ -1806,6 +1840,7 @@ for(i in 1:nrow(Combined_Time_Data)){
     Combined_Time_Data$log10_PMQ[i] = mean(BPD_pk$log10_PQ_PK[pk_ind])
     Combined_Time_Data$NumberDaysPMQ[i] = BPD_pk$NumberofPKDays[pk_ind[1]]
   }
+  
 }
 ```
 

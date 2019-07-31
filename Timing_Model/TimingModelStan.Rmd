@@ -2,7 +2,6 @@
 title: "Time-to-event model of vivax recurrence"
 author: "James Watson & Aimee Taylor"
 output:
-  pdf_document: default
   html_document:
     fig_caption: yes
     keep_md: yes
@@ -200,11 +199,11 @@ Prior_params_M2 = c(Prior_params_M1,
                     Hyper_logit_sd_pPMQ_lambda = 1)
 
 writeLines(sprintf('The prior specification for Model 2 is a PMQ+ failure rate of %s%% (%s-%s)',
-                  round(100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean),1),
-                  round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean +
-                                              1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1),
-                  round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean -
-                                              1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1)))
+                   round(100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean),1),
+                   round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean +
+                                               1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1),
+                   round(100 - 100*inv.logit(Prior_params_M2$Hyper_logit_mean_pPMQ_mean -
+                                               1.96*Prior_params_M2$Hyper_logit_mean_pPMQ_sd), 1)))
 ```
 
 
@@ -283,7 +282,7 @@ if(RUN_MODELS){
                                     Prior_params_M1 = Prior_params_M1,
                                     N_noPMQ = N_noPMQ))
   save(mod1_Fit, file = '../RData/LargeFiles/StanModels_mod1.RData')
-
+  
   mod2_Fit = sampling(Timing_Model2,
                       data = c(Time_data_2, Prior_params_M2),
                       iter = IT, warmup = WarmUp,
@@ -522,13 +521,13 @@ writeLines(sprintf('The estimated decrease in reinfection rate from the VHX to B
                    round(100-100*quantile(thetas_mod2$rate_decrease,probs = .5)),
                    round(100-100*quantile(thetas_mod2$rate_decrease,probs = .975)),
                    round(100-100*quantile(thetas_mod2$rate_decrease,probs = 0.025))
-                   ))
+))
 
 writeLines(sprintf('The mean time to reinfection in the VHX study is estimated as %s years (95 CI %s-%s)',
                    round((1/quantile(thetas_mod2$lambda,probs = .5))/365,1),
                    round((1/quantile(thetas_mod2$lambda,probs = .975))/365,1),
                    round((1/quantile(thetas_mod2$lambda,probs = .025))/365,1)
-                   ))
+))
 
 writeLines(sprintf('The mean time to reinfection in the BPD study is estimated as %s years (95 CI %s-%s)',
                    round((1/quantile(thetas_mod2$lambda*thetas_mod2$rate_decrease,
@@ -537,7 +536,7 @@ writeLines(sprintf('The mean time to reinfection in the BPD study is estimated a
                                      probs = .975))/365,1),
                    round((1/quantile(thetas_mod2$lambda*thetas_mod2$rate_decrease,
                                      probs = .025))/365,1)
-                   ))
+))
 ```
 
 
@@ -704,7 +703,7 @@ hist(thetas_mod2$rate_decrease,freq = FALSE, main='',yaxt='n',
 xs = quantile(thetas_mod2$rate_decrease, probs = seq(0,1,by = 0.001))
 abline(v=mean(thetas_mod2$rate_decrease),lwd=3,col='blue')
 lines(xs, dnorm(x = xs,mean = Prior_params_M2$Hyper_mean_rate_decrease, 
-                 sd = Prior_params_M2$Hyper_sd_rate_decrease),
+                sd = Prior_params_M2$Hyper_sd_rate_decrease),
       col='black',lwd=3)
 
 # gamma: late relapse rate
@@ -1128,11 +1127,6 @@ axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
 axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.9)
 
-# lines(Ts, log10(prob_labels_raw_AS[2,]+prob_labels_raw_AS[3,]), col=drug_cols3[1], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQ[2,]+prob_labels_raw_CQ[3,]), col=drug_cols3[2], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQPMQ[2,]+prob_labels_raw_CQPMQ[3,]), col=drug_cols3[3], lwd=2, lty=2)
-
-
 #****************************** Recrudescence ****************************
 mean_labels_ReCrud = apply(labels2[,ind_plotting,4,drop=T], 2, mean)
 plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReCrud),
@@ -1148,11 +1142,6 @@ mtext(text = 'Probability',side = 2,line=3.5,cex=.8,las=3)
 axis(1, at = seq(0,12,by=2)*30, labels = seq(0,12,by=2))
 axis(side=2, at = c(-14, -12,-10,-8,-6,-4,-2,0), 
      c(expression(10^-14,10^-12, 10^-10, 10^-8, 10^-6, 10^-4, 10^-2),1))
-
-# lines(Ts, log10(prob_labels_raw_AS[4,]), col=drug_cols3[1], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQ[4,]), col=drug_cols3[2], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQPMQ[4,]), col=drug_cols3[3], lwd=2, lty=2)
-
 
 #****************************** Reinfection ******************************
 mean_labels_Reinfection = apply(labels2[,ind_plotting,1,drop=T], 2, mean)
@@ -1171,15 +1160,9 @@ axis(side=2, at = c(-3,-2,-1,0), c(expression(10^-3, 10^-2, 10^-1),1))
 axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
 axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
 axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
-legend('bottomright',legend = c('Artesunate',
-                                'Chloroquine',
-                                'Primaquine+'),
-       col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white',
-       family('serif'), inset = 0.01, lty=NA, cex=1.35)
-
-# lines(Ts, log10(prob_labels_raw_AS[1,]), col=drug_cols3[1], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQ[1,]), col=drug_cols3[2], lwd=2, lty=2)
-# lines(Ts, log10(prob_labels_raw_CQPMQ[1,]), col=drug_cols3[3], lwd=2, lty=2)
+legend('bottomright',family('serif'), inset = 0.01, cex=1.35,
+       legend = c('Artesunate','Chloroquine','Primaquine+'),lty=1,
+       col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white')
 
 
 #******************** Plot of overall probability conditional on time to event ***********************
@@ -1189,32 +1172,40 @@ Recurrence_cols_noPMQ = brewer.pal(4,'Oranges')[2:4]
 LinesTypes = c(1,3,2)
 par(cex.lab=.7, cex.axis=.75)
 t_points = seq(0,360,by=1)/30
+
+# Behaviour for PMQ
 PMQ_labels = Label_probability(drug = 'PMQ+',t = t_points*30, thetas = thetas_mod2)
 plot(t_points, PMQ_labels[,1], lwd=2, type='l', ylim = c(0,1),
-     main = 'PMQ+', col=Recurrence_cols_PMQ[1],panel.first = grid(), 
+     main = 'PMQ+', col=drug_cols3['CHQ/PMQ'], panel.first = grid(), 
      xlab='', ylab='Recurrence probability',yaxt='n',xaxt='n',lty=LinesTypes[1])
-lines(t_points, PMQ_labels[,2], lwd=2,col=Recurrence_cols_PMQ[2],lty=LinesTypes[2])
-lines(t_points, PMQ_labels[,3], lwd=2,col=Recurrence_cols_PMQ[3],lty=LinesTypes[3])
+lines(t_points, PMQ_labels[,2], lwd=2,col=drug_cols3['CHQ/PMQ'], lty=LinesTypes[2])
+lines(t_points, PMQ_labels[,3], lwd=2,col=drug_cols3['CHQ/PMQ'], lty=LinesTypes[3])
 mtext(text='D', side = 3, adj = 0, line=0.5)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.65)
 axis(2, at = c(0,.25,.5,.75,1))
 axis(1, at = c(0,3,6,9,12))
 
+legend('right',inset = 0.01,col='black',pch = NA, bty='o',
+       legend = c('Relapse','Recrudescence', 'Reinfection'),
+       lwd=1,bg='white',lty=LinesTypes, cex=.6)
+
+# Behaviour for CQ and AS
 CQ_labels = Label_probability(drug = 'CHQ',t = t_points*30, thetas = thetas_mod2)
-plot(t_points, CQ_labels[,1], lwd=2, type='l', ylim = c(0,1),
-     main = 'CQ', col=Recurrence_cols_noPMQ[1],xlab='',lty=LinesTypes[1],
+AS_labels = Label_probability(drug = 'AS',t = t_points*30, thetas = thetas_mod2)
+plot(t_points, CQ_labels[,1], lwd=1, type='l', ylim = c(0,1),
+     main = 'No PMQ', col=drug_cols3['CHQ'], xlab='',lty=LinesTypes[1],
      panel.first = grid(), ylab = 'Recurrence probability',xaxt='n',yaxt='n')
 axis(2, at = c(0,.25,.5,.75,1))
 axis(1, at = c(0,3,6,9,12))
-lines(t_points, CQ_labels[,2], lwd=2,col=Recurrence_cols_noPMQ[2],lty=LinesTypes[2])
-lines(t_points, CQ_labels[,3], lwd=2,col=Recurrence_cols_noPMQ[3],lty=LinesTypes[3])
+lines(t_points, CQ_labels[,2], lwd=1,col=drug_cols3['CHQ'],lty=LinesTypes[2])
+lines(t_points, CQ_labels[,3], lwd=1,col=drug_cols3['CHQ'],lty=LinesTypes[3])
+
+lines(t_points, AS_labels[,1], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[1])
+lines(t_points, AS_labels[,2], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[2])
+lines(t_points, AS_labels[,3], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[3])
+
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.65)
-legend('right',legend = c('Relapse',
-                          'Recrudescence',
-                          'Reinfection'),
-       col='black',pch = NA, bty='o',
-       lwd=1,bg='white',lty=LinesTypes, cex=.6,
-       inset = 0.01)
+
 
 ```
 
@@ -1338,14 +1329,14 @@ df = data.frame(time=Combined_Time_Data$Time_to_event[ind],
                 col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=1)
 ind = Combined_Time_Data$arm_num=='CHQ' & !Combined_Time_Data$Censored
 df = rbind(df, data.frame(time=Combined_Time_Data$Time_to_event[ind],
-                uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
-                  log10(Combined_Time_Data$Relapse_025_theta[ind]),
-                col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=2))
+                          uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
+                            log10(Combined_Time_Data$Relapse_025_theta[ind]),
+                          col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=2))
 ind = Combined_Time_Data$arm_num=='CHQ/PMQ' & !Combined_Time_Data$Censored
 df = rbind(df, data.frame(time=Combined_Time_Data$Time_to_event[ind],
-                uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
-                  log10(Combined_Time_Data$Relapse_025_theta[ind]),
-                col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=3))
+                          uncertainty=log10(Combined_Time_Data$Relapse_975_theta[ind]) -
+                            log10(Combined_Time_Data$Relapse_025_theta[ind]),
+                          col = drug_cols3[Combined_Time_Data$arm_num[ind]], group=3))
 # permute the rows for better visualisation
 set.seed(653467)
 df = df[sample(1:nrow(df), size = nrow(df), replace = F),]
@@ -1366,8 +1357,8 @@ f = loess(uncertainty ~ time, df[df$group==3,], span = .32)
 lines((0:400), predict(f, data.frame(time=0:400)),lwd=2,lty=2, col = drug_cols3['CHQ/PMQ'])
 
 legend('topleft',legend = c('Artesunate',
-                                'Chloroquine',
-                                'Primaquine+'),
+                            'Chloroquine',
+                            'Primaquine+'),
        col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white',lty=1,
        family('serif'), inset = 0.03, cex=0.9)
 

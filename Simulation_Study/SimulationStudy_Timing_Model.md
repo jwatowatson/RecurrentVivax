@@ -171,7 +171,7 @@ Generate patient data under the assumptions of model 1 with the additional assum
 Generate data with these parameters:
 
 ```
-## 0.934 sec elapsed
+## 0.835 sec elapsed
 ```
 
 
