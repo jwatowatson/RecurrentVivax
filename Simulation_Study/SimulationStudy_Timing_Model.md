@@ -124,10 +124,14 @@ Generate simulated data under the assumptions of model 2
 ```
 ##                
 ##                  AS CHQ CHQ/PMQ
-##   EarlyRelapse  360 337      80
-##   LateRelapse   352 317      87
-##   Recrudescence   5   5       4
-##   Reinfection   140 123     942
+##   EarlyRelapse  358 279     107
+##   LateRelapse   358 272      84
+##   Recrudescence   4   4       2
+##   Reinfection   148 143     960
+```
+
+```
+## The proportion of reinfections in the PMQ+ arm is 83.3%
 ```
 
 Prior specification for stan fit:
@@ -148,7 +152,7 @@ Plot output, comparing prior, ground truth and model estimate:
 Compare summary statistics from simulated data and estimated:
 
 ```
-## The true failure rate in the simulated data is 15.4%. Model 2 estimates the failure rate to be 15.7% (95% CI: 6.7-28.2)
+## The percentage of reinfections in the PMQ+ arm in the simulated data is 16.7%. Model 2 estimates this percentage to be 18.4% (95% CI: 9.1-30.7)
 ```
 
 
@@ -171,7 +175,7 @@ Generate patient data under the assumptions of model 1 with the additional assum
 Generate data with these parameters:
 
 ```
-## 0.835 sec elapsed
+## 0.971 sec elapsed
 ```
 
 

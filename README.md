@@ -2,26 +2,30 @@
 
 ## Overview of software 
 
-This repository has all the necessary code and data to reproduce results from **Estimating the probable cause of recurrence in Plasmodium vivax malaria: relapse, reinfection or recrudescence?** Taylor *et al*, 2018. 
+This repository has all the necessary code and data to reproduce results from **Estimating the probable cause of recurrence in Plasmodium vivax malaria: relapse, reinfection or recrudescence?** Taylor, Watson, *et al*, 2018. 
 
 The full paper (preprint for the moment) can be found at: 
 https://www.biorxiv.org/content/early/2018/12/25/505594
 
-* *Genetic_Model* has the model code implementing our identity by descent approach to the estimation of relapse, recrudescence and reinfection in *P. vivax* recurrences, based on highly polymorphic microsatellite data. 
+The data analysis is broken down into a series of R scripts and RMarkdown files, organised as follows:
 
-* *Timing_Model* has the model code (in *stan*) implementing our time-to-event approach to the estimation of relapse, recrudescence and reinfection in *P. vivax* recurrences, based on follow-up data post clinic level symptomatic *P. vivax* episodes. The RMarkdown script *TimingModelStan.Rmd* fits the models to pooled data from two large studies on the Thailand-Myanmar border (total *n=1299* individuals, over 1000 patient years of follow-up).
+* *Genetic_Model* has the model code implementing our identity-by-descent based approach to the estimation of relapse, recrudescence and reinfection in *P. vivax* recurrences, based on highly polymorphic microsatellite data. The main wrapper function which computes recurrence state probabilities is *post_prob_CLI* in *post_prob_CLI.R*. There is also a useful plotting function for polyallelic data (*PlottingFunction.R*).
 
-* *Pooled_Final_Analysis* provides an RMarkdown script *Pooled_Analysis.Rmd* which combines the genetic model fits and then timing model fits on the same data from the two large studies on the Thailand-Myanmar border (total *n=1299* individuals). In particular it implements the following:
+* *Timing_Model* has the model code (in *stan*) implementing our time-to-event approach to the estimation of relapse, recrudescence and reinfection in *P. vivax* recurrences, based on follow-up data post clinic level symptomatic *P. vivax* episodes. The RMarkdown script *TimingModelStan.Rmd* fits the stan models to pooled data from two large studies on the Thailand-Myanmar border (total *n=1299* individuals, over 1000 patient years of follow-up).
+
+* *Pooled_Final_Analysis* provides an RMarkdown script *Pooled_Analysis.Rmd* which combines the genetic model fits and the timing model fits on the same data from the two large studies on the Thailand-Myanmar border (total *n=1299* individuals). In particular it implements the following:
     1. Full Bayesian analysis of all recurrences, and where available, estimates using the genetic data are based on prior probabilities from the time-to-event model
     2. Estimation of false-positive rate using genetic data alone by comparing isolates from different individuals
     3. Estimation of failure rate after supervised high-dose primaquine in the epidemiological context of the Thai-Myanmar border
     4. Prediction of primaquine failure from carboxy-primaquine (inactive, slowly eliminated metabolite) trough concentrations
 
-* *Simulation_Study* estimates the number of microsatellites needed to reliably calculate recurrence probabilities in paired infections under certain assumptions of complexity of infection. This is in the RMarkdown script *SimulationStudy.Rmd*.
+* *Simulation_Study* provides two separate model validation, simulation-based studies for the genetic and time-to-event models, respectively. 
+    1. *SimulationStudy_Genetic_Model.Rmd* estimates the number of microsatellites needed to reliably calculate recurrence probabilities in paired infections under certain assumptions of complexity of infection.
+    2. *SimulationStudy_Timing_Model.Rmd* simulates data under the assumptions of the two time-to-event model and then fits the models to these data (well-specified problems). It also simulates and fits model 2 to data whereby reinfections are seasonal (mis-specified). It performs posterior model checks: simulates data from the posterior distribution and compares against observed, both visually and with summary statistics.
 
 All data are stored in *RData* and a microsatellite data plotting tool is given in *Genetic_Model/PlottingFunction.R*.
 
-Enjoy reading through the model code and model implementation! If you see any bugs or have any questions, the authors can be contacted at jwatowatson@gmail.com and aimee.r.taylor.85@gmail.com. For general questions regarding R, please visit https://www.r-project.org/ and various resources online. In you are unfamiliar with, access to someone with a working knowledge of R will be helpful.
+Enjoy reading through the model code and model implementation! If you see any bugs or have any questions, the authors can be contacted at jwatowatson@gmail.com and aimee.r.taylor.85@gmail.com. For general questions regarding R, please visit https://www.r-project.org/ and various resources online. In you are unfamiliar with R, then access to someone with a working knowledge of R will be helpful.
   
 ## Installation 
 
@@ -72,7 +76,7 @@ The output of the RMarkdown scripts is as follows:
 
 To regenerate everything from scratch, including all intermediate files, set *RUN_MODELS___* variables to TRUE in all RMarkdown scripts, then run TimingModelStan.Rmd followed by the other RMarkdown scripts in no specific order. The output is as described above plus model output. 
 
-
+This is still work in progress as we will be updating the model and improving the workflow (even after publication). If there is a bug on the current github version just drop us an email with a screen shot.
 
 
 

@@ -240,7 +240,7 @@ params_M2 = c(params_M1,
 
 Generate simulated data under the assumptions of model 2
 ```{r}
-set.seed(7656728)
+#set.seed(7656728)
 out2 = simulate_dataset(N_PMQ = N_PMQ, 
                         N_CQ = N_CQ, 
                         N_AS = N_AS,
@@ -251,6 +251,9 @@ out2 = simulate_dataset(N_PMQ = N_PMQ,
 Simdata_Model2 = out2$Simdata
 Simulation_truth2 = out2$Simulation_truth
 table(Simulation_truth2$True_state, Simulation_truth2$Drug)
+
+writeLines(sprintf('The proportion of reinfections in the PMQ+ arm is %s%%',
+round(100*sum(Simulation_truth2$True_state[Simulation_truth2$Drug=="CHQ/PMQ"] == 'Reinfection')/sum(Simulation_truth2$Drug=="CHQ/PMQ"),1)))
 ```
 
 Prior specification for stan fit:
@@ -311,7 +314,7 @@ classification_mod2_upper = apply(thetas_mod2$prob_labels,c(2,3),quantile, probs
 classification_mod2 = apply(thetas_mod2$prob_labels,c(2,3),median)
 classification_mod2_lower = apply(thetas_mod2$prob_labels,c(2,3),quantile, probs=0.025)
 
-writeLines(sprintf('The true failure rate in the simulated data is %s%%. Model 2 estimates the failure rate to be %s%% (95%% CI: %s-%s)',
+writeLines(sprintf('The percentage of reinfections in the PMQ+ arm in the simulated data is %s%%. Model 2 estimates this percentage to be %s%% (95%% CI: %s-%s)',
                    # the true failure rate in the primaquine arm
                    round(100*sum(Simulation_truth2$True_state[Simulation_truth2$Drug=="CHQ/PMQ"] != 'Reinfection')/sum(Simulation_truth2$Drug=="CHQ/PMQ"),1),
                    round(100*(1-sum(classification_mod2[Simdata_Model2$Drug==2,1])/sum(Simdata_Model2$Drug==2)),1),
@@ -366,7 +369,8 @@ for(p in params_interest){
 par(mfrow=c(1,1))
 plot(100*simulation_full_results_mod2$failure_matrix[,1],
      100*simulation_full_results_mod2$failure_matrix[,2],
-     xlab='True PMQ failure rate in simulated data', ylab = 'Estimated PMQ failure rate')
+     xlab='True percentage of failures (relapse or recrudescence) in PMQ+ arm of simulated data', 
+     ylab = 'Estimated percentage of failures (relapse or recrudescence) in PMQ+ arm of simulated data')
 lines(c(0,100),c(0,100))
 ```
 
@@ -504,7 +508,7 @@ for(p in params_interest){
 }
 par(mfrow=c(1,1))
 plot(100*res$failure_matrix[,1],100*res$failure_matrix[,2],
-     xlab='True PMQ failure rate',ylab = 'Estimated PMQ failure rate')
+     xlab='True PMQ+ percentage of failures',ylab = 'Estimated PMQ+ percentage of failures')
 lines(c(0,100),c(0,100))
 writeLines(sprintf('%s%% of the simulations overestimate the failure rate of PMQ',
                    100*sum(res$failure_matrix[,1]< res$failure_matrix[,2])/nrow(res$failure_matrix)))
@@ -705,14 +709,16 @@ layout(mat = matrix(data = c(1,1,1,2,2,2,
 load('../RData/TimingModel/simulation_full_results_mod2.RData')
 plot(100*simulation_full_results_mod2$failure_matrix[,1],
      100*simulation_full_results_mod2$failure_matrix[,2], pch=16,
-     xlab='True PMQ failure rate in simulated data', ylab = 'Estimated PMQ failure rate')
+     xlab='True failures after PMQ+ (%)', 
+     ylab = 'Estimated failures after PMQ+ (%)')
 title('Well-specified model')
 lines(c(0,100),c(0,100))
 
 # Seasonal data - model misspecification
 load('../RData/TimingModel/simulation_full_results_mod_seasonal.RData')
 plot(100*res$failure_matrix[,1],100*res$failure_matrix[,2],pch=16,
-     xlab='True PMQ failure rate in simulated data',ylab = 'Estimated PMQ failure rate')
+     xlab='True failures after PMQ+ (%)', 
+     ylab = 'Estimated failures after PMQ+ (%)')
 lines(c(0,100),c(0,100))
 title('Mis-specified model')
 
