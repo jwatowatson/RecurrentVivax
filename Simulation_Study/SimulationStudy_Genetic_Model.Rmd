@@ -610,11 +610,16 @@ if(PLOT_RESULTS){
           apply(thetas_all[ind,States], 2, sd, na.rm = T)
         })
         
+        pct_unconverged <- sapply(JOBS_pattern, function(x){
+          ind <- thetas_all$setting == x
+         round(mean(grepl('P0', thetas_all[ind,'Phased']))*100)
+        })
+        
         colnames(X) = settings[JOBS_pattern,'M']
       
         # Barplot
         Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
-                    ylab = '', xlab = '', cex.names=1.5,cex.axis = 1.5,
+                    ylab = '', xlab = '', cex.names=1.5, cex.axis = 1.5,
                     main = relationship_names[relationship], names.arg = Ms)
         
         # polygon(col = transparent_pink_band, 
@@ -624,6 +629,7 @@ if(PLOT_RESULTS){
         
         mtext(text = 'Probability', side = 2, line=3.5, cex=1, las=3)
         mtext(text = 'Number of markers', side = 1, line=3, cex=1.3)
+
         if(relationship=='Clone'){
           legend(ifelse(BESIDES,'topleft','top'), fill = mycols[1:3], 
                  legend = State_names[States], inset = 0.01,cex = 1.3)
@@ -643,6 +649,11 @@ if(PLOT_RESULTS){
                      y0 = X[state,] - sds[state,], y1 = X[state,] + sds[state,])
           }
         }
+       
+         
+        # Add pct uncoverged
+        axis(side = 1, at = Z[2,], labels = pct_unconverged, line = 3.5, cex = 0.7, tick = F)
+        
         
         
         cat("\n")
@@ -688,6 +699,11 @@ if(PLOT_RESULTS){
         apply(thetas_all[ind,States], 2, sd, na.rm = T)
       })
       
+      pct_unconverged <- sapply(JOBS_pattern, function(x){
+          ind <- thetas_all$setting == x
+         round(mean(grepl('P0', thetas_all[ind,'Phased']))*100)
+        })
+      
       colnames(X) = settings[JOBS_pattern,'M']
       
       # Barplot
@@ -721,6 +737,11 @@ if(PLOT_RESULTS){
                    y0 = X[state,] - sds[state,], y1 = X[state,] + sds[state,])
         }
       }
+      
+       # Add pct uncoverged
+        axis(side = 1, at = Z[2,], labels = pct_unconverged, line = 3.5, cex = 0.7, tick = F)
+       
+      
       cat("\n")
     }
   }
@@ -763,6 +784,11 @@ if(PLOT_RESULTS){
         apply(thetas_all[ind,States], 2, sd, na.rm = T)
       })
       
+      pct_unconverged <- sapply(JOBS_pattern, function(x){
+          ind <- thetas_all$setting == x
+         round(mean(grepl('P0', thetas_all[ind,'Phased']))*100)
+        })
+      
       colnames(X) = settings[JOBS_pattern,'M']
       
       # Barplot
@@ -796,6 +822,10 @@ if(PLOT_RESULTS){
                    y0 = X[state,] - sds[state,], y1 = X[state,] + sds[state,])
         }
       }
+      
+       # Add pct uncoverged
+        axis(side = 1, at = Z[2,], labels = pct_unconverged, line = 3.5, cex = 0.7, tick = F)
+       
       cat(" ")
     }
   }
