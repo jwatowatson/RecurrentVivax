@@ -81,14 +81,16 @@ if(EXCLUDE_COMPLEX) {
   Ksamples_min = 10 
 }
 
-# runs the model for 100 random draws from the Time model posterior on those that can be directly computed
+# runs the genetic model with the time-to-event prior on those that can be directly computed
+# with 100 random draws from both the time-to-event and allele frequency posterior 
 RUN_MODELS_FULL_POSTERIOR = F #
 
-# runs time-agnostic (with random draws from  allele frequency distribution) 
-# whose output used for genetic only efficacy estimate
+# runs the genetic model without the time-to-event prior on those that can be directly computed
+# with 100 random draws from the allele frequency posterior 
 RUN_MODELS_FULL_POSTERIOR_TAGNOSTIC = F 
 
-# runs the model for 100 random draws from the Time model posterior on those that cannot be directly computed
+# runs the genetic model with the time-to-event prior for those that cannot be directly computed
+# with 100 random draws from both the time-to-event and allele frequency posterior 
 RUN_MODELS_FULL_POSTERIOR_INFLATED = F
 
 # Does the false positive discovery estimation
@@ -124,7 +126,7 @@ recur_patient_treatment = sapply(recur_patient_names, function(id){
   inds = Combined_Time_Data$patientid == id
   treatment = unique(Combined_Time_Data$trial_arm_partner[inds])
   if(length(treatment) >1){stop('More than one treatment')}else{treatment}
-  })
+})
 
 # Number of episodes per persons 
 All_VHX_epi_count = table(uncensored_patientid_vector[grepl('VHX_',uncensored_patientid_vector)]) 
@@ -149,7 +151,7 @@ writeLines(sprintf('\nNumber of patients: %s (%s in VHX; %s in BPD)', total_pati
 writeLines('\nNumber of patients by treatment:')
 table(Combined_Time_Data$trial_arm_partner[!duplicated(Combined_Time_Data$patientid)])[treatment_order]
 
-# XXX ADD SUMMARIES FOR SEX, AGE, FOLLOW UP, PARASITE DENSITIES XXX
+# XXX ADD SUMMARIES FOR SEX, AGE, FOLLOW UP, PARASITE DENSITIES OR LINK TO WHERE THEY CAN BE FOUND
 
 writeLines('\nNumber of patients who recurred by treatment, Nr:') # XXX Why does VHX PMQ disagree???? 
 table(recur_patient_treatment)[treatment_order]
@@ -177,7 +179,7 @@ round(100*table(MS_pooled$trial_arm_partner[recur_ind][!duplicated(MS_pooled$ID[
 writeLines('\nNumber of recurrences by treatment:')
 table(Combined_Time_Data_no_cnsd_rows$trial_arm_partner[Combined_Time_Data_no_cnsd_rows$episode > 1])[treatment_order]
 R = table(Combined_Time_Data_no_cnsd_rows$trial_arm_partner[Combined_Time_Data_no_cnsd_rows$episode > 1])[treatment_order]
-  
+
 writeLines('\nNumber of recurrences typed by treatment:')
 table(MS_pooled_summary$trial_arm_partner[MS_pooled_summary$Episode > 1])[treatment_order]
 
@@ -342,28 +344,27 @@ COIs = data.frame(t(sapply(unique(MS_pooled$Episode_Identifier), function(x){
   ind = which(MS_pooled$Episode_Identifier == x)
   c(MOI=max(MS_pooled$MOI_id[ind]),
     Enrollment = MS_pooled$Episode[ind[1]] == 1,
-    Drug = MS_pooled$Treatment[ind[1]])
+    Drug = MS_pooled$Treatment[ind[1]], 
+    Episode = MS_pooled$Episode[ind[1]])
 })))
-COIs$MOI = as.numeric(COIs$MOI)
+
 COIs$Enrollment = as.logical(COIs$Enrollment) # Converts factor to logical
 COIs$PMQ = 0 
-COIs$PMQ[!COIs$Enrollment & COIs$Drug=='PMQ']=1
+COIs$PMQ[!COIs$Enrollment & COIs$Drug=='PMQ']=1 # This is under the original analysis where drug randomisation only applies to recurrence
+COIs$MOI = as.numeric(as.character(COIs$MOI))-1 # Why minus one? 
+COIs$Episode = as.numeric(as.character(COIs$Episode))
+COIs_PMQ = COIs[COIs$Drug == 'PMQ',] # partition since another approach looks for a stronger signal in a partitioned data set
+COIs_noPMQ = COIs[!COIs$Drug == 'PMQ',]
 ```
 
 ```{r}
-# XXX TAlk to James
-# if we partition by receipt of PMQ and not under the hypothesis that if relapses are less diverse
-# enrolment effect larger in partion who received PMQ: 
-COIs$PMQ = ifelse(COIs$Drug=='PMQ',1,0)
-mod1 = glm(MOI ~ enrollment, family = 'poisson', 
-          data = data.frame(MOI= COIs$MOI - 1, # need to do minus 1 so it's Poisson appropriate
-                            enrollment = as.numeric(COIs$Enrollment))[COIs$PMQ == 1,])
-mod2 = glm(MOI ~ enrollment, family = 'poisson', 
-           data = data.frame(MOI= COIs$MOI - 1, # need to do minus 1 so it's Poisson appropriate
-                             enrollment = as.numeric(COIs$Enrollment))[COIs$PMQ != 1,])
+# If we partition by receipt of PMQ under the hypothesis that if relapses are less diverse
+# enrolment effect should dissappear in partion who received PMQ: Yes
+# And if if increasingly few hypnozoites awake over time, should see and effect of Episode in the non PMQ: No
+mod1 = glm(MOI ~ Enrollment + Episode, family = 'poisson', data = COIs_PMQ)
+mod2 = glm(MOI ~ Enrollment + Episode, family = 'poisson', data = COIs_noPMQ)
 summary(mod1)
 summary(mod2)
-# As it happens, opposite is true. Suggests to me the pattern in MOI might be to declining transmission
 ```
 
 ```{r, echo=FALSE}
@@ -600,7 +601,7 @@ writeLines(sprintf('Of those successfully genotyped at additional (non-core) mar
                    sum(MS_addn_count[BPD_ind][MS_addn_count[BPD_ind] > 0] == 6))) # BPD
 ```
 
-# Now we remove MS data for indiviuduals who miss paired enrolment and recurrent data in preparation for recurrent state inference
+# Now we remove MS data for individuals who miss paired enrolment and recurrent data in preparation for recurrent state inference
 
 ```{r}
 # First we remove MS data for which there are either no recurrent data or no enrolment data 
@@ -610,13 +611,13 @@ IDs_Enrolment_n_Recurrent_typed = sapply(unique(MS_pooled_summary$ID), function(
   if(!1 %in% episodes){print(sprintf('enrolment missing for %s',id))}
   if(!length(episodes) > 1){print(sprintf('recurrent missing for %s',id))}
   if(length(episodes) > 1 & 1 %in% episodes){id}else{NA}  # one or more recurrent and contains and enrolment episode 
-  })
+})
 
 # Check that 'BPD_564' had only a single recurrence thus unanalzable: yes
 MS_pooled$Episode[MS_pooled$ID == 'BPD_564'] 
 
 writeLines(sprintf('\nIndividuals removed due to missing enrolment or no recurrent data: \n %s', 
-paste(IDs_Enrolment_n_Recurrent_typed[is.na(IDs_Enrolment_n_Recurrent_typed)], collapse = ' ')))
+                   paste(IDs_Enrolment_n_Recurrent_typed[is.na(IDs_Enrolment_n_Recurrent_typed)], collapse = ' ')))
 
 #-----------------------------------------------------
 # Redefine dataframes XXX Consider re-nameing so code is more robust
@@ -762,6 +763,12 @@ if(RUN_MODELS_FULL_POSTERIOR){
 } else {
   load(file = f_name)
 }
+
+if(any(grepl('P0', thetas_9MS$Phased))){
+  writeLines('Some probablistic phasing did not converge')
+}else{
+  writeLines('Zero accounts of unconverged probablistic phasing')   
+}
 ```
 
 For genetic only efficacy estimate, run time agnostic (i.e. genetic only)
@@ -819,6 +826,12 @@ if(RUN_MODELS_FULL_POSTERIOR_TAGNOSTIC){
   toc()
 } else {
   load(file = f_name)
+}
+
+if(any(grepl('P0', thetas_9MS_Tagnostic$Phased))){
+  writeLines('Some probablistic phasing did not converge')
+}else{
+  writeLines('Zero accounts of unconverged probablistic phasing')   
 }
 ```
 
@@ -969,9 +982,9 @@ if(CREATE_PLOTS){
     
     CI_cols = which(colnames(thetas_9MS)==paste(state,'2.5%',sep='') | colnames(thetas_9MS)==paste(state,'97.5%',sep=''))
     for(i in 1:length(ordered$ix)){
-        segments(x0 = i, y0 = thetas_9MS[ordered$ix[i],CI_cols[2]], 
-                 x1 = i, y1 = thetas_9MS[ordered$ix[i],CI_cols[1]],
-                 col = drug_cols2[thetas_9MS$drug[ordered$ix[i]]])}
+      segments(x0 = i, y0 = thetas_9MS[ordered$ix[i],CI_cols[2]], 
+               x1 = i, y1 = thetas_9MS[ordered$ix[i],CI_cols[1]],
+               col = drug_cols2[thetas_9MS$drug[ordered$ix[i]]])}
     
     # Plot genetic with time-agnostic prior
     ordered = sort.int(thetas_9MS_Tagnostic[,state], decreasing = TRUE, index.return = TRUE)
@@ -987,9 +1000,9 @@ if(CREATE_PLOTS){
     
     CI_cols = which(colnames(thetas_9MS)==paste(state,'2.5%',sep='') | colnames(thetas_9MS)==paste(state,'97.5%',sep=''))
     for(i in 1:length(ordered$ix)){
-        segments(x0 = i, y0 = thetas_9MS[ordered$ix[i],CI_cols[2]], 
-                 x1 = i, y1 = thetas_9MS[ordered$ix[i],CI_cols[1]],
-                 col = drug_cols2[thetas_9MS$drug[ordered$ix[i]]])}
+      segments(x0 = i, y0 = thetas_9MS[ordered$ix[i],CI_cols[2]], 
+               x1 = i, y1 = thetas_9MS[ordered$ix[i],CI_cols[1]],
+               col = drug_cols2[thetas_9MS$drug[ordered$ix[i]]])}
   }
 }
 ```
@@ -1070,8 +1083,8 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
     Res
   }
   toc()
-  # Summarise the results
   
+  # Summarise the results XXX PULL OUT EVIDENCE OF CONVERGENCE (PHASED)
   # Pull out the credible intervals
   CI_C = apply(Res_total[,grep('C', colnames(Res_total))],1, 
                quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
@@ -1088,6 +1101,12 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
 } else {
   load(f_name)
 }
+
+# XXX CURRENTLY DOES NOT WORK AS PHASED OR NOT NOT RECORDED
+if(any(grepl('P0', Results_Inflated$Phased))){
+  writeLines('Some probablistic phasing did not converge')}
+if(!any(grepl('P0', Results_Inflated$Phased))){
+  writeLines('Zero accounts of unconverged probablistic phasing')}
 ```
 
 
@@ -1294,12 +1313,20 @@ round(100*table(X0$trial_arm_partner)[names(R)]/R)[treatment_order]
 ```
 
 
-```{r CoatneyStylePLot, echo=FALSE}
+```{r, echo=FALSE}
 # Only the recurrences for which we can compute estimates of recurrence state
 MS_final = filter(MS_pooled_summary, !is.na(L_median))
 MS_final = arrange(MS_final, desc(Drug), desc(FU), desc(TotalEpisodes))
 ids = unique(MS_final$ID)
 
+# XXX CURRENTLY DOES NOT WORK AS PHASED NOT RECORDED
+if(any(grepl('P0', MS_final$Phased))){
+  writeLines('Some probablistic phasing did not converge')
+} else {
+  writeLines('Zero accounts of unconverged probablistic phasing')}
+```
+
+```{r CoatneyStylePLot, echo=FALSE}
 if(CREATE_PLOTS){
   
   ## Time series data colored by genetic STATE: classification
@@ -1624,6 +1651,8 @@ writeLines(sprintf('The false-positive discovery rate of the genetic model is es
                    round(100*sum( Inflated_Results$L > Epsilon_upper,
                                   na.rm = T)/sum(!is.na(Inflated_Results$L)),2),
                    nrow(Inflated_Results)))
+
+writeLines(sprintf('The null data are more diverse than the real data. As such %s percent were probablistically phased without convergence', round(sum(grepl('P0', Inflated_Results$Phased))/nrow(Inflated_Results)*100)))  
 ```
 
 
