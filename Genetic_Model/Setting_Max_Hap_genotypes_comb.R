@@ -91,7 +91,7 @@ n_haps_per_episode = lapply(yns, function(yn){ # For a given individual
 })
 
 
-# Remove complex and no recurrence
+# Remove complex (defined here as more than 3 episodes) and no recurrence
 complex = (Tns > Max_Eps) | (sum_cns > Max_Tot_Vtx) # 54 indiv. whose data are too complex 
 no_recurrence = unlist(Tns) < 2 # individuals that have Tn = 1 (no recurrence)
 IDs = IDs_all[(!complex & !no_recurrence)] 
