@@ -7,7 +7,7 @@
 # 
 # ------- Finding ----------------------------------------------------------
 # Summary: IDs that do not pass UpperComplexity considerably slow computation. Since no 
-# results are ever obtained from these, preferable to remove ahead of computation
+# results are never obtained from these, preferable to remove ahead of computation
 #
 # Here, these IDs are defined as any for which one or more episode comparison 
 # (either simple or inflated) returns NA when Max_Hap_genotypes = 100 and Max_Hap_comb = 800. 
