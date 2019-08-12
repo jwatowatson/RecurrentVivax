@@ -1649,8 +1649,8 @@ if(RUN_MODELS_FALSE_POSITIVE){
 ```{r, echo=FALSE}
 writeLines(sprintf('The false-positive discovery rate of the genetic model is estimated as %s percent. 
                    \nThis is based on %s pairwise comparisons',
-                   round(100*sum( Inflated_Results$L > Epsilon_upper,
-                                  na.rm = T)/sum(!is.na(Inflated_Results$L)),2),
+                   round(100*sum( (Inflated_Results$L+Inflated_Results$C) > Epsilon_upper,
+                                  na.rm = T)/sum(!is.na(Inflated_Results$L)),1),
                    nrow(Inflated_Results)))
 
 writeLines(sprintf('The null data are more diverse than the real data. As such %s percent were probablistically phased without convergence', round(sum(grepl('P0', Inflated_Results$Phased))/nrow(Inflated_Results)*100)))  
