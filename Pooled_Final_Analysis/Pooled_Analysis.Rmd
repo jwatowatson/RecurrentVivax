@@ -78,7 +78,7 @@ if(EXCLUDE_COMPLEX) {
   Ksamples_min = 100 # Number of random draws from the {time-to-event, allele frequency} prior that informs the CI around geneticallt informed estimate
 } else{ 
   f_name_prefix = '../RData/GeneticModel/Including_Complex_Cases'
-  Ksamples_min = 10 
+  Ksamples_min = 100
 }
 
 # runs the genetic model with the time-to-event prior on those that can be directly computed
@@ -371,20 +371,20 @@ summary(mod2)
 par(las=1, mfrow=c(1,2))
 
 # Distribution of enrollment COIs
-hist(COIs$MOI[COIs$Enrollment], freq = F, breaks = seq(0.5,4.5, by=1),
+hist(COIs$MOI[COIs$Enrollment]+1, freq = F, breaks = seq(0.5,4.5, by=1),
      xlab = 'COIs', ylab = '% of enrollment episodes',
      main='Enrollment episodes', col = 'gray', 
      yaxt='n', ylim = c(0,.75))
 axis(2, at = c(0,.25,.5,.75), labels = 100*c(0,.25,.5,.75))
 
 # Distribution of recurrent COIs by drug
-hist(COIs$MOI[!COIs$Enrollment & COIs$Drug=='PMQ'], freq = F, 
+hist(COIs$MOI[!COIs$Enrollment & COIs$Drug=='PMQ']+1, freq = F, 
      breaks = seq(0.5,4.5, by=1),
      xlab = 'COIs', ylab = '% of enrollment episodes',
      yaxt='n', ylim = c(0,.75), main='Recurrent episodes ', 
      density = 15, angle = 30, col ='blue')
 axis(2, at = c(0,.25,.5,.75), labels = 100*c(0,.25,.5,.75))
-hist(COIs$MOI[!COIs$Enrollment & !COIs$Drug=='PMQ'], freq = F, 
+hist(COIs$MOI[!COIs$Enrollment & !COIs$Drug=='PMQ']+1, freq = F, 
      breaks = seq(0.5,4.5, by=1),
      xlab = 'COIs', ylab = '% of enrollment episodes',add=T,
      yaxt='n', ylim = c(0,.75), main='', density = 15, 
@@ -392,7 +392,7 @@ hist(COIs$MOI[!COIs$Enrollment & !COIs$Drug=='PMQ'], freq = F,
 axis(2, at = c(0,.25,.5,.75), labels = 100*c(0,.25,.5,.75))
 legend('topright',col=c('blue','grey'),legend = c('PMQ+','No PMQ'), lwd=2)
 mod = glm(MOI ~ enrollment + drug, family = 'poisson', 
-          data = data.frame(MOI=COIs$MOI - 1, # need to do minus 1 so it's Poisson appropriate
+          data = data.frame(MOI=COIs$MOI, # need to do minus 1 so it's Poisson appropriate
                             enrollment=as.numeric(COIs$Enrollment),
                             drug = COIs$PMQ))
 summary(mod)
@@ -962,7 +962,7 @@ writeLines(sprintf('Based on all available data, %s of %s PMQ+ classified as rel
 
 Probability of states, ordered from most to least likely:
 
-XXX Need to sort plotting bug - apprently appears only after first run
+XXX Need to sort plotting bug - apparently appears only after first run
 
 ```{r, fig.height=6, echo=FALSE}
 if(CREATE_PLOTS){
@@ -1023,8 +1023,8 @@ writeLines(sprintf('individuals with more than two recurrences: %s',length(IDs_r
 We blow up the pooled analysis into all pairs within individuals:
 
 ```{r, include=FALSE}
-MS_inflate = reformat_MSdata(filter(MS_pooled, ID %in% IDs_remaining), MSs = MSs_all)
-MS_inflated = Inflate_into_pairs(MS_data = MS_inflate)
+MS_inflated = filter(MS_pooled, ID %in% IDs_remaining)
+MS_inflated = Inflate_into_pairs(MS_data = MS_inflated)
 writeLines(sprintf('Number of pairwise probabilities of recurrence states between episodes: %s',length(unique(MS_inflated$ID))))
 ```
 
@@ -1083,30 +1083,32 @@ if(RUN_MODELS_FULL_POSTERIOR_INFLATED){
     Res
   }
   toc()
-  
-  # Summarise the results XXX PULL OUT EVIDENCE OF CONVERGENCE (PHASED)
+  # Summarise the results
   # Pull out the credible intervals
-  CI_C = apply(Res_total[,grep('C', colnames(Res_total))],1, 
+  CI_C = apply(Res_total[,grep('C', colnames(Res_total)), drop=F],1, 
                quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
-  CI_L = apply(Res_total[,grep('L', colnames(Res_total))],1, 
+  CI_L = apply(Res_total[,grep('L', colnames(Res_total)), drop=F],1, 
                quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
-  CI_R = apply(Res_total[,grep('I', colnames(Res_total))],1, 
+  CI_R = apply(Res_total[,grep('I', colnames(Res_total)), drop=F],1, 
                quantile, probs = c(lowerCI, 0.5, upperCI), na.rm=T)
   CIs = t(rbind(CI_C, CI_L, CI_R)) 
-  colnames(CIs) = paste(rep(c('C', 'L', 'I'), each = 3), colnames(CIs), sep = '')
+  colnames(CIs) = paste(rep(c('C', 'L', 'I'), each = 3), colnames(CIs), sep = '')#, 'Phased')
   
   
-  Results_Inflated= as.data.frame(CIs)
+  Results_Inflated = as.data.frame(CIs)
+  Results_Inflated$Phased = Res_total$Phased
   save(Results_Inflated, file = f_name)
 } else {
   load(f_name)
 }
 
+table(Results_Inflated$Phased)
 # XXX CURRENTLY DOES NOT WORK AS PHASED OR NOT NOT RECORDED
 if(any(grepl('P0', Results_Inflated$Phased))){
-  writeLines('Some probablistic phasing did not converge')}
-if(!any(grepl('P0', Results_Inflated$Phased))){
-  writeLines('Zero accounts of unconverged probablistic phasing')}
+  writeLines('Some probablistic phasing did not converge')
+} else {
+  writeLines('Zero accounts of unconverged probablistic phasing')
+}
 ```
 
 
@@ -1375,7 +1377,7 @@ if(CREATE_PLOTS){
   
   legend('topright', col = c(mycols_states_fg), 
          pch = c(17,15,6), cex = 1, bty = 'n', y.intersp = 0.75, title = 'Classification',
-         legend = c('Relapse','Uncertain','Reinfection'))
+         legend = c('Failure (relapse or recrudescence)','Uncertain','Reinfection'))
   
   legend('top', col = drug_cols2[2:3], 
          cex = 1, bty = 'n', y.intersp = 0.75, 
@@ -1617,17 +1619,16 @@ We want to know how often our model estimates evidence of relapse across pairs o
 ```{r}
 if(RUN_MODELS_FALSE_POSITIVE){
   # check if the massive pairwise dataset has been made, if not make it 
-  # (takes a long time ~20hours)
   if(!"APC_MSdata.bigRData"%in%list.files(path = '../RData/LargeFiles/')){
     # The pooled MS data from BPD and VHX
     load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
     tic()
-    APC_MSdata = Make_All_Pairwise_Comparisons(MS_data = MS_pooled, ncores=42)
+    APC_MSdata = Make_All_Pairwise_Comparisons(MS_data = MS_pooled, ncores=Ncores)
     save(APC_MSdata, file = '../RData/LargeFiles/APC_MSdata.bigRData')
     toc()
   } 
   load('../RData/LargeFiles/APC_MSdata.bigRData')
-  print('The inflated pairwise dataset is available, now running the analysis...')
+  writeLines(sprintf('The inflated across individuals pairwise episode comparison dataset is available, there are %s pairwise comparisons, now running the analysis...', length(unique(APC_MSdata$ID))))
   # Run the genetic model on the pairwise data
   tic()
   Inflated_Results = post_prob_CLI(MSdata = APC_MSdata, 
@@ -1648,8 +1649,8 @@ if(RUN_MODELS_FALSE_POSITIVE){
 ```{r, echo=FALSE}
 writeLines(sprintf('The false-positive discovery rate of the genetic model is estimated as %s percent. 
                    \nThis is based on %s pairwise comparisons',
-                   round(100*sum( Inflated_Results$L > Epsilon_upper,
-                                  na.rm = T)/sum(!is.na(Inflated_Results$L)),2),
+                   round(100*sum((Inflated_Results$L+Inflated_Results$C) > Epsilon_upper,
+                                  na.rm = T)/sum(!is.na(Inflated_Results$L)),1),
                    nrow(Inflated_Results)))
 
 writeLines(sprintf('The null data are more diverse than the real data. As such %s percent were probablistically phased without convergence', round(sum(grepl('P0', Inflated_Results$Phased))/nrow(Inflated_Results)*100)))  
@@ -1686,7 +1687,7 @@ ind_add_classified = MS_final$Episode_Identifier %in% names(which(MS_addn_count_
 BPD_ind = grepl('BPD_', MS_final$ID) # Index for BPD individuals
 VHX_ind = grepl('VHX_', MS_final$ID) # Index for VHX individuals
 
-writeLines(sprintf('\nParition of %s recurrences analysed partioned by number of additional markers successfully typed:',
+writeLines(sprintf('\nPartition of %s recurrences analysed partioned by number of additional markers successfully typed:',
                    sum(table(recur_add_count))))
 table(recur_add_count)
 

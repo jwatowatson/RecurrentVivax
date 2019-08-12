@@ -5,7 +5,6 @@ output:
   html_document:
     df_print: paged
     keep_md: yes
-  pdf_document: default
 ---
 
 # Preamble
@@ -15,74 +14,181 @@ Load R packages, functions and data.
 
 
 
-Summary of the data and the whole of the VHX data set versus the subset typed (in terms of number of episodes):
+```r
+#============================================================
+# First let's extract some summaries and format the data frames 
+# ahead of summaries and analyses
+#============================================================
+total_patient_names = unique(Combined_Time_Data$patientid)
+total_patient_count = length(total_patient_names)
+
+# Add a variable with trial, drug arm (if VHX) and partner (if BPD - since drug arm was labelled CQ for all BPD for modelling purpose)
+ind_VHX_ctd = grepl('VHX', Combined_Time_Data$patientid)
+Combined_Time_Data$trial_arm_partner = NA
+Combined_Time_Data$trial_arm_partner[ind_VHX_ctd] = paste('VHX', Combined_Time_Data$arm_num[ind_VHX_ctd])
+Combined_Time_Data$trial_arm_partner[!ind_VHX_ctd] = paste('BPD', Combined_Time_Data$PMQ_partner[!ind_VHX_ctd])
+
+# Note that Combined_Time_Data has censored rows for patients
+Combined_Time_Data_no_cnsd_rows = Combined_Time_Data[Combined_Time_Data$Censored != 1,] # remove censored rows
+uncensored_patientid_vector = Combined_Time_Data_no_cnsd_rows$patientid # vector of patientids excluding censored rows (inc. duplicates)
+
+# names of patients who recurred
+recur_patient_names = names(which(table(uncensored_patientid_vector) > 1))
+
+# Treatment of all those who recurred
+recur_patient_treatment = sapply(recur_patient_names, function(id){
+  inds = Combined_Time_Data$patientid == id
+  treatment = unique(Combined_Time_Data$trial_arm_partner[inds])
+  if(length(treatment) >1){stop('More than one treatment')}else{treatment}
+})
+
+# Number of episodes per persons 
+All_VHX_epi_count = table(uncensored_patientid_vector[grepl('VHX_',uncensored_patientid_vector)]) 
+All_BPD_epi_count = table(uncensored_patientid_vector[grepl('BPD_',uncensored_patientid_vector)]) 
+
+# Add trial, drug arm (if VHX) and partner (if BPD - see above) to genetic data 
+MS_pooled$trial_arm_partner = sapply(1:nrow(MS_pooled), function(i){unique(Combined_Time_Data$trial_arm_partner[Combined_Time_Data$patientid==MS_pooled$ID[i]])})
+
+# Collapse rows due to complex infections (COI > 2)
+MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] 
+```
+
+
+# Summary of the clinical trial data (features in Table 1 of the main text)
 
 
 ```
-## Number of individuals in VHX and BPD trials: 644 and 655, respectively
-```
-
-```
-## Number of individuals with at least one episode typed: 217
-```
-
-```
-## Number of episodes typed: 710
-```
-
-```
-## Number of recurrences typed: 494
+## 
+## Number of patients: 1299 (644 in VHX; 655 in BPD)
 ```
 
 ```
 ## 
-## Overall in the dataset: breakdown by treatment group (individuals typed):
+## Number of patients by treatment:
 ```
 
 ```
 ## 
-##  AS CHQ PMQ 
-##  13  90 114
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##         224         222         198         329         326
 ```
 
 ```
 ## 
-## Within VHX: breakdown by treatment group (VHX individuals typed):
+## Number of patients who recurred by treatment, Nr:
+```
+
+```
+## recur_patient_treatment
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##         177         165          35          47          34
 ```
 
 ```
 ## 
-##  AS CHQ PMQ 
-##  13  90  34
+## Percent of N patients who recurred by treatment:
 ```
 
 ```
+## recur_patient_treatment
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##          39          36           8          10           7
+```
+
+```
+## 
+## Number of individuals with at least one episode typed by treatment:
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##          13          90          34          46          34
+```
+
+```
+## 
+## Percent of Nr individuals with at least one episode typed by treatment:
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##           7          55          97          98         100
+```
+
+```
+## 
+## Number of individuals with at least one recurrence typed by treatment:
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##          13          90          32          46          32
+```
+
+```
+## 
+## Percent of Nr individuals with at least one recurrence typed by treatment:
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##           7          55          91          98          94
+```
+
+```
+## 
+## Number of recurrences by treatment:
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##         722         587          40          53          39
+```
+
+```
+## 
+## Number of recurrences typed by treatment:
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##          13         358          35          52          36
+```
+
+```
+## 
+## Percent of R recurrences typed by treatment:
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##           2          61          88          98          92
+```
+
+```
+## 
 ## 
 ## From BPD trial there are 80 individuals with total of 167 episodes typed (enrollment: 79; recurrent 88)
-```
-
-```
-## 
-## Within BPD: breakdown by partner drug (BPD individuals typed):
-```
-
-```
-## 
-## CHQ  DP 
-##  46  34
 ```
 
 ```
 ## From VHX trial there are 137 individuals with total of 543 episodes typed (enrollment: 137; recurrent 406)
 ```
 
+# Next we summarise the number of episodes typed in people with one or more episodes typed
+
 
 ```r
 #=================================================================
-# Were all episodes typed if a person was selected for genotyping? 
+# Number of episodes typed conditional on a person being selected for genotyping
 #=================================================================
-MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] # Collapse rows due to COI > 2
-
 # No. of typed episodes per person with one or more typed episodes in VHX and BPD
 no_of_typed_epi_per_person_typed_VHX = table(MS_pooled_summary$ID[grepl('VHX',MS_pooled_summary$ID)])  
 no_of_typed_epi_per_person_typed_BPD = table(MS_pooled_summary$ID[grepl('BPD',MS_pooled_summary$ID)])  
@@ -100,14 +206,35 @@ X1 = sum(ind_untyped) # Number of people selected for genotyping but some episod
 # How many untyped per person with incomplete set of episodes typed:
 X2 = range(no_of_epi_per_person_typed_VHX[ind_untyped] - no_of_typed_epi_per_person_typed_VHX[ind_untyped]) 
 X3 = sum(no_of_epi_per_person_typed_VHX - no_of_typed_epi_per_person_typed_VHX) # Total number untyped
-writeLines(sprintf('VHX: for %s of %s VHX individual/s selected for genotyping: %s to %s of their episodes were not typed (total of %s episodes untyped summing over the %s individuals)',X1,X0,X2[1],X2[2],X3,X1))
+writeLines(sprintf('\nVHX: for %s of %s VHX individual/s selected for genotyping: %s to %s of their episodes were not typed (total of %s episodes untyped summing over the %s individuals)',X1,X0,X2[1],X2[2],X3,X1))
 ```
 
 ```
+## 
 ## VHX: for 27 of 137 VHX individual/s selected for genotyping: 1 to 7 of their episodes were not typed (total of 52 episodes untyped summing over the 27 individuals)
 ```
 
 ```r
+# How about for those who received PMQ in VHX? 
+no_of_typed_epi_per_person_typed_VHX_PMQ = table(MS_pooled_summary$ID[MS_pooled_summary$trial_arm_partner == "VHX CHQ/PMQ"])
+no_of_epi_per_person_typed_VHX_PMQ = All_VHX_epi_count[names(All_VHX_epi_count) %in% names(no_of_typed_epi_per_person_typed_VHX_PMQ)]
+X0 = length(no_of_typed_epi_per_person_typed_VHX_PMQ) # Number of people typed
+ind_untyped = no_of_epi_per_person_typed_VHX_PMQ != no_of_typed_epi_per_person_typed_VHX_PMQ
+X1 = sum(ind_untyped) # Number of people selected for genotyping but some episodes untyped
+# How many untyped per person with incomplete set of episodes typed:
+X2 = range(no_of_epi_per_person_typed_VHX_PMQ[ind_untyped] - no_of_typed_epi_per_person_typed_VHX_PMQ[ind_untyped]) 
+X3 = sum(no_of_epi_per_person_typed_VHX_PMQ - no_of_typed_epi_per_person_typed_VHX_PMQ) # Total number untyped
+writeLines(sprintf('\nVHX: for %s of %s PMQ+ treated VHX individual/s selected for genotyping: %s to %s of their episodes were not typed (total of %s episodes untyped summing over the %s individuals)',X1,X0,X2[1],X2[2],X3,X1))
+```
+
+```
+## 
+## VHX: for 4 of 34 PMQ+ treated VHX individual/s selected for genotyping: 1 to 1 of their episodes were not typed (total of 4 episodes untyped summing over the 4 individuals)
+```
+
+```r
+PMQ_treated_VHX_ids = names(no_of_typed_epi_per_person_typed_VHX_PMQ)
+
 #-------------------------
 # BPD data set: comprehensive because genotyping BPD was exhaustive
 #-------------------------
@@ -130,8 +257,8 @@ ind_missing_typed_epi <- names(which(no_of_epi_per_person_typed_BPD != no_of_typ
 
 # All episodes of the BPD individuals missing one or episodes
 X4 = lapply(ind_missing_typed_epi, function(x){
-  ind = grepl(x, uncensored_patientids)
-  Combined_Time_Data$episode[!censored_ind][ind]
+  ind = grepl(x, uncensored_patientid_vector)
+  Combined_Time_Data_no_cnsd_rows$episode[ind]
 })
 
 # Typed episodes of the BPD individuals missing one or episodes
@@ -143,7 +270,7 @@ X5 = lapply(ind_missing_typed_epi, function(x){
 X6 = lapply(1:length(X5), function(i){setdiff(X4[[i]], X5[[i]])}) # Not typed episodes
 X7 = sum(sapply(X6, function(x)sum(x>1))) # Not typed recurrence
 
-writeLines(paste(sprintf('BPD: of %s of the people who recurred: %s person/people with %s recurrence/s was not selected for genotyping.',
+writeLines(paste(sprintf('\nBPD: of %s of the people who recurred: %s person/people with %s recurrence/s was not selected for genotyping.',
                          length(unique(indivs_who_recurred)), 
                          length(unique(indivs_who_were_not_typed)), 
                          recurrences[indivs_who_were_not_typed]), 
@@ -153,10 +280,13 @@ writeLines(paste(sprintf('BPD: of %s of the people who recurred: %s person/peopl
 ```
 
 ```
+## 
 ## BPD: of 81 of the people who recurred: 1 person/people with 1 recurrence/s was not selected for genotyping. Of 4 of 80 BPD individual/s selected for genotyping: 1 to 1 of their episodes were not typed (4 episodes summing over the 4 individuals). Of the 4 episodes not typed 3 were recurrences. In total there were 92 recurrences: 4 untyped.
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+These findings are summarised in the following plot.  
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
 
 
 
@@ -166,11 +296,11 @@ writeLines(paste(sprintf('BPD: of %s of the people who recurred: %s person/peopl
 # that where genetically typed and not
 #=================================================================
 # Condition on CQ since these were the ones selected for genotyping 
-CQ_ind_epi <- Combined_Time_Data$arm_num == "CHQ" 
+CQ_ind_epi <- Combined_Time_Data_no_cnsd_rows$arm_num == "CHQ" 
 # vector of patientids excluding censored rows and those without CQ
-uncensored_patientids = Combined_Time_Data[!censored_ind & CQ_ind_epi, 'patientid'] 
+uncensored_patientid_vector = Combined_Time_Data_no_cnsd_rows$patientid[CQ_ind_epi] 
 # Number of episodes per person VHX
-All_VHX_epi_count = table(uncensored_patientids[grepl('VHX_',uncensored_patientids)]) 
+All_VHX_epi_count = table(uncensored_patientid_vector[grepl('VHX_',uncensored_patientid_vector)]) 
 
 # Condition on those that have one or more recurrence
 All_VHX_rec_count = All_VHX_epi_count[All_VHX_epi_count > 1] 
@@ -181,9 +311,11 @@ x2 = All_VHX_rec_count[!names(All_VHX_rec_count) %in% names(x1)] # No of epi per
 max_rec = max(All_VHX_rec_count)
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
 
-Summary of complexity of infection based on numbers of alleles observed. This is broken down by enrollment episodes (this is independent of drug given) and subsequent recurrences which could be drug dependent.
+# Summary of complexity of infection (COI) based on numbers of alleles observed. 
+
+This section is broken down by enrollment episodes (this is independent of drug given) and subsequent recurrences which could be drug dependent.
 
 
 ```r
@@ -191,21 +323,94 @@ COIs = data.frame(t(sapply(unique(MS_pooled$Episode_Identifier), function(x){
   ind = which(MS_pooled$Episode_Identifier == x)
   c(MOI=max(MS_pooled$MOI_id[ind]),
     Enrollment = MS_pooled$Episode[ind[1]] == 1,
-    Drug = MS_pooled$Treatment[ind[1]])
+    Drug = MS_pooled$Treatment[ind[1]], 
+    Episode = MS_pooled$Episode[ind[1]])
 })))
-COIs$MOI = as.numeric(COIs$MOI)
-COIs$Enrollment = COIs$Enrollment=='TRUE'
+
+COIs$Enrollment = as.logical(COIs$Enrollment) # Converts factor to logical
 COIs$PMQ = 0 
-COIs$PMQ[!COIs$Enrollment & COIs$Drug=='PMQ']=1
+COIs$PMQ[!COIs$Enrollment & COIs$Drug=='PMQ']=1 # This is under the original analysis where drug randomisation only applies to recurrence
+COIs$MOI = as.numeric(as.character(COIs$MOI))-1 # Why minus one? 
+COIs$Episode = as.numeric(as.character(COIs$Episode))
+COIs_PMQ = COIs[COIs$Drug == 'PMQ',] # partition since another approach looks for a stronger signal in a partitioned data set
+COIs_noPMQ = COIs[!COIs$Drug == 'PMQ',]
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+
+```r
+# If we partition by receipt of PMQ under the hypothesis that if relapses are less diverse
+# enrolment effect should dissappear in partion who received PMQ: Yes
+# And if if increasingly few hypnozoites awake over time, should see and effect of Episode in the non PMQ: No
+mod1 = glm(MOI ~ Enrollment + Episode, family = 'poisson', data = COIs_PMQ)
+mod2 = glm(MOI ~ Enrollment + Episode, family = 'poisson', data = COIs_noPMQ)
+summary(mod1)
+```
 
 ```
 ## 
 ## Call:
-## glm(formula = MOI ~ enrollment + drug, family = "poisson", data = data.frame(MOI = COIs$MOI - 
-##     1, enrollment = as.numeric(COIs$Enrollment), drug = COIs$PMQ))
+## glm(formula = MOI ~ Enrollment + Episode, family = "poisson", 
+##     data = COIs_PMQ)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -0.9258  -0.8308  -0.7898   0.9044   2.7685  
+## 
+## Coefficients:
+##                Estimate Std. Error z value Pr(>|z|)  
+## (Intercept)     -1.8004     0.9651  -1.866   0.0621 .
+## EnrollmentTRUE   0.4189     0.5567   0.752   0.4519  
+## Episode          0.3177     0.4428   0.717   0.4731  
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for poisson family taken to be 1)
+## 
+##     Null deviance: 202.73  on 235  degrees of freedom
+## Residual deviance: 202.18  on 233  degrees of freedom
+## AIC: 351.85
+## 
+## Number of Fisher Scoring iterations: 6
+```
+
+```r
+summary(mod2)
+```
+
+```
+## 
+## Call:
+## glm(formula = MOI ~ Enrollment + Episode, family = "poisson", 
+##     data = COIs_noPMQ)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -1.0703  -0.7629  -0.7586   0.5099   2.9291  
+## 
+## Coefficients:
+##                Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)    -1.22681    0.20376  -6.021 1.73e-09 ***
+## EnrollmentTRUE  0.67339    0.21322   3.158  0.00159 ** 
+## Episode        -0.00377    0.04092  -0.092  0.92660    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for poisson family taken to be 1)
+## 
+##     Null deviance: 416.98  on 473  degrees of freedom
+## Residual deviance: 400.46  on 471  degrees of freedom
+## AIC: 704.71
+## 
+## Number of Fisher Scoring iterations: 6
+```
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
+
+```
+## 
+## Call:
+## glm(formula = MOI ~ enrollment + drug, family = "poisson", data = data.frame(MOI = COIs$MOI, 
+##     enrollment = as.numeric(COIs$Enrollment), drug = COIs$PMQ))
 ## 
 ## Deviance Residuals: 
 ##     Min       1Q   Median       3Q      Max  
@@ -233,15 +438,15 @@ COIs$PMQ[!COIs$Enrollment & COIs$Drug=='PMQ']=1
 ```
 
 ```
-## Median COI in VHX and BPD: 1 and 1, respectively
+## Median COI in VHX and BPD: 0 and 0, respectively
 ```
 
 ```
-## 30 of 710 episodes (4 percent) with COI greater than or equal to 3
+## 4 of 710 episodes (1 percent) with COI greater than or equal to 3
 ```
 
 
-From this Poisson regression, there appears to be evidence that enrollment episodes have higher complexities of infection than recurrences. This implies that relapses are more likely to be single hypnozoite activated infections?
+From this Poisson regression, there appears to be evidence that enrollment episodes have higher complexities of infection than recurrences. This implies that relapses are more likely to be single hypnozoite activated infections? - XXXX 
 
 
 # Allele frequencies
@@ -268,8 +473,8 @@ We use a multinomial-dirichlet model with subjective weight $\omega$. $\omega = 
 # relatedness estimation (this was analysed elsewhere)
 #==================================================================
 monoclonal_names = rownames(COIs)[COIs$MOI == 1]
-monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
-save(monoclonal_data, Fs_Combined, file = '../RData/Data_for_relatedness.RData')
+#monoclonal_data = MS_pooled[MS_pooled$Episode_Identifier%in%monoclonal_names, ]
+# save(monoclonal_data, Fs_Combined, file = '../RData/Data_for_relatedness.RData')
 ```
 
 Calculate the effective marker cardinality for each microsatellite marker using a simulation approach.
@@ -279,26 +484,23 @@ Calculate the effective marker cardinality for each microsatellite marker using 
 N = 10^6
 Effective_Allele_size = list()
 for(ms in MSs_all){
-  n_obs_alleles = length(table(MS_pooled[Ind_Primary,ms]))
-  draw1 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
-  draw2 = sample(x = names(Fs_Combined[[ms]]), replace = T, size = N, prob = Fs_Combined[[ms]])
-  x = mean(draw1 == draw2)
-  n = 1/x
-  writeLines(sprintf('The effective cardinality for %s with %s observed alleles is %s', ms, n_obs_alleles, round(n,2)))
+  n = 1/sum(Fs_Combined[[ms]]^2)
+  writeLines(sprintf('The effective cardinality for %s with %s observed alleles is %s', ms, length(Fs_Combined[[ms]]), round(n,2)))
+  
   Effective_Allele_size[[ms]] = round(n,1)
 }
 ```
 
 ```
-## The effective cardinality for PV.3.502 with 13 observed alleles is 7.02
-## The effective cardinality for PV.3.27 with 33 observed alleles is 13.77
-## The effective cardinality for PV.ms8 with 46 observed alleles is 28.41
-## The effective cardinality for PV.1.501 with 17 observed alleles is 13
+## The effective cardinality for PV.3.502 with 16 observed alleles is 7.01
+## The effective cardinality for PV.3.27 with 51 observed alleles is 13.74
+## The effective cardinality for PV.ms8 with 50 observed alleles is 28.32
+## The effective cardinality for PV.1.501 with 18 observed alleles is 12.97
 ## The effective cardinality for PV.ms1 with 7 observed alleles is 4.31
-## The effective cardinality for PV.ms5 with 24 observed alleles is 11.92
-## The effective cardinality for PV.ms6 with 25 observed alleles is 11.89
-## The effective cardinality for PV.ms7 with 14 observed alleles is 6.89
-## The effective cardinality for PV.ms16 with 39 observed alleles is 20.18
+## The effective cardinality for PV.ms5 with 26 observed alleles is 11.96
+## The effective cardinality for PV.ms6 with 27 observed alleles is 11.91
+## The effective cardinality for PV.ms7 with 15 observed alleles is 6.91
+## The effective cardinality for PV.ms16 with 43 observed alleles is 20.11
 ```
 
 ```r
@@ -310,16 +512,371 @@ writeLines(sprintf('The mean effective marker cardinality is %s, range: %s to %s
 ```
 
 ```
-## The mean effective marker cardinality is 13.04, range: 4.3 to 28.4
+## The mean effective marker cardinality is 13.02, range: 4.3 to 28.3
+```
+
+```r
+# Equivalent number of biallelic SNPs
+sum(logb(unlist(Effective_Allele_size), base = 1.5)) # realistic SNPs
+```
+
+```
+## [1] 53.82317
+```
+
+```r
+sum(logb(unlist(Effective_Allele_size), base = 2)) # ideal SNPs
+```
+
+```
+## [1] 31.48454
 ```
 
 
 
 ## Plotting allele frequencies
 
-These are the mean posterior allele frequencies (dots) and 95\% credible intervals (bars) given pooled enrollment data and $\omega=$ `D_weight_Prior`.  
+These are the mean posterior allele frequencies (dots) and 95\% credible intervals (bars) given pooled enrollment data and $\omega=$ `D_weight_Prior`.
 
 ![](Pooled_Analysis_files/figure-html/AlleleFrequencies-1.png)<!-- -->
+
+# Summaries of samples selected to be genotyped at additional 6 markers 
+
+
+```r
+# Extract MS names
+MS_core = MSs_all[1:3] # 1) core MSs
+MS_addn = MSs_all[4:length(MSs_all)] # additionally typed MSs
+
+# Format dataframe
+MS_typd = MS_pooled_summary # Rename before relaplacing allele information with binary
+MS_typd[,MSs_all][!is.na(MS_typd[,MSs_all])] = 1 # Replace allele information with binary
+
+# Extract numbers of markers typed 
+MS_core_count = length(MS_core) - rowSums(is.na(MS_typd[,MS_core])) # Extract number of markers typed per episode
+MS_typd_count = length(MSs_all) - rowSums(is.na(MS_typd[,MSs_all])) # Extract number of markers typed per episode
+MS_addn_count = length(MS_addn) - rowSums(is.na(MS_typd[,MS_addn])) # Extract the number of additional markers typed per episode
+MS_addn_count_recurrent = length(MS_addn) - rowSums(is.na(MS_typd[MS_typd$Episode > 1,MS_addn])) # Extract the number of additional markers typed per recurrent episode
+
+names(MS_typd_count) = names(MS_addn_count) = names(MS_core_count) = MS_typd$Episode_Identifier # Name by episode
+
+# Logical indeces
+BPD_ind = grepl('BPD_', MS_typd$ID) # BPD individuals
+VHX_ind = grepl('VHX_', MS_typd$ID) # VHX individuals
+```
+
+Summaries across all samples selected
+
+
+```r
+#==========================================================================
+# Summaries of core and additional (non-core) typed
+# Zero samples failed at 6 of 6 non-core markers (email from Mallika June 12 2019)
+# As such, zero non-core marker data means that zero additional were attempted 
+#==========================================================================
+writeLines(sprintf('\nNumbers of %s samples partioned by number of markers successfully typed:', sum(table(MS_typd_count))))
+```
+
+```
+## 
+## Numbers of 710 samples partioned by number of markers successfully typed:
+```
+
+```r
+table(MS_typd_count)
+```
+
+```
+## MS_typd_count
+##   1   2   3   5   6   7   8   9 
+##   1   3 343   3   8   1  13 338
+```
+
+```r
+writeLines(sprintf('\nNumbers of %s samples partioned by number of core markers successfully typed:', sum(table(MS_core_count))))
+```
+
+```
+## 
+## Numbers of 710 samples partioned by number of core markers successfully typed:
+```
+
+```r
+table(MS_core_count) 
+```
+
+```
+## MS_core_count
+##   0   1   2   3 
+##   7   4   6 693
+```
+
+```r
+writeLines(sprintf('\nNumbers of %s samples partioned by number of non-core markers successfully typed:', sum(table(MS_addn_count))))
+```
+
+```
+## 
+## Numbers of 710 samples partioned by number of non-core markers successfully typed:
+```
+
+```r
+table(MS_addn_count) 
+```
+
+```
+## MS_addn_count
+##   0   1   3   4   5   6 
+## 346   1   1   4  11 347
+```
+
+```r
+writeLines(sprintf('\nNumbers of %s recurrent samples partioned by number of non-core markers successfully typed:', sum(table(MS_addn_count_recurrent) )))
+```
+
+```
+## 
+## Numbers of 494 recurrent samples partioned by number of non-core markers successfully typed:
+```
+
+```r
+table(MS_addn_count_recurrent) 
+```
+
+```
+## MS_addn_count_recurrent
+##   0   3   4   5   6 
+## 230   1   2   8 253
+```
+
+```r
+#=================================================
+# Episodes with missing core: share with Mallika
+Episodes_missing_core = names(MS_core_count)[(which(MS_core_count < 3))] # Names 
+Data_missing_core = MS_typd[MS_typd$Episode_Identifier %in% Episodes_missing_core, ] # All data 
+MSData_missing_core = Data_missing_core[, c(MS_core, MS_addn)] # MS Data
+rownames(MSData_missing_core) = Data_missing_core$Episode_Identifier # name rows
+#write.csv(x = MSData_missing_core, file = '~/Dropbox/Genotyping/MSData_missing_core.csv', row.names = T) # Print
+#=================================================
+
+writeLines(sprintf('\nNumber of enrolment samples successfully genotyped at additional (non-core) markers: %s of %s (%s percent, %s VHX, %s BPD)',
+                   sum(MS_typd$Episode[MS_addn_count > 0] == 1),
+                   sum(MS_typd$Episode == 1), 
+                   round(100*sum(MS_typd$Episode[MS_addn_count > 0] == 1)/sum(MS_typd$Episode == 1)), 
+                   sum(MS_typd$Episode[VHX_ind][MS_addn_count[VHX_ind] > 0] == 1), # VHX
+                   sum(MS_typd$Episode[BPD_ind][MS_addn_count[BPD_ind] > 0] == 1))) # BPD
+```
+
+```
+## 
+## Number of enrolment samples successfully genotyped at additional (non-core) markers: 100 of 216 (46 percent, 85 VHX, 15 BPD)
+```
+
+```r
+writeLines(sprintf('Number of recurrent samples successfully genotyped at additional (non-core) markers: %s of %s (%s percent, %s VHX, %s BPD)',
+                   sum(MS_typd$Episode[MS_addn_count > 0] != 1),
+                   sum(MS_typd$Episode != 1), 
+                   round(100*sum(MS_typd$Episode[MS_addn_count > 0] != 1)/sum(MS_typd$Episode != 1)), 
+                   sum(MS_typd$Episode[VHX_ind][MS_addn_count[VHX_ind] > 0] != 1), # VHX
+                   sum(MS_typd$Episode[BPD_ind][MS_addn_count[BPD_ind] > 0] != 1))) # BPD
+```
+
+```
+## Number of recurrent samples successfully genotyped at additional (non-core) markers: 264 of 494 (53 percent, 249 VHX, 15 BPD)
+```
+
+```r
+writeLines(sprintf('Of those successfully genotyped at additional (non-core) markers, number genotyped at all six: %s of %s (%s percent, %s VHX, %s BPD)',
+                   sum(MS_addn_count[MS_addn_count > 0] == 6), 
+                   sum(MS_addn_count > 0),
+                   round(100*sum(MS_addn_count[MS_addn_count > 0] == 6)/sum(MS_addn_count > 0)), 
+                   sum(MS_addn_count[VHX_ind][MS_addn_count[VHX_ind] > 0] == 6), # VHX
+                   sum(MS_addn_count[BPD_ind][MS_addn_count[BPD_ind] > 0] == 6))) # BPD
+```
+
+```
+## Of those successfully genotyped at additional (non-core) markers, number genotyped at all six: 347 of 364 (95 percent, 317 VHX, 30 BPD)
+```
+
+# Now we remove MS data for individuals who miss paired enrolment and recurrent data in preparation for recurrent state inference
+
+
+```r
+# First we remove MS data for which there are either no recurrent data or no enrolment data 
+IDs_Enrolment_n_Recurrent_typed = sapply(unique(MS_pooled_summary$ID), function(id){
+  inds = MS_pooled_summary$ID == id
+  episodes = MS_pooled_summary$Episode[inds] 
+  if(!1 %in% episodes){print(sprintf('enrolment missing for %s',id))}
+  if(!length(episodes) > 1){print(sprintf('recurrent missing for %s',id))}
+  if(length(episodes) > 1 & 1 %in% episodes){id}else{NA}  # one or more recurrent and contains and enrolment episode 
+})
+```
+
+```
+## [1] "recurrent missing for BPD_150"
+## [1] "recurrent missing for BPD_453"
+## [1] "enrolment missing for BPD_564"
+## [1] "recurrent missing for BPD_564"
+## [1] "recurrent missing for VHX_111"
+## [1] "recurrent missing for VHX_557"
+```
+
+```r
+# Check that 'BPD_564' had only a single recurrence thus unanalzable: yes
+MS_pooled$Episode[MS_pooled$ID == 'BPD_564'] 
+```
+
+```
+## [1] 2
+```
+
+```r
+writeLines(sprintf('\nIndividuals removed due to missing enrolment or no recurrent data: \n %s', 
+                   paste(IDs_Enrolment_n_Recurrent_typed[is.na(IDs_Enrolment_n_Recurrent_typed)], collapse = ' ')))
+```
+
+```
+## 
+## Individuals removed due to missing enrolment or no recurrent data: 
+##  NA NA NA NA NA
+```
+
+```r
+#-----------------------------------------------------
+# Redefine dataframes XXX Consider re-nameing so code is more robust
+#-----------------------------------------------------
+MS_pooled = filter(MS_pooled, ID %in% IDs_Enrolment_n_Recurrent_typed[!is.na(IDs_Enrolment_n_Recurrent_typed)])
+MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),]  # recreate pooled summary dataset
+MS_typd = MS_pooled_summary # Rename before relaplacing allele information with binary
+MS_typd[,MSs_all][!is.na(MS_typd[,MSs_all])] = 1 # Replace allele information with binary
+
+recur_ind = MS_pooled$Episode > 1
+writeLines('\nNumber of individuals with at least one paired recurrence typed by treatment:')
+```
+
+```
+## 
+## Number of individuals with at least one paired recurrence typed by treatment:
+```
+
+```r
+table(MS_pooled$trial_arm_partner[recur_ind][!duplicated(MS_pooled$ID[recur_ind])])[treatment_order]
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##          13          90          32          46          31
+```
+
+```r
+writeLines('\nPercent of Nr individuals with at least one paired recurrence typed by treatment:') 
+```
+
+```
+## 
+## Percent of Nr individuals with at least one paired recurrence typed by treatment:
+```
+
+```r
+round(100*table(MS_pooled$trial_arm_partner[recur_ind][!duplicated(MS_pooled$ID[recur_ind])])[names(Nr)]/Nr)[treatment_order]
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##           7          55          91          98          91
+```
+
+```r
+recur_ind = MS_pooled_summary$Episode > 1
+writeLines('\nNumber of paired recurrences typed by treatment:')
+```
+
+```
+## 
+## Number of paired recurrences typed by treatment:
+```
+
+```r
+table(MS_pooled_summary$trial_arm_partner[recur_ind])[treatment_order]
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##          13         358          35          52          35
+```
+
+```r
+writeLines('\nPercent of paired recurrences typed by treatment:') 
+```
+
+```
+## 
+## Percent of paired recurrences typed by treatment:
+```
+
+```r
+round(100*table(MS_pooled_summary$trial_arm_partner[recur_ind])[names(R)]/R)[treatment_order] 
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##           2          61          88          98          90
+```
+
+```r
+writeLines(sprintf('\nNumber of individuals with one or more paired recurrence: %s',
+                   length(unique(MS_pooled$ID))))
+```
+
+```
+## 
+## Number of individuals with one or more paired recurrence: 212
+```
+
+```r
+writeLines(sprintf('Number of episodes in individuals with one or more paired recurrence: %s',
+                   length(unique(MS_pooled$Episode_Identifier))))
+```
+
+```
+## Number of episodes in individuals with one or more paired recurrence: 705
+```
+
+```r
+writeLines(sprintf('Number of paired recurrences: %s',
+                   length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
+```
+
+```
+## Number of paired recurrences: 493
+```
+
+```r
+# To add to Table 3
+# Re-extract number of add. markers typed per episode
+MS_addn_count_recurrent = length(MS_addn) - rowSums(is.na(MS_typd[MS_typd$Episode > 1,MS_addn])) 
+names(MS_addn_count_recurrent) = MS_typd[MS_typd$Episode > 1,'Episode_Identifier']
+writeLines(sprintf('\nNumbers of %s paired recurrent samples partioned by number of non-core markers successfully typed:', sum(table(MS_addn_count_recurrent))))
+```
+
+```
+## 
+## Numbers of 493 paired recurrent samples partioned by number of non-core markers successfully typed:
+```
+
+```r
+table(MS_addn_count_recurrent) 
+```
+
+```
+## MS_addn_count_recurrent
+##   0   3   4   5   6 
+## 229   1   2   8 253
+```
 
 
 # Computing the probability of relatedness across infections
@@ -332,55 +889,20 @@ The approach is Bayesian and consists of the following:
 
 The following iterates through each individual and computes the probability of relatedness states.
 
-
-```r
-# First we remove MS data for which there are no recurrent data
-N_episodes_typed = table(MS_pooled$ID[!duplicated(MS_pooled$Episode_Identifier)])
-MS_pooled = filter(MS_pooled, ID %in% names(N_episodes_typed[N_episodes_typed>1]))
-# recreate pooled summary dataset
-MS_pooled_summary = MS_pooled[!duplicated(MS_pooled$Episode_Identifier),] 
-
-writeLines(sprintf('Number of individuals with at least two typed episodes analysed: %s',
-                   length(unique(MS_pooled$ID))))
-```
-
-```
-## Number of individuals with at least two typed episodes analysed: 212
-```
-
-```r
-writeLines(sprintf('Number of episodes in individuals with at least two typed episodes analysed: %s',
-                   length(unique(MS_pooled$Episode_Identifier))))
-```
-
-```
-## Number of episodes in individuals with at least two typed episodes analysed: 705
-```
-
-```r
-writeLines(sprintf('Number of typed recurrences analysed: %s',
-                   length(unique(MS_pooled$Episode_Identifier[MS_pooled$Episode>1]))))
-```
-
-```
-## Number of typed recurrences analysed: 493
-```
-
-
 ## Load the time-to-event priors
 
 
 ```r
 inds = grepl('mean_theta', colnames(Mod2_ThetaEstimates)) # Extract mean
 p = data.frame(Episode_Identifier = Mod2_ThetaEstimates$Episode_Identifier, 
-               Mod2_ThetaEstimates[,inds],
-               stringsAsFactors = F) # Reformat
+               Mod2_ThetaEstimates[,inds], stringsAsFactors = F) # Reformat
 colnames(p) = gsub(pattern = 'Recrudescence_mean_theta',replacement = 'C',x = colnames(p))
 colnames(p) = gsub(pattern = 'Relapse_mean_theta',replacement = 'L',x = colnames(p))
 colnames(p) = gsub(pattern = 'ReInfection_mean_theta',replacement = 'I',x = colnames(p))
 
+# Get prior estimates for only those with genetic data
 genetic_AND_time_data_eps = intersect(p$Episode_Identifier, MS_pooled$Episode_Identifier)
-p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,] # Only need priors for those with genetic data
+p = p[p$Episode_Identifier %in% genetic_AND_time_data_eps,]
 
 # Extract posterior estimates only if running full posterior simple or inflated
 if(RUN_MODELS_FULL_POSTERIOR | RUN_MODELS_FULL_POSTERIOR_INFLATED){
@@ -393,6 +915,7 @@ if(RUN_MODELS_FULL_POSTERIOR | RUN_MODELS_FULL_POSTERIOR_INFLATED){
 
 
 ```r
+# Remove upper complexity ids if EXCLUDE_COMPLEX = T
 # This substantially speeds up the analysis
 if(EXCLUDE_COMPLEX){
   load('../RData/UpperComplexityIDs.RData') # IDs to avoid
@@ -413,8 +936,7 @@ For genetic only efficacy estimate, run time agnostic (i.e. genetic only)
 
 
 
-# Plot results
-
+# Plot results (thus far we have results for individuals with one or two recurrences only)
 
 
 ```r
@@ -422,20 +944,16 @@ For genetic only efficacy estimate, run time agnostic (i.e. genetic only)
 Time_Estimates_1 = filter(Mod2_ThetaEstimates, Episode_Identifier %in% thetas_9MS$Episode_Identifier)
 Time_Estimates_1 = arrange(Time_Estimates_1, Episode_Identifier)
 
-# Outputs of genetic model w/wo time prior 
+# Outputs of genetic model with time prior 
 # sorted by episode number s.t. columns correspond and drug added
 thetas_9MS = arrange(thetas_9MS, Episode_Identifier)
 thetas_9MS$drug = Time_Estimates_1$arm_num # Add drug
 
-
+# Outputs of genetic model without time prior 
+# sorted by episode number s.t. columns correspond and drug added
 thetas_9MS_Tagnostic = arrange(thetas_9MS_Tagnostic, Episode_Identifier)
 thetas_9MS_Tagnostic$drug = Time_Estimates_1$arm_num # Add drug
-
-# Extract prior used in absence of time-to-event
-Time_agnostic_p = as.list(formals(post_prob_CLI)$p)
 ```
-
-
 
 ## Going from time-to-event prior to posterior
 
@@ -469,12 +987,13 @@ Plotted by radical cure versus no radical cure, as that is the most informative 
 
 Probability of states, ordered from most to least likely:
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-18-1.png)<!-- -->
+XXX Need to sort plotting bug - apparently appears only after first run
+
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-21-1.png)<!-- -->
 
 
 
 #### Extra computations for VHX: complex episodes
-
 
 We remove the IDs that can be straightforwardly calculated:
 
@@ -654,7 +1173,7 @@ for(id in MS_pooled_summary$ID){
   MS_pooled_summary$FU[ind] = Combined_Time_Data$FU_time[Combined_Time_Data$patientid==id][1]
 }
 MS_pooled_summary$Plotting_pch_Values = 
-  as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = c(17,15,1)))
+  as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = c(17,15,25)))
 MS_pooled_summary$Plotting_col_Values = 
   as.numeric(mapvalues(MS_pooled_summary$L_or_C_state, from = c('L','Uncertain','I'), to = 1:3))
 ```
@@ -665,38 +1184,166 @@ MS_pooled_summary$Plotting_col_Values =
 # How many too complex to generate estimate for? 
 ind_recur = MS_pooled_summary$Episode > 1 # Filter out enrollment
 ind_complex_recur = is.na(MS_pooled_summary$L_median[ind_recur])
-MS_pooled_summary$Episode_Identifier[ind_recur][ind_complex_recur]
-```
-
-```
-## [1] "VHX_239_2" "VHX_33_2"  "VHX_39_2"  "VHX_461_2" "VHX_52_2"  "VHX_551_2"
-## [7] "VHX_583_2"
-```
-
-```r
 no_complex_recur = sum(ind_complex_recur) # Recurrences with NAs
+recur_removed = MS_pooled_summary$Episode_Identifier[ind_recur][ind_complex_recur]
 
 # How many of the complex infections result in the loss of an individual
-no_indiv_removed = sum(N_episodes_typed[MS_pooled_summary$ID[ind_recur][ind_complex_recur]] <= 2) 
+N_episodes_typed = table(MS_pooled_summary$ID)
+indiv_removed = names(which(N_episodes_typed[MS_pooled_summary$ID[ind_recur][ind_complex_recur]] <= 2)) 
+no_indiv_removed = length(indiv_removed)
+
 # Final number of people with recurrences analysed total and by trial
 indiv_recur_analysed = length(unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur])) 
 BPD_indiv_recur_analysed = sum(grepl('BPD', unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur])))
 VHX_indiv_recur_analysed = sum(grepl('VHX', unique(MS_pooled_summary$ID[ind_recur][!ind_complex_recur]))) 
 
-writeLines(sprintf('Of %s recurrences analysed, %s were too complex to estimate recurrence state probabilities, resulting in probability estimates for a total of %s recurrences from %s individuals (%s BPD and %s VHX)',
-                   sum(ind_recur), no_complex_recur,  sum(!ind_complex_recur), 
+writeLines(sprintf('\nOf %s recurrences analysed, %s were too complex to estimate recurrence state probabilities: \n%s, \nresulting in probability estimates for a total of %s recurrences from %s individuals (%s BPD and %s VHX)',
+                   sum(ind_recur), no_complex_recur,  
+                   paste(recur_removed, collapse = ' '), 
+                   sum(!ind_complex_recur), 
                    indiv_recur_analysed, BPD_indiv_recur_analysed, VHX_indiv_recur_analysed))
 ```
 
 ```
-## Of 493 recurrences analysed, 7 were too complex to estimate recurrence state probabilities, resulting in probability estimates for a total of 486 recurrences from 208 individuals (77 BPD and 131 VHX)
+## 
+## Of 493 recurrences analysed, 6 were too complex to estimate recurrence state probabilities: 
+## VHX_239_2 VHX_33_2 VHX_39_2 VHX_461_2 VHX_52_2 VHX_583_2, 
+## resulting in probability estimates for a total of 487 recurrences from 208 individuals (77 BPD and 131 VHX)
 ```
 
+```r
+# Which drug arms do the unanalysed recurrences/individuals come from? 
+X0 = filter(MS_pooled_summary[MS_pooled_summary$Episode == 1,], ID %in% indiv_removed)
+X1 = X0$trial_arm_partner; names(X1) = X0$ID
+writeLines('\nIndividuals ommited due to computation complexity: ')
+```
+
+```
+## 
+## Individuals ommited due to computation complexity:
+```
+
+```r
+X1
+```
+
+```
+##   VHX_239    VHX_39   VHX_461    VHX_52 
+##  "VHX AS" "VHX CHQ"  "VHX AS" "VHX CHQ"
+```
+
+```r
+X0 = filter(MS_pooled_summary, Episode_Identifier %in% recur_removed)
+X1 = X0$trial_arm_partner; names(X1) = X0$Episode_Identifier
+writeLines('\nRecurrences ommited due to computation complexity:')
+```
+
+```
+## 
+## Recurrences ommited due to computation complexity:
+```
+
+```r
+X1
+```
+
+```
+##     VHX_239_2      VHX_33_2      VHX_39_2     VHX_461_2      VHX_52_2 
+##      "VHX AS"     "VHX CHQ"     "VHX CHQ"      "VHX AS"     "VHX CHQ" 
+##     VHX_583_2 
+## "VHX CHQ/PMQ"
+```
+
+```r
+recur_ind = MS_pooled_summary$Episode > 1
+X0 = filter(MS_pooled_summary[recur_ind,], !ID %in% indiv_removed)
+writeLines('\nNumber of individuals with at least one paired recurrence typed and analysed by treatment:')
+```
+
+```
+## 
+## Number of individuals with at least one paired recurrence typed and analysed by treatment:
+```
+
+```r
+table(X0[!duplicated(X0$ID),'trial_arm_partner'])[treatment_order]
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##          11          88          32          46          31
+```
+
+```r
+writeLines('\nPercent of Nr individuals with at least one paired recurrence typed  and analysed by treatment:') 
+```
+
+```
+## 
+## Percent of Nr individuals with at least one paired recurrence typed  and analysed by treatment:
+```
+
+```r
+round(100*table(X0[!duplicated(X0$ID),'trial_arm_partner'])[names(Nr)]/Nr)[treatment_order]
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##           6          53          91          98          91
+```
+
+```r
+recur_ind = MS_pooled_summary$Episode > 1
+X0 = filter(MS_pooled_summary[recur_ind,], !Episode_Identifier %in% recur_removed)
+writeLines('\nNumber of paired recurrences typed by treatment:')
+```
+
+```
+## 
+## Number of paired recurrences typed by treatment:
+```
+
+```r
+table(X0$trial_arm_partner)[treatment_order]
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##          11         355          34          52          35
+```
+
+```r
+writeLines('\nPercent of paired recurrences typed by treatment:') 
+```
+
+```
+## 
+## Percent of paired recurrences typed by treatment:
+```
+
+```r
+round(100*table(X0$trial_arm_partner)[names(R)]/R)[treatment_order] 
+```
+
+```
+## 
+##      VHX AS     VHX CHQ VHX CHQ/PMQ     BPD CHQ      BPD DP 
+##           2          60          85          98          90
+```
+
+
+
+```
+## Zero accounts of unconverged probablistic phasing
+```
 
 ![](Pooled_Analysis_files/figure-html/CoatneyStylePLot-1.png)<!-- -->
 
 ```
-## The Coatney style plot is showing 486 recurrences in 208 individuals
+## The Coatney style plot is showing 487 recurrences in 208 individuals
 ```
 
 We show a histogram representation of these classification outputs as suggested by reviewer:
@@ -706,14 +1353,14 @@ par(las=1, mfcol=c(3,2))
 hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==1 &
                                    MS_final$Treatment != 'PMQ'],
      main = 'No PMQ: classified relapses', xlab = 'Months from start of study',
-     xaxt='n', ylab = 'Number of recurrences',
+     xaxt='n', ylab = 'Number of recurrences',  col = 'black', border = 'white',
      breaks = seq(0, 390, by = 14))
 axis(1, at = 30*(0:12), labels = 0:12)
 hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==2 &
                                    MS_final$Treatment != 'PMQ'],
      main = 'No PMQ: uncertain classification',  ylab = 'Number of recurrences',
      xlab = 'Months from start of study', xaxt='n', yaxt='n',
-     breaks = seq(0, 390, by = 14), col = mycols_states_bg[2])
+     breaks = seq(0, 390, by = 14), col = mycols_states_bg[2], border = 'white')
 axis(1, at = 30*(0:12), labels = 0:12)
 axis(2, at = 0:2)
 plot(NA,NA,xlab='',ylab='',xlim=c(0,1),ylim=c(0,1),xaxt='n',yaxt='n',bty='n')
@@ -722,21 +1369,21 @@ hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==1 &
                                    MS_final$Treatment == 'PMQ'],
      main = 'PMQ+: classified relapses', ylab = 'Number of recurrences',
      xlab = 'Months from start of study', xaxt='n',yaxt='n',
-     breaks = seq(0, 390, by = 14))
+     breaks = seq(0, 390, by = 14), col = 'black', border = 'white')
 axis(1, at = 30*(0:12), labels = 0:12)
 axis(2, at = 0:2)
 hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==2 &
                                    MS_final$Treatment == 'PMQ'],
      main = 'PMQ+: uncertain classification',ylab = 'Number of recurrences', 
      xlab = 'Months from start of study', xaxt='n',
-     col = mycols_states_bg[2],breaks = seq(0, 390, by = 14))
+     col = mycols_states_bg[2],breaks = seq(0, 390, by = 14), border = 'white')
 axis(1, at = 30*(0:12), labels = 0:12)
 
 hist(MS_final$timeSinceEnrolment[MS_final$Plotting_col_Values==3 &
                                    MS_final$Treatment == 'PMQ'],
      main = 'PMQ+: classified reinfections',ylab = 'Number of recurrences', 
      xlab = 'Months from start of study', xaxt='n',
-     col = alpha('grey',0.4),breaks = seq(0, 390, by = 14))
+     breaks = seq(0, 390, by = 14))
 axis(1, at = 30*(0:12), labels = 0:12)
 ```
 
@@ -782,14 +1429,14 @@ print(MS_pooled[MS_pooled$ID%in%IDs_late_relapse,])
 ## 356                    0                  0        1       5        2
 ## 357                   21                 21        1       5        3
 ## 358                  309                330        1       5        3
-##     PV.ms1 PV.ms16 PV.ms5 PV.ms6 PV.ms7 PV.ms8 PMQ_partner
-## 60       4      27     24     15      5     17         CHQ
-## 61       4      27     24     15      5     17         CHQ
-## 62       4      27     24     15      5     17         CHQ
-## 355      3      23     13      9     10     12            
-## 356      3      23     13     15     10     33            
-## 357      4      20     13      9     10     12            
-## 358      4      23     11     15     10     12
+##     PV.ms1 PV.ms16 PV.ms5 PV.ms6 PV.ms7 PV.ms8 trial_arm_partner
+## 60       4      27     24     15      5     17           BPD CHQ
+## 61       4      27     24     15      5     17           BPD CHQ
+## 62       4      27     24     15      5     17           BPD CHQ
+## 355      3      23     13      9     10     12           VHX CHQ
+## 356      3      23     13     15     10     33           VHX CHQ
+## 357      4      20     13      9     10     12           VHX CHQ
+## 358      4      23     11     15     10     12           VHX CHQ
 ```
 
 
@@ -803,15 +1450,15 @@ The summaries of the final dataset. Results for all those genotyped who did not 
 
 
 ```
-## In no-primaquine individuals, the weighted average of relapse is 99 (96.5-99.8), for 365 recurrences
+## In no-primaquine individuals, the weighted average of relapse is 99.1 (96-99.9), for 366 recurrences
 ```
 
 ```
-## In no-primaquine individuals, the weighted average of recrudescences is 0.3 (0.2-0.5), for 365 recurrences
+## In no-primaquine individuals, the weighted average of recrudescences is 0.3 (0.2-0.5), for 366 recurrences
 ```
 
 ```
-## In no-primaquine individuals, the weighted average of reinfections is 0.9 (0.1-3.4), for 365 recurrences
+## In no-primaquine individuals, the weighted average of reinfections is 0.8 (0.1-3.8), for 366 recurrences
 ```
 
 Results for all those genotyped who did receive primaquine (VHX and BPD studies combined):
@@ -825,7 +1472,7 @@ Results for all those genotyped who did receive primaquine (VHX and BPD studies 
 ```
 
 ```
-## In primaquine treated individuals, the weighted average of reinfections is 83 (79.3-85.6), for 121 recurrences
+## In primaquine treated individuals, the weighted average of reinfections is 83 (79.2-85.6), for 121 recurrences
 ```
 
 Results for all those genotyped who did receive primaquine in the VHX study (unknown denominator)
@@ -864,17 +1511,16 @@ We want to know how often our model estimates evidence of relapse across pairs o
 ```r
 if(RUN_MODELS_FALSE_POSITIVE){
   # check if the massive pairwise dataset has been made, if not make it 
-  # (takes a long time ~20hours)
   if(!"APC_MSdata.bigRData"%in%list.files(path = '../RData/LargeFiles/')){
     # The pooled MS data from BPD and VHX
     load('../RData/GeneticModel/MS_data_PooledAnalysis.RData')
     tic()
-    APC_MSdata = Make_All_Pairwise_Comparisons(MS_data = MS_pooled, ncores=42)
+    APC_MSdata = Make_All_Pairwise_Comparisons(MS_data = MS_pooled, ncores=Ncores)
     save(APC_MSdata, file = '../RData/LargeFiles/APC_MSdata.bigRData')
     toc()
   } 
   load('../RData/LargeFiles/APC_MSdata.bigRData')
-  print('The inflated pairwise dataset is available, now running the analysis...')
+  writeLines(sprintf('The inflated across individuals pairwise episode comparison dataset is available, there are %s pairwise comparisons, now running the analysis...', length(unique(APC_MSdata$ID))))
   # Run the genetic model on the pairwise data
   tic()
   Inflated_Results = post_prob_CLI(MSdata = APC_MSdata, 
@@ -894,134 +1540,80 @@ if(RUN_MODELS_FALSE_POSITIVE){
 
 
 ```
-## The false-positive discovery rate of the genetic model is estimated as 2.17 percent. 
+## The false-positive discovery rate of the genetic model is estimated as 2.25 percent. 
 ##                    
-## This is based on 247262 pairwise comparisons
-```
-
-
-# Analysis of samples selected to be genotyped at additional 6 markers 
-
-
-```r
-# Extract MS names
-MS_core = MSs_all[1:3] # 1) core MSs
-MS_addn = MSs_all[4:length(MSs_all)] # additionally typed MSs
-
-# Format dataframe
-MS_typd = MS_pooled_summary # Rename before relaplacing allele information with binary
-MS_typd[,MSs_all][!is.na(MS_typd[,MSs_all])] = 1 # Replace allele information with binary
-
-# Extract numbers of markers typed 
-MS_core_count = length(MS_core) - rowSums(is.na(MS_typd[,MS_core])) # Extract number of markers typed per episode
-MS_typd_count = length(MSs_all) - rowSums(is.na(MS_typd[,MSs_all])) # Extract number of markers typed per episode
-MS_addn_count = length(MS_addn) - rowSums(is.na(MS_typd[,MS_addn])) # Extract the number of additional markers typed per episode
-names(MS_typd_count) = names(MS_addn_count) = names(MS_core_count) = MS_typd$Episode_Identifier # Name by episode
-
-# Logical indeces
-BPD_ind = grepl('BPD_', MS_typd$ID) # BPD individuals
-VHX_ind = grepl('VHX_', MS_typd$ID) # VHX individuals
-```
-
-Summaries across all samples selected
-
-
-```r
-#==========================================================================
-# Summaries of additionally typed
-# Assuming 0 additional means 0 additional attempted = find out from Mallika
-#==========================================================================
-#table(MS_typd_count) # numbers of samples partioned by number of markers successfully typed
-#table(MS_addn_count) # numbers of samples partioned by number of additional markers successfully typed
-#table(MS_core_count) # numbers of samples partioned by number of core markers successfully typed
-#table(MS_addn_count[MS_addn_count > 0]) # Of samples successfully genotyped at additional: number of additional successful
-
-#=================================================
-# Episodes with missing core: share with Mallika
-Episodes_missing_core = names(MS_core_count)[(which(MS_core_count < 3))] # Names 
-Data_missing_core = MS_typd[MS_typd$Episode_Identifier %in% Episodes_missing_core, ] # All data 
-MSData_missing_core = Data_missing_core[, c(MS_core, MS_addn)] # MS Data
-rownames(MSData_missing_core) = Data_missing_core$Episode_Identifier # name rows
-#write.csv(x = MSData_missing_core, file = '~/Dropbox/Genotyping/MSData_missing_core.csv', row.names = T) # Print
-#=================================================
-
-writeLines(sprintf('Number of enrolment samples successfully genotyped at additional markers: %s of %s (%s percent, %s VHX, %s BPD)',
-                   sum(MS_typd$Episode[MS_addn_count > 0] == 1),
-                   sum(MS_typd$Episode == 1), 
-                   round(100*sum(MS_typd$Episode[MS_addn_count > 0] == 1)/sum(MS_typd$Episode == 1)), 
-                   sum(MS_typd$Episode[VHX_ind][MS_addn_count[VHX_ind] > 0] == 1), # VHX
-                   sum(MS_typd$Episode[BPD_ind][MS_addn_count[BPD_ind] > 0] == 1))) # BPD
+## This is based on 249540 pairwise comparisons
 ```
 
 ```
-## Number of enrolment samples successfully genotyped at additional markers: 100 of 212 (47 percent, 85 VHX, 15 BPD)
+## The null data are more diverse than the real data. As such 3 percent were probablistically phased without convergence
 ```
 
-```r
-writeLines(sprintf('Number of recurrent samples successfully genotyped at additional markers: %s of %s (%s percent, %s VHX, %s BPD)',
-                   sum(MS_typd$Episode[MS_addn_count > 0] != 1),
-                   sum(MS_typd$Episode != 1), 
-                   round(100*sum(MS_typd$Episode[MS_addn_count > 0] != 1)/sum(MS_typd$Episode != 1)), 
-                   sum(MS_typd$Episode[VHX_ind][MS_addn_count[VHX_ind] > 0] != 1), # VHX
-                   sum(MS_typd$Episode[BPD_ind][MS_addn_count[BPD_ind] > 0] != 1))) # BPD
-```
 
-```
-## Number of recurrent samples successfully genotyped at additional markers: 264 of 493 (54 percent, 249 VHX, 15 BPD)
-```
 
-```r
-writeLines(sprintf('Of those successfully genotyped at additional markers, number genotyped at all six: %s of %s (%s percent, %s VHX, %s BPD)',
-                   sum(MS_addn_count[MS_addn_count > 0] == 6), 
-                   sum(MS_addn_count > 0),
-                   round(100*sum(MS_addn_count[MS_addn_count > 0] == 6)/sum(MS_addn_count > 0)), 
-                   sum(MS_addn_count[VHX_ind][MS_addn_count[VHX_ind] > 0] == 6), # VHX
-                   sum(MS_addn_count[BPD_ind][MS_addn_count[BPD_ind] > 0] == 6))) # BPD
-```
 
-```
-## Of those successfully genotyped at additional markers, number genotyped at all six: 347 of 364 (95 percent, 317 VHX, 30 BPD)
-```
-
-Summaries over classified recurrent samples 
+# Summaries of numbers of markers typed by classified recurrent samples 
 
 
 ```r
 # Check that the episodes missing from MS_final are only those that were too complex: yes
-inds = MS_typd$Episode[which(!MS_typd$Episode_Identifier %in% MS_final$Episode_Identifier)] > 1 # Six too complex
-# MS_typd$Episode_Identifier[which(!MS_typd$Episode_Identifier %in% MS_final$Episode_Identifier)][inds] 
-# missing: "VHX_239_2" "VHX_33_2"  "VHX_39_2"  "VHX_461_2" "VHX_52_2"  "VHX_583_2"
-# too complex: "VHX_239_2" "VHX_33_2"  "VHX_39_2"  "VHX_461_2" "VHX_52_2"  "VHX_583_2"
+inds = MS_typd$Episode[which(!MS_typd$Episode_Identifier %in% MS_final$Episode_Identifier)] > 1 
+missing_from_MS_final = MS_typd$Episode_Identifier[which(!MS_typd$Episode_Identifier %in% MS_final$Episode_Identifier)][inds] 
+all(recur_removed == missing_from_MS_final)
+```
 
+```
+## [1] TRUE
+```
+
+```r
 #==========================================================================
 # Classification of recurrent episodes genotyped at any markers
 #==========================================================================
 ind_classified = MS_final$Episode_Identifier %in% names(MS_typd_count)
 recur_count = MS_typd_count[MS_final$Episode_Identifier[ind_classified]]
 recur_typed_class = paste(recur_count, MS_final$L_or_C_state[ind_classified])
-# table(recur_typed_class) # Table of number additional successful and classification
+#table(recur_typed_class) # Table of number marks successful and classification
 
 #==========================================================================
 # Classification of recurrent episodes genotyped at additional markers
 #==========================================================================
-names_additional = names(MS_addn_count[MS_addn_count > 0]) # Names of all additionally typed (inc. )
-ind_add_classified = MS_final$Episode_Identifier %in% names_additional
-recur_add_count = MS_addn_count[MS_final$Episode_Identifier[ind_add_classified]]
-recur_add_typed_class = paste(recur_add_count, MS_final$L_or_C_state[ind_add_classified])
+names_additional = names(MS_addn_count_recurrent) # Names of all 
+ind_classified = MS_final$Episode_Identifier %in% names_additional
+recur_add_count = MS_addn_count_recurrent[MS_final$Episode_Identifier[ind_classified]]
+recur_add_typed_class = paste(recur_add_count, MS_final$L_or_C_state[ind_classified])
+ind_add_classified = MS_final$Episode_Identifier %in% names(which(MS_addn_count_recurrent > 1))
 
 BPD_ind = grepl('BPD_', MS_final$ID) # Index for BPD individuals
 VHX_ind = grepl('VHX_', MS_final$ID) # Index for VHX individuals
 
-writeLines(sprintf('Of those recurrent genotyped at additional markers: %s of %s (%s percent, %s VHX, %s BPD) classified as relapse',
-                   sum(MS_final$L_or_C_state[ind_add_classified] == 'L'), 
-                   sum(ind_add_classified),
-                   round(100*sum(MS_final$L_or_C_state[ind_add_classified] == 'L')/sum(ind_add_classified)), 
-                   sum(MS_final$L_or_C_state[VHX_ind][ind_add_classified[VHX_ind]] == 'L'),
-                   sum(MS_final$L_or_C_state[BPD_ind][ind_add_classified[BPD_ind]] == 'L'))) 
+writeLines(sprintf('\nParition of %s recurrences analysed partioned by number of additional markers successfully typed:',
+                   sum(table(recur_add_count))))
 ```
 
 ```
-## Of those recurrent genotyped at additional markers: 248 of 257 (96 percent, 239 VHX, 9 BPD) classified as relapse
+## 
+## Parition of 487 recurrences analysed partioned by number of additional markers successfully typed:
+```
+
+```r
+table(recur_add_count)
+```
+
+```
+## recur_add_count
+##   0   3   4   5   6 
+## 229   1   2   8 247
+```
+
+```r
+writeLines(sprintf('\nClassification of %s recurrences analysed partioned by number of additional markers successfully typed:',
+                   sum(table(recur_add_typed_class))))
+```
+
+```
+## 
+## Classification of 487 recurrences analysed partioned by number of additional markers successfully typed:
 ```
 
 ```r
@@ -1030,8 +1622,24 @@ table(recur_add_typed_class)
 
 ```
 ## recur_add_typed_class
-##         3 L         4 L         5 L         6 I         6 L 6 Uncertain 
-##           1           2           8           5         237           4
+##         0 I         0 L 0 Uncertain         3 L         4 L         5 L 
+##          89         116          24           1           2           8 
+##         6 I         6 L 6 Uncertain 
+##           5         238           4
+```
+
+```r
+writeLines(sprintf('\nOf those recurrent genotyped at additional markers: %s of %s (%s percent, %s VHX, %s BPD) classified as relapse',
+                   sum(MS_final$L_or_C_state[ind_add_classified] == 'L'), 
+                   sum(ind_add_classified),
+                   round(100*sum(MS_final$L_or_C_state[ind_add_classified] == 'L')/sum(ind_add_classified)), 
+                   sum(MS_final$L_or_C_state[VHX_ind][ind_add_classified[VHX_ind]] == 'L'),
+                   sum(MS_final$L_or_C_state[BPD_ind][ind_add_classified[BPD_ind]] == 'L'))) 
+```
+
+```
+## 
+## Of those recurrent genotyped at additional markers: 249 of 258 (97 percent, 240 VHX, 9 BPD) classified as relapse
 ```
 
 Plots over classified recurrent samples 
@@ -1039,13 +1647,13 @@ Plots over classified recurrent samples
 
 ```r
 #==========================================================================
-# Classification plots: why are some points beyon the uncertainity zone classified 
+# Classification plots: why are some points beyond the uncertainity zone classified 
 # as uncertain
 #==========================================================================
 par(mfrow = c(2,1), family = 'serif')
 
 plot(x = recur_add_count + rnorm(length(recur_add_count), 0, 0.025), # Add jitter 
-     MS_final$L_median[ind_add_classified], 
+     y = MS_final$L_median[ind_classified], 
      panel.first = grid(), 
      pch = MS_final$Plotting_pch_Values[ind_add_classified], 
      bg=mycols_states_bg[MS_final$Plotting_col_Values[ind_add_classified]],
@@ -1053,13 +1661,13 @@ plot(x = recur_add_count + rnorm(length(recur_add_count), 0, 0.025), # Add jitte
      ylab = 'Relapse posterior probability', 
      xlab = 'Number of additional markers successfully typed', 
      xaxt = 'n') # Number additional successful vs median relapse probablity
-axis(side = 1, at = 3:6) # Add axis
+axis(side = 1, at = c(0,3:6)) # Add axis
 
 # Add zone of uncertainity
 polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
               max(MS_final$timeSinceLastEpisode)+100,-10),
         y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
-        col = transparent_pink_band, border = NA)
+        col = transparent_blue_band, border = NA)
 
 plot(x = recur_count + rnorm(length(recur_count), 0, 0.075), # Add jitter
      MS_final$L_median[ind_classified], 
@@ -1076,10 +1684,10 @@ axis(side = 1, at = 1:9) # Add axis
 polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
               max(MS_final$timeSinceLastEpisode)+100,-10),
         y = c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper),
-        col = transparent_pink_band, border = NA)
+        col = transparent_blue_band, border = NA)
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-36-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-38-1.png)<!-- -->
 
 
 
@@ -1089,7 +1697,7 @@ polygon(x = c(-10,max(MS_final$timeSinceLastEpisode)+100,
 
 Almost all recurrences in BPD were typed. The majority (34 out of 40) of the recurrences in VHX were typed also.
 Therefore we can estimate the true efficacy of high-dose primaquine by adjusting for the background reinfection rates in both studies.
-
+We create a dataset with the overall estimates of the three states.
 
 ```r
 # Add an episode identifier
@@ -1143,6 +1751,53 @@ for(i in 1:nrow(Combined_Time_Data)){
 }
 ```
 
+
+```r
+Observed_Rec = Combined_Time_Data
+N_PMQ = length(unique(Combined_Time_Data$patientid[Combined_Time_Data$arm_num=='CHQ/PMQ']))
+N_noPMQ = length(unique(Combined_Time_Data$patientid[Combined_Time_Data$arm_num!='CHQ/PMQ']))
+
+# need to readjust how the probabilities are coded - i.e. which row they are on
+for(id in unique(Observed_Rec$patientid)){
+  ind = which(Observed_Rec$patientid==id)
+  k_ind = length(ind)
+  Observed_Rec$Reinfection_Probability[ind] = c(NA, Observed_Rec$Reinfection_Probability[ind[1:(k_ind-1)]])
+  Observed_Rec$Reinfection_Probability_UL[ind] = c(NA, Observed_Rec$Reinfection_Probability_UL[ind[1:(k_ind-1)]])
+  Observed_Rec$Reinfection_Probability_LL[ind] = c(NA, Observed_Rec$Reinfection_Probability_LL[ind[1:(k_ind-1)]])
+}
+Observed_Rec = filter(Observed_Rec, Censored==0)
+Observed_Rec$Relapsed = Observed_Rec$Relapsed_UL = Observed_Rec$Relapsed_LL = NA
+for(id in unique(Observed_Rec$patientid)){
+  ind = which(Observed_Rec$patientid==id)
+  Observed_Rec$Relapsed[ind] = 1 - prod(Observed_Rec$Reinfection_Probability[ind])
+  Observed_Rec$Relapsed_LL[ind] = 1 - prod(Observed_Rec$Reinfection_Probability_UL[ind])
+  Observed_Rec$Relapsed_UL[ind] = 1 - prod(Observed_Rec$Reinfection_Probability_LL[ind])
+}
+Observed_Rec = Observed_Rec[!duplicated(Observed_Rec$patientid),]
+writeLines(sprintf('Out of %s patients who received high-dose primaquine, %s%% (%s-%s) had an observed relapse during follow-up.',
+                   N_PMQ,
+                   round(100*sum(Observed_Rec$Relapsed[Observed_Rec$arm_num=='CHQ/PMQ'])/N_PMQ,1),
+                   round(100*sum(Observed_Rec$Relapsed_LL[Observed_Rec$arm_num=='CHQ/PMQ'])/N_PMQ,1),
+                   round(100*sum(Observed_Rec$Relapsed_UL[Observed_Rec$arm_num=='CHQ/PMQ'])/N_PMQ,1)))
+```
+
+```
+## Out of 853 patients who received high-dose primaquine, 2.5% (2.1-3.1) had an observed relapse during follow-up.
+```
+
+```r
+writeLines(sprintf('Out of %s patients who did not receive high-dose primaquine, %s%% (%s-%s) had an observed relapse during follow-up.',
+                   N_noPMQ,
+                   round(100*sum(Observed_Rec$Relapsed[Observed_Rec$arm_num != 'CHQ/PMQ'])/N_noPMQ,1),
+                   round(100*sum(Observed_Rec$Relapsed_LL[Observed_Rec$arm_num != 'CHQ/PMQ'])/N_noPMQ,1),
+                   round(100*sum(Observed_Rec$Relapsed_UL[Observed_Rec$arm_num != 'CHQ/PMQ'])/N_noPMQ,1)))
+```
+
+```
+## Out of 446 patients who did not receive high-dose primaquine, 73.8% (62.4-76.6) had an observed relapse during follow-up.
+```
+
+
 ## PK analysis with carboxy primaquine
 
 Now we look at whether the PK (carboxy-primaquine) can predict failure:
@@ -1169,6 +1824,7 @@ for(i in 1:nrow(Combined_Time_Data)){
     Combined_Time_Data$log10_PMQ[i] = mean(BPD_pk$log10_PQ_PK[pk_ind])
     Combined_Time_Data$NumberDaysPMQ[i] = BPD_pk$NumberofPKDays[pk_ind[1]]
   }
+  
 }
 ```
 
@@ -1279,7 +1935,7 @@ hist(Combined_Time_Data$log10_carboxyPMQ[Combined_Time_Data$NumberDaysPMQ==14],
 abline(v = mu_hat_14 - sd_hat_14*3)
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-39-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-42-1.png)<!-- -->
 
 ```r
 outliers7 = Combined_Time_Data$NumberDaysPMQ==7 & Combined_Time_Data$log10_carboxyPMQ<mu_hat_7 - sd_hat_7*3
@@ -1442,7 +2098,7 @@ mean(Combined_Time_Data$Reinfection_Probability[Combined_Time_Data$Study_Period=
 ```
 
 ```
-## [1] 0.9526366
+## [1] 0.952636
 ```
 
 ```r
@@ -1655,14 +2311,14 @@ legend('topleft', legend = c('No PMQ', 'PMQ+'), col = drug_cols2[2:3], pch = 20,
 abline(h=0,lty=2)
 ```
 
-![](Pooled_Analysis_files/figure-html/unnamed-chunk-44-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/unnamed-chunk-47-1.png)<!-- -->
 
 ```r
 toc()
 ```
 
 ```
-## 13.177 sec elapsed
+## 24.472 sec elapsed
 ```
 
 
