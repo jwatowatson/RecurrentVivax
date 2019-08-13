@@ -1540,7 +1540,7 @@ if(RUN_MODELS_FALSE_POSITIVE){
 
 
 ```
-## The false-positive discovery rate of the genetic model is estimated as 2.25 percent. 
+## The false-positive discovery rate of the genetic model is estimated as 2.5 percent. 
 ##                    
 ## This is based on 249540 pairwise comparisons
 ```
@@ -1587,13 +1587,13 @@ ind_add_classified = MS_final$Episode_Identifier %in% names(which(MS_addn_count_
 BPD_ind = grepl('BPD_', MS_final$ID) # Index for BPD individuals
 VHX_ind = grepl('VHX_', MS_final$ID) # Index for VHX individuals
 
-writeLines(sprintf('\nParition of %s recurrences analysed partioned by number of additional markers successfully typed:',
+writeLines(sprintf('\nPartition of %s recurrences analysed partioned by number of additional markers successfully typed:',
                    sum(table(recur_add_count))))
 ```
 
 ```
 ## 
-## Parition of 487 recurrences analysed partioned by number of additional markers successfully typed:
+## Partition of 487 recurrences analysed partioned by number of additional markers successfully typed:
 ```
 
 ```r
@@ -2318,7 +2318,7 @@ toc()
 ```
 
 ```
-## 24.472 sec elapsed
+## 14.881 sec elapsed
 ```
 
 

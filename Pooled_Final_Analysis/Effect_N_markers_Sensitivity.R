@@ -1,5 +1,5 @@
 rm(list=ls())
-RUN_ANALYSIS = T
+RUN_ANALYSIS = F
 # We look at how the number of markers effects the relapse probability under null data
 load('../RData/LargeFiles/Inflated_Results.bigRData')
 Inflated_Results = Inflated_Results[!is.na(Inflated_Results$L),]
@@ -45,7 +45,7 @@ boxplot((Inflated_Results$L) ~ as.factor(Inflated_Results$N_markers),
         ylab='Probability of relapse state', 
         xlab='Number of markers used to estimate probability of relapse')
 abline(h=(1/3), col='red',lwd=2, lty=2)
-polygon(x = c(0,10,10,0),
+polygon(x = c(0,12,12,0),
         y = c(Epsilon_lower,
               Epsilon_lower,
               Epsilon_upper,
