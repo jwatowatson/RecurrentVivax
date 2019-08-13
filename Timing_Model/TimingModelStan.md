@@ -378,6 +378,16 @@ for(id in 1:N){
 
 ind = !duplicated(Combined_Time_Data$ID)
 drug_received = Combined_Time_Data$numeric_drug[ind]
+
+writeLines(sprintf('The model uses data on %s individuals with a total of %s intervals (%s observed and %s censored)',
+                   length(unique(Combined_Time_Data$patientid)),
+                          nrow(Combined_Time_Data),
+                          sum(Combined_Time_Data$Censored==0),
+                          sum(Combined_Time_Data$Censored==1)))
+```
+
+```
+## The model uses data on 1295 individuals with a total of 2708 intervals (1441 observed and 1267 censored)
 ```
 
 # Prior specification
