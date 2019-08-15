@@ -2120,9 +2120,9 @@ writeLines(sprintf('The primaquine failure rate, based on genetic model only, in
 
 writeLines(sprintf('Observed BPD recurrences estimated to be failures, based on genetic model only, in the %s individuals is %s%% (%s-%s).',
                    nrow(BPD_data), 
-                   round(sum(thetas_9MS_Tagnostic$`L50%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),2),
-                   round(sum(thetas_9MS_Tagnostic$`L2.5%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),2),
-                   round(sum(thetas_9MS_Tagnostic$`L97.5%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),2)))
+                   round(sum(thetas_9MS_Tagnostic$`L50%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),1),
+                   round(sum(thetas_9MS_Tagnostic$`L2.5%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),1),
+                   round(sum(thetas_9MS_Tagnostic$`L97.5%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),1)))
 
 ```
 
