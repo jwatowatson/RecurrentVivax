@@ -41,9 +41,10 @@ Dark2 = brewer.pal(8, 'Dark2')
 transparent_pink_band = adjustcolor('blue', alpha.f = 0.2)
 
 par(las=1, bty='n')
+Inflated_Results = filter(Inflated_Results, N_markers>0)
 boxplot((Inflated_Results$L) ~ as.factor(Inflated_Results$N_markers), 
-        ylab='Probability of relapse state', 
-        xlab='Number of markers used to estimate probability of relapse')
+        ylab='Probability of the relapse state', varwidth=T,
+        xlab='Number of markers used to estimate the probability of relapse in the null data')
 abline(h=(1/3), col='red',lwd=2, lty=2)
 polygon(x = c(0,12,12,0),
         y = c(Epsilon_lower,
@@ -52,7 +53,7 @@ polygon(x = c(0,12,12,0),
               Epsilon_upper),
         col = transparent_pink_band, border = NA)
 
-
+table(Inflated_Results$N_markers)
 
 writeLines(sprintf('When using 3 markers, %s%% of the comparisons for the null data will give posterior estimates greater than 1/3 (the prior value).\n When using 9 markers, %s%% of the comparisons for the null data will give posterior estimates greater than 1/3 (the prior value)',
                    round(100*sum(Inflated_Results$L>(1/3) & Inflated_Results$N_markers==3)/sum(Inflated_Results$N_markers==3)),

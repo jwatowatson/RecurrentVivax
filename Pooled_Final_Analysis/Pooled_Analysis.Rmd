@@ -1434,7 +1434,7 @@ axis(1, at = 30*(0:12), labels = 0:12)
 if(CREATE_PLOTS){
   
   par(las=1, mfcol = c(2,1), mar=c(4,4,1,1), bty='n', family = 'serif')
-  MS_final = arrange(MS_final, L_median)
+  MS_final = arrange(MS_final, desc(L_median))
   
   plot(NULL,
        xlim = c(1,nrow(MS_final)), 
@@ -1461,9 +1461,9 @@ if(CREATE_PLOTS){
          col = drug_cols2[MS_final$Drug], 
          pch=20, cex=.8)
   
-  legend(x=0.8*nrow(MS_final), y = 0.8, col = drug_cols2[2:3], 
+  legend('bottomleft', col = drug_cols2[2:3], 
          pch = 20, cex = 1.2, bty = 'o', border = 'white',
-         legend = c('No PMQ','PMQ+'))
+         legend = c('No PMQ','PMQ+'), inset = 0.04)
   
   # Against time
   plot(NULL, 
@@ -1497,9 +1497,9 @@ if(CREATE_PLOTS){
          pch=20, cex=.8)
   
   
-  legend(x=0.8*max(MS_final$timeSinceLastEpisode), y = 0.8, col = drug_cols2[2:3], 
-         pch = 20, cex = 1.2, bty = 'o', border = 'white', 
-         legend = c('No PMQ','PMQ+'))
+  # legend(x=0.8*max(MS_final$timeSinceLastEpisode), y = 0.8, col = drug_cols2[2:3], 
+  #        pch = 20, cex = 1.2, bty = 'o', border = 'white', 
+  #        legend = c('No PMQ','PMQ+'))
   
   
 }
@@ -1566,7 +1566,7 @@ writeLines(sprintf('In primaquine treated individuals, the weighted average of r
                    sum(ind_PMQ)))
 ```
 
-Results for all those genotyped who did receive primaquine in the VHX study (unknown denominator)
+Results for all those genotyped who did receive primaquine in the VHX study
 ```{r, echo=FALSE}
 ind_PMQ_VHX = intersect(which(MS_final$Treatment=='PMQ'), grep('VHX',MS_final$ID))
 writeLines(sprintf('In primaquine treated individuals (VHX), the weighted average of relapses is %s (%s-%s), for %s recurrences',
@@ -1589,7 +1589,7 @@ writeLines(sprintf('In primaquine treated individuals (VHX), the weighted averag
 
 ```
 
-Results for all those genotyped who did receive primaquine in the BPD study (known denominator)
+Results for all those genotyped who did receive primaquine in the BPD study
 ```{r, echo=FALSE}
 ind_PMQ_BPD = intersect(which(MS_final$Treatment=='PMQ'), grep('BPD',MS_final$ID))
 writeLines(sprintf('In primaquine treated individuals (BPD), the weighted average of relapses is %s (%s-%s), for %s recurrences',
@@ -2117,6 +2117,13 @@ writeLines(sprintf('The primaquine failure rate, based on genetic model only, in
                    nrow(BPD_data), round(P_Failure_gene_only,2),
                    round(P_Failure_LL_gene_only,2),
                    round(P_Failure_UL_gene_only,2), round(sum(BPD_data$FU_time)/365)))
+
+writeLines(sprintf('Observed BPD recurrences estimated to be failures, based on genetic model only, in the %s individuals is %s%% (%s-%s).',
+                   nrow(BPD_data), 
+                   round(sum(thetas_9MS_Tagnostic$`L50%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),2),
+                   round(sum(thetas_9MS_Tagnostic$`L2.5%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),2),
+                   round(sum(thetas_9MS_Tagnostic$`L97.5%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),2)))
+
 ```
 
 

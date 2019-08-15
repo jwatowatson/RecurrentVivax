@@ -1648,7 +1648,7 @@ t_points = seq(0,360,by=1)/30
 PMQ_labels = Label_probability(drug = 'PMQ+',t = t_points*30, thetas = thetas_mod2)
 plot(t_points, PMQ_labels[,1], lwd=2, type='l', ylim = c(0,1),
      main = 'PMQ+', col=drug_cols3['CHQ/PMQ'], panel.first = grid(), 
-     xlab='', ylab='Recurrence probability',yaxt='n',xaxt='n',lty=LinesTypes[1])
+     xlab='', ylab='Recurrence state probability',yaxt='n',xaxt='n',lty=LinesTypes[1])
 lines(t_points, PMQ_labels[,2], lwd=2,col=drug_cols3['CHQ/PMQ'], lty=LinesTypes[2])
 lines(t_points, PMQ_labels[,3], lwd=2,col=drug_cols3['CHQ/PMQ'], lty=LinesTypes[3])
 mtext(text='D', side = 3, adj = 0, line=0.5)
@@ -1665,7 +1665,7 @@ CQ_labels = Label_probability(drug = 'CHQ',t = t_points*30, thetas = thetas_mod2
 AS_labels = Label_probability(drug = 'AS',t = t_points*30, thetas = thetas_mod2)
 plot(t_points, CQ_labels[,1], lwd=1, type='l', ylim = c(0,1),
      main = 'No PMQ', col=drug_cols3['CHQ'], xlab='',lty=LinesTypes[1],
-     panel.first = grid(), ylab = 'Recurrence probability',xaxt='n',yaxt='n')
+     panel.first = grid(), ylab = 'Recurrence state probability',xaxt='n',yaxt='n')
 axis(2, at = c(0,.25,.5,.75,1))
 axis(1, at = c(0,3,6,9,12))
 lines(t_points, CQ_labels[,2], lwd=1,col=drug_cols3['CHQ'],lty=LinesTypes[2])
