@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.7.18)  7 AUG 2019 13:41
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.7.18)  1 OCT 2019 16:19
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -629,7 +629,7 @@ LaTeX Font Info:    Try loading font information for TS1+lmr on input line 114.
 (/usr/local/texlive/2019/texmf-dist/tex/latex/lm/ts1lmr.fd
 File: ts1lmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
-<SimulationStudy_Genetic_Model_files/figure-latex/fraction_IBS-1.png, id=35, 72
+<SimulationStudy_Genetic_Model_files/figure-latex/fraction_IBS-1.png, id=39, 72
 27.0pt x 3011.25pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/fraction_IBS-1.png Graph
 ic file (type png)
@@ -676,7 +676,7 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 )
 <SimulationStudy_Genetic_Model_files/figure-latex/fraction_IBS_erroneous-1.png,
- id=37, 3011.25pt x 3011.25pt>
+ id=41, 3011.25pt x 3011.25pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/fraction_IBS_erroneous-1
 .png Graphic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/fraction_IBS_erroneous-1.
@@ -688,117 +688,117 @@ ion_IBS_erroneous-1.png  used on input line 164.
 
 {/usr/local/texlive/2019/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
 <SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-1.png, id=
-49, 3613.5pt x 1505.625pt>
+54, 3613.5pt x 1505.625pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-1.png
  Graphic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-1.png>
 
 Package pdftex.def Info: SimulationStudy_Genetic_Model_files/figure-latex/resul
-ts_COI_effect-1.png  used on input line 178.
+ts_COI_effect-1.png  used on input line 185.
 (pdftex.def)             Requested size: 469.71635pt x 195.71515pt.
 <SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-2.png, id=
-50, 3613.5pt x 1505.625pt>
+55, 3613.5pt x 1505.625pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-2.png
  Graphic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-2.png>
 
 Package pdftex.def Info: SimulationStudy_Genetic_Model_files/figure-latex/resul
-ts_COI_effect-2.png  used on input line 186.
+ts_COI_effect-2.png  used on input line 193.
 (pdftex.def)             Requested size: 469.71635pt x 195.71515pt.
 <SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-3.png, id=
-51, 3613.5pt x 1505.625pt>
+56, 3613.5pt x 1505.625pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-3.png
  Graphic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-3.png>
 
 Package pdftex.def Info: SimulationStudy_Genetic_Model_files/figure-latex/resul
-ts_COI_effect-3.png  used on input line 194.
+ts_COI_effect-3.png  used on input line 201.
 (pdftex.def)             Requested size: 469.71635pt x 195.71515pt.
 <SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-4.png, id=
-52, 3613.5pt x 1505.625pt>
+57, 3613.5pt x 1505.625pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-4.png
  Graphic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-4.png>
 
 Package pdftex.def Info: SimulationStudy_Genetic_Model_files/figure-latex/resul
-ts_COI_effect-4.png  used on input line 202.
+ts_COI_effect-4.png  used on input line 209.
 (pdftex.def)             Requested size: 469.71635pt x 195.71515pt.
 <SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-5.png, id=
-53, 3613.5pt x 1505.625pt>
+58, 3613.5pt x 1505.625pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-5.png
  Graphic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-5.png>
 
 Package pdftex.def Info: SimulationStudy_Genetic_Model_files/figure-latex/resul
-ts_COI_effect-5.png  used on input line 210.
+ts_COI_effect-5.png  used on input line 217.
 (pdftex.def)             Requested size: 469.71635pt x 195.71515pt.
 <SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-6.png, id=
-54, 3613.5pt x 1505.625pt>
+59, 3613.5pt x 1505.625pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-6.png
  Graphic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-6.png>
 
 Package pdftex.def Info: SimulationStudy_Genetic_Model_files/figure-latex/resul
-ts_COI_effect-6.png  used on input line 218.
+ts_COI_effect-6.png  used on input line 225.
 (pdftex.def)             Requested size: 469.71635pt x 195.71515pt.
-<SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-1.png, id=55, 36
+<SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-1.png, id=60, 36
 13.5pt x 1505.625pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-1.png Graph
 ic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-1.png>
 Package pdftex.def Info: SimulationStudy_Genetic_Model_files/figure-latex/GenSi
-m_Error-1.png  used on input line 226.
+m_Error-1.png  used on input line 233.
 (pdftex.def)             Requested size: 469.71635pt x 195.71515pt.
-<SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-2.png, id=56, 36
+<SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-2.png, id=61, 36
 13.5pt x 1505.625pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-2.png Graph
 ic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-2.png>
 Package pdftex.def Info: SimulationStudy_Genetic_Model_files/figure-latex/GenSi
-m_Error-2.png  used on input line 234.
+m_Error-2.png  used on input line 241.
 (pdftex.def)             Requested size: 469.71635pt x 195.71515pt.
-<SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-3.png, id=57, 36
+<SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-3.png, id=62, 36
 13.5pt x 1505.625pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-3.png Graph
 ic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-3.png>
 Package pdftex.def Info: SimulationStudy_Genetic_Model_files/figure-latex/GenSi
-m_Error-3.png  used on input line 242.
+m_Error-3.png  used on input line 249.
 (pdftex.def)             Requested size: 469.71635pt x 195.71515pt.
-<SimulationStudy_Genetic_Model_files/figure-latex/GenSim_COI31-1.png, id=58, 36
+<SimulationStudy_Genetic_Model_files/figure-latex/GenSim_COI31-1.png, id=63, 36
 13.5pt x 1505.625pt>
 File: SimulationStudy_Genetic_Model_files/figure-latex/GenSim_COI31-1.png Graph
 ic file (type png)
 <use SimulationStudy_Genetic_Model_files/figure-latex/GenSim_COI31-1.png>
 Package pdftex.def Info: SimulationStudy_Genetic_Model_files/figure-latex/GenSi
-m_COI31-1.png  used on input line 250.
+m_COI31-1.png  used on input line 257.
 (pdftex.def)             Requested size: 469.71635pt x 195.71515pt.
 [2pdfTeX warning (ext4): destination with the same identifier (name{figure.1}) 
 has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
        <./SimulationStudy_Genetic_Model_files/figure-latex/fraction_IBS-1.png>]
 [3pdfTeX warning (ext4): destination with the same identifier (name{figure.2}) 
 has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
        <./SimulationStudy_Genetic_Model_files/figure-latex/fraction_IBS_erroneo
 us-1.png>] [4pdfTeX warning (ext4): destination with the same identifier (name{
 figure.3}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
       pdfTeX warning (ext4): destination with the same identifier (name{figure.
 4}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
        <./SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-1
 .png> <./SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-2.
 png>] [5pdfTeX warning (ext4): destination with the same identifier (name{figur
@@ -806,13 +806,13 @@ e.5}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
       pdfTeX warning (ext4): destination with the same identifier (name{figure.
 6}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
        <./SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-3
 .png> <./SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-4.
 png>] [6pdfTeX warning (ext4): destination with the same identifier (name{figur
@@ -820,13 +820,13 @@ e.7}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
       pdfTeX warning (ext4): destination with the same identifier (name{figure.
 8}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
        <./SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-5
 .png> <./SimulationStudy_Genetic_Model_files/figure-latex/results_COI_effect-6.
 png>] [7pdfTeX warning (ext4): destination with the same identifier (name{figur
@@ -834,13 +834,13 @@ e.9}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
       pdfTeX warning (ext4): destination with the same identifier (name{figure.
 10}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
        <./SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-1.png> 
 <./SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-2.png>] [8pdfT
 eX warning (ext4): destination with the same identifier (name{figure.11}) has b
@@ -848,35 +848,35 @@ een already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
       pdfTeX warning (ext4): destination with the same identifier (name{figure.
 12}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.309 
+l.319 
        <./SimulationStudy_Genetic_Model_files/figure-latex/GenSim_Error-3.png> 
 <./SimulationStudy_Genetic_Model_files/figure-latex/GenSim_COI31-1.png>]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 383.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 396.
 [9]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 383.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 396.
 (./SimulationStudy_Genetic_Model.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 383.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 383.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 396.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 396.
 Package rerunfilecheck Info: File `SimulationStudy_Genetic_Model.out' has not c
 hanged.
-(rerunfilecheck)             Checksum: A41FE1A65905DC3BBBC76B2CF45750EE;1501.
+(rerunfilecheck)             Checksum: B402A965D3979260B091BAF1415EB437;1669.
 
 LaTeX Warning: There were multiply-defined labels.
 
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 383.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 396.
  ) 
 Here is how much of TeX's memory you used:
- 12443 strings out of 492616
- 184975 string characters out of 6129481
- 296965 words of memory out of 5000000
- 16118 multiletter control sequences out of 15000+600000
- 41885 words of font info for 69 fonts, out of 8000000 for 9000
+ 12461 strings out of 492616
+ 185397 string characters out of 6129481
+ 297948 words of memory out of 5000000
+ 16126 multiletter control sequences out of 15000+600000
+ 41968 words of font info for 70 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  32i,5n,38p,992b,346s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2019/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}{/usr/local/
@@ -888,10 +888,10 @@ lm/lmmi10.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/public/lm/lmr10.p
 fb></usr/local/texlive/2019/texmf-dist/fonts/type1/public/lm/lmr17.pfb></usr/lo
 cal/texlive/2019/texmf-dist/fonts/type1/public/lm/lmri10.pfb></usr/local/texliv
 e/2019/texmf-dist/fonts/type1/public/lm/lmsy10.pfb>
-Output written on SimulationStudy_Genetic_Model.pdf (9 pages, 2979402 bytes).
+Output written on SimulationStudy_Genetic_Model.pdf (9 pages, 3047687 bytes).
 PDF statistics:
- 155 PDF objects out of 1000 (max. 8388607)
- 112 compressed objects within 2 object streams
- 30 named destinations out of 1000 (max. 500000)
- 8309 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 170 PDF objects out of 1000 (max. 8388607)
+ 127 compressed objects within 2 object streams
+ 38 named destinations out of 1000 (max. 500000)
+ 8317 words of extra memory for PDF output out of 10000 (max. 10000000)
 
