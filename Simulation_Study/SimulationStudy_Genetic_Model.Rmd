@@ -1,16 +1,16 @@
 ---
 title: "Simulation study for the genetic model"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
     keep_md: yes
+  pdf_document: default
 header-includes: \usepackage{float}
 ---
 
 <!-- Nine individuals from the VHX and BPD datasets were deemed to have data too complex to analyse under the model. They received drugs XXX. All nine individuals appear to have had multiple relapses, based on data visualization, which can be used to rapidly identify clonally compatible phases, where computational methods fail (Figure XXX). -->
 
-In this script, simulated genetic data are generated and plotted, and the results of the genetic model applied to those data are loaded and plotted. The simulated data are analysed under the model in a separate script called Generate_GenSimResults.R. This script relies on BuildSimData.R, a function that for a set of input parameters generates data for a graph over an initial episode and single recurrence. The graph contains a single between-episode edge representing a parasite haploid genotype with specified relationship in stranger, sibling or clone, which is among otherwise unrelated 'stranger' parasites if the input complexity of infections (COIs) exceed one. We chose this type of graph, in which the `noisy' parasite haploid genotypes are unrelated since it is the most diverse thus most computationally challenging. In other words, it is a extreme scenario which is used to bound the performance of the model. Indeed, some of the problems we encounter in this extreme scenario do not apply to the real data. Complex infections in the real data most likely derive from either relapsing or co-inoculated parasites (there is little opportunity for superinfection due to active follow up), and thus are liable to be interrelated, therefore less diverse.  
+In this script, simulated genetic data are generated and plotted, and the results of the genetic model applied to those data are loaded and plotted. The simulated data are analysed under the model in a separate script called Generate_GenSimResults.R. This script relies on BuildSimData.R, a function that for a set of input parameters generates data for a graph over an initial episode and single recurrence. The graph contains a single between-episode edge representing a parasite haploid genotype with specified relationship in stranger, sibling or clone, which is among otherwise unrelated 'stranger' parasites if the input complexity of infections (COIs) exceed one. This type of graph, in which the `noisy' parasite haploid genotypes are unrelated, is the most diverse and thus most computationally challenging. In other words, it is a extreme scenario which is used to bound the performance of the model. Indeed, some of the problems we encounter in this extreme scenario do not apply to the real data. Complex infections in the real data most likely derive from either relapsing or co-inoculated parasites (there is little opportunity for superinfection due to active follow up), and thus are liable to be interrelated, therefore less diverse.  
 
 Outline of this script:  
 
@@ -225,7 +225,7 @@ if(SIM_DATA){
 if(SIM_DATA_ERROR){
   for(cardinality in 13){ # iterate over cardinality of markers
     for(relationship in relationships){ # iterate over simulation scenario 
-    
+      
       Data_summaries = lapply(jobs_cor, function(job){
         
         load(sprintf('SimulationOutputs/Sim_Genetic_Data/MS_Data_Cardinality%s_M%s_COIs%s_%s_Error.RData', 
@@ -330,7 +330,7 @@ Figures \ref{fig: fraction IBS} and \ref{fig: fraction IBS} show the fraction of
 #=============================================================
 par(mfrow = c(3,6))
 for(cardinality in cardinalities){
-for(relationship in c("Sibling", "Stranger")){ 
+  for(relationship in c("Sibling", "Stranger")){ 
     
     load(sprintf('SimulationOutputs/Sim_Genetic_Data/MS_summary_Cardinality%s_%s.RData', cardinality, relationship))
     
@@ -476,7 +476,7 @@ for(relationship in c("Sibling", "Stranger","Clone")){
   for(cardinality in cardinalities){
     
     load(sprintf('SimulationOutputs/Sim_Genetic_Data/MS_summary_Cardinality%s_%s.RData', cardinality, relationship))
-  
+    
     fracs_het_epi1 = sapply(Data_summaries, function(x){x$frac_het_epi1})
     colnames(fracs_het_epi1) = apply(settings[jobs_cor,], 1, function(x) paste(as.numeric(x[1]), x[2], x[3], collapse = ''))
     require(RColorBrewer)
@@ -612,22 +612,35 @@ if(PLOT_RESULTS){
         
         pct_unconverged <- sapply(JOBS_pattern, function(x){
           ind <- thetas_all$setting == x
-         round(mean(grepl('P0', thetas_all[ind,'Phased']))*100)
+          round(mean(grepl('P0', thetas_all[ind,'Phased']))*100)
         })
         
         colnames(X) = settings[JOBS_pattern,'M']
-      
+        
         # Barplot
         Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
                     ylab = '', xlab = '', cex.names=1.5, cex.axis = 1.5,
-                    main = "", names.arg = Ms)
+                    main = "", names.arg = Ms, border = FALSE)
+        
+        # Add individual points
+        for(j in 1:length(JOBS_pattern)){
+          ind <- thetas_all$setting == JOBS_pattern[j]
+          
+          for(i in 1:length(States)){
+            points(x = jitter(rep(Z[i,j], sum(ind)), factor = 1), 
+                   y = thetas_all[ind,States[i]], 
+                   col= "black", pch = ".", cex = 1)  
+            #print(sum(ind))
+          }
+          
+        }
         
         title(main = paste0(letters[which(relationships == relationship)], ") ", relationship_names[relationship]), 
               adj = 0)
         
         mtext(text = 'Probability', side = 2, line=3.5, cex=1, las=3)
         mtext(text = 'Number of markers', side = 1, line=3, cex=1.3)
-
+        
         if(relationship=='Clone'){
           legend(ifelse(BESIDES,'topleft','top'), fill = mycols[1:3], 
                  legend = State_names[States], inset = 0.01,cex = 1.3)
@@ -639,16 +652,26 @@ if(PLOT_RESULTS){
                              strsplit(pattern, split = '_')[[1]][1], 
                              strsplit(pattern, split = '_')[[1]][2]), side = 3, outer = T)
         
-        # Add error bars (+/- sd)
+        # Add error bars (+/- 2sd)
         if(BESIDES){
           rownames(Z) <- States
           for(state in States){
             segments(x0 = Z[state,], x1 = Z[state,], 
-                     y0 = X[state,] - sds[state,], y1 = X[state,] + sds[state,])
+                     y0 = X[state,] - 2*sds[state,], y1 = X[state,] + 2*sds[state,])
           }
         }
-       
-         
+        
+        # Coverage
+        coverages = sapply(1:length(JOBS_pattern), function(j){
+          ind <- thetas_all$setting == JOBS_pattern[j]
+          cov = sapply(States, function(state){
+            lci = X[state,j] - 2*sds[state,j]
+            uci = X[state,j] + 2*sds[state,j]
+            mean(thetas_all[ind, state] > lci & thetas_all[ind, state] < uci)
+          }) 
+        })
+        
+        # print(coverages)
         # # Add pct uncoverged
         # axis(side = 1, at = Z[2,], labels = pct_unconverged, line = 3.5, cex = 0.7, tick = F)
         
@@ -697,16 +720,29 @@ if(PLOT_RESULTS){
       })
       
       pct_unconverged <- sapply(JOBS_pattern, function(x){
-          ind <- thetas_all$setting == x
-         round(mean(grepl('P0', thetas_all[ind,'Phased']))*100)
-        })
+        ind <- thetas_all$setting == x
+        round(mean(grepl('P0', thetas_all[ind,'Phased']))*100)
+      })
       
       colnames(X) = settings[JOBS_pattern,'M']
       
       # Barplot
       Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
                   ylab = '', xlab = '', cex.names=1.5,cex.axis = 1.5,
-                  main = "", names.arg = Ms)
+                  main = "", names.arg = Ms, border = FALSE)
+      
+      # Add individual points
+      for(j in 1:length(JOBS_pattern)){
+        ind <- thetas_all$setting == JOBS_pattern[j]
+        
+        for(i in 1:length(States)){
+          points(x = jitter(rep(Z[i,j], sum(ind)), factor = 1), 
+                 y = thetas_all[ind,States[i]], 
+                 col= "black", pch = ".", cex = 1) 
+          #print(sum(ind))
+        }
+        
+      }
       
       title(main = paste0(letters[which(relationships == relationship)], ") ", relationship_names[relationship]), 
             adj = 0)
@@ -714,7 +750,7 @@ if(PLOT_RESULTS){
       
       mtext(text = 'Probability', side = 2, line=3.5, cex=1, las=3)
       mtext(text = 'Number of markers', side = 1, line=3, cex=1.3)
-
+      
       
       # Title
       mtext(text = sprintf('Marker cardinality: %s \n COI of first and second infection: %s and %s, respectively', 
@@ -727,13 +763,24 @@ if(PLOT_RESULTS){
         rownames(Z) <- States
         for(state in States){
           segments(x0 = Z[state,], x1 = Z[state,], 
-                   y0 = X[state,] - sds[state,], y1 = X[state,] + sds[state,])
+                   y0 = X[state,] - 2*sds[state,], y1 = X[state,] + 2*sds[state,])
         }
       }
       
-       # # Add pct uncoverged
-       #  axis(side = 1, at = Z[2,], labels = pct_unconverged, line = 3.5, cex = 0.7, tick = F)
-       
+      # Coverage
+      coverages = sapply(1:length(JOBS_pattern), function(j){
+        ind <- thetas_all$setting == JOBS_pattern[j]
+        cov = sapply(States, function(state){
+          lci = X[state,j] - 2*sds[state,j]
+          uci = X[state,j] + 2*sds[state,j]
+          mean(thetas_all[ind, state] > lci & thetas_all[ind, state] < uci)
+        }) 
+      })
+      
+      # print(coverages)
+      # # Add pct uncoverged
+      #  axis(side = 1, at = Z[2,], labels = pct_unconverged, line = 3.5, cex = 0.7, tick = F)
+      
       
       cat("\n")
     }
@@ -778,16 +825,29 @@ if(PLOT_RESULTS){
       })
       
       pct_unconverged <- sapply(JOBS_pattern, function(x){
-          ind <- thetas_all$setting == x
-         round(mean(grepl('P0', thetas_all[ind,'Phased']))*100)
-        })
+        ind <- thetas_all$setting == x
+        round(mean(grepl('P0', thetas_all[ind,'Phased']))*100)
+      })
       
       colnames(X) = settings[JOBS_pattern,'M']
       
       # Barplot
       Z = barplot(X, beside = BESIDES, col = mycols[1:3], ylim = c(0,1), 
                   ylab = '', xlab = '', cex.names=1.5,cex.axis = 1.5,
-                  main = " ", names.arg = Ms)
+                  main = " ", names.arg = Ms, border = FALSE)
+      
+      # Add individual points
+      for(j in 1:length(JOBS_pattern)){
+        ind <- thetas_all$setting == JOBS_pattern[j]
+        
+        for(i in 1:length(States)){
+          points(x = jitter(rep(Z[i,j], sum(ind)), factor = 1), 
+                 y = thetas_all[ind,States[i]], 
+                 col= "black", pch = ".", cex = 1)  
+          #print(sum(ind))
+        }
+        
+      }
       
       title(main = paste0(letters[which(relationships == relationship)], ") ", relationship_names[relationship]), 
             adj = 0)
@@ -797,7 +857,7 @@ if(PLOT_RESULTS){
       mtext(text = 'Number of markers', side = 1, line=3, cex=1.3)
       if(relationship=='Clone'){
         legend(ifelse(BESIDES,'topleft','top'), fill = mycols[1:3], 
-               legend = State_names[States], inset = 0.01,cex = 1.3)
+               legend = State_names[States], inset = 0.01, cex = 1.3)
       }
       
       # Title
@@ -811,18 +871,28 @@ if(PLOT_RESULTS){
         rownames(Z) <- States
         for(state in States){
           segments(x0 = Z[state,], x1 = Z[state,], 
-                   y0 = X[state,] - sds[state,], y1 = X[state,] + sds[state,])
+                   y0 = X[state,] - 2*sds[state,], y1 = X[state,] + 2*sds[state,])
         }
       }
       
-       # # Add pct uncoverged
-       #  axis(side = 1, at = Z[2,], labels = pct_unconverged, line = 3.5, cex = 0.7, tick = F)
-       
-      cat(" ")
+      # Coverage
+      coverages = sapply(1:length(JOBS_pattern), function(j){
+        ind <- thetas_all$setting == JOBS_pattern[j]
+        cov = sapply(States, function(state){
+          lci = X[state,j] - 2*sds[state,j]
+          uci = X[state,j] + 2*sds[state,j]
+          mean(thetas_all[ind, state] > lci & thetas_all[ind, state] < uci)
+        }) 
+      })
+      
+      # print(coverages)
+      # # Add pct uncoverged
+      #  axis(side = 1, at = Z[2,], labels = pct_unconverged, line = 3.5, cex = 0.7, tick = F)
+      
+      cat("\n")
     }
   }
 }
-
 ```
 
 
