@@ -251,6 +251,10 @@ output:
 ```
 
 ```
+## Loading required package: usethis
+```
+
+```
 ## Loading required package: truncnorm
 ```
 
@@ -1590,7 +1594,7 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap),
      cex=1,panel.first = grid(),
      ylab='',yaxt='n',
      xlab='', xlim=c(0,360))
-mtext(text='A: Relapse', side = 3, adj = 0, line=0.5)
+mtext(text='a (Relapse)', side = 3, adj = 0, line=0.5)
 mtext(text = 'Probability',side = 2,line=3.5,cex=.8,las=3)
 axis(side=2, at = -2:0, c(expression(10^-2, 10^-1),1))
 axis(1, at = seq(0, 360, by=60), labels = seq(0, 360, by=60)/30)
@@ -1607,7 +1611,7 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReCrud),
      cex=1,panel.first = grid(),
      ylab='',yaxt='n',
      xlab='', xlim=c(0,360), ylim= c(min(log10(mean_labels_ReCrud)),0))
-mtext(text='B: Recrudescence', side = 3, adj = 0, line=0.5)
+mtext(text='b (Recrudescence)', side = 3, adj = 0, line=0.5)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.9)
 mtext(text = 'Probability',side = 2,line=3.5,cex=.8,las=3)
 axis(1, at = seq(0,12,by=2)*30, labels = seq(0,12,by=2))
@@ -1625,7 +1629,7 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfecti
      xlab='', xlim=c(0,360))
 mtext(text = 'Probability',side = 2, las=3,line=3.5,cex=.8)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.9)
-mtext(text='C: Reinfection', side = 3, adj = 0, line=0.5)
+mtext(text='c (Reinfection)', side = 3, adj = 0, line=0.5)
 axis(1, at = seq(0, 360, by=60), labels = seq(0, 360, by=60)/30)
 axis(side=2, at = c(-3,-2,-1,0), c(expression(10^-3, 10^-2, 10^-1),1))
 axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
@@ -1651,7 +1655,7 @@ plot(t_points, PMQ_labels[,1], lwd=2, type='l', ylim = c(0,1),
      xlab='', ylab='Recurrence state probability',yaxt='n',xaxt='n',lty=LinesTypes[1])
 lines(t_points, PMQ_labels[,2], lwd=2,col=drug_cols3['CHQ/PMQ'], lty=LinesTypes[2])
 lines(t_points, PMQ_labels[,3], lwd=2,col=drug_cols3['CHQ/PMQ'], lty=LinesTypes[3])
-mtext(text='D', side = 3, adj = 0, line=0.5)
+mtext(text='d', side = 3, adj = 0, line=0.5)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.65)
 axis(2, at = c(0,.25,.5,.75,1))
 axis(1, at = c(0,3,6,9,12))
@@ -1666,6 +1670,7 @@ AS_labels = Label_probability(drug = 'AS',t = t_points*30, thetas = thetas_mod2)
 plot(t_points, CQ_labels[,1], lwd=1, type='l', ylim = c(0,1),
      main = 'No PMQ', col=drug_cols3['CHQ'], xlab='',lty=LinesTypes[1],
      panel.first = grid(), ylab = 'Recurrence state probability',xaxt='n',yaxt='n')
+mtext(text='e', side = 3, adj = 0, line=0.5)
 axis(2, at = c(0,.25,.5,.75,1))
 axis(1, at = c(0,3,6,9,12))
 lines(t_points, CQ_labels[,2], lwd=1,col=drug_cols3['CHQ'],lty=LinesTypes[2])
@@ -1763,6 +1768,7 @@ plot(log10(Combined_Time_Data$Relapse_mean_theta[ind]),
      type='p',yaxt='n', main ='No PMQ',pch=20,cex=.3,
      ylab = 'Probability of relapse', xlab = '',panel.first = grid(),
      col = drug_cols3[Combined_Time_Data$arm_num[ind]], xaxt='n')
+mtext(text='a', side = 3, adj = 0, line=0.5)
 Nrecs = length(Combined_Time_Data$Relapse_mean_theta[ind])
 polygon(x = c(0,Nrecs,Nrecs,0),
         y = log10(c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper)),
@@ -1782,6 +1788,7 @@ plot(log10(Combined_Time_Data$Relapse_mean_theta[ind]),
      type='p',cex=.3, yaxt='n', xlab = '',col=drug_cols2[3],
      ylab = 'Probability of relapse',panel.first = grid(),
      main = 'PMQ+', pch=20)
+mtext(text='b', side = 3, adj = 0, line=0.5)
 Nrecs = length(Combined_Time_Data$Relapse_mean_theta[ind])
 polygon(x = c(0,Nrecs,Nrecs,0),
         y = log10(c(Epsilon_lower,Epsilon_lower,Epsilon_upper,Epsilon_upper)),
@@ -1820,6 +1827,7 @@ plot(df$time,df$uncertainty,  xaxt='n',
      col = df$col,pch=20, xlab='', main = '')
 axis(1, at = seq(0,360, by = 60), labels = seq(0,360,by=60)/30)
 mtext(text = 'Months from last episode',side = 1, line = 3)
+mtext(text='c', side = 3, adj = 0, line=0.5)
 
 # add spline fits to show trends
 

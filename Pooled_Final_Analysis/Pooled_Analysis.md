@@ -1475,7 +1475,7 @@ Results for all those genotyped who did receive primaquine (VHX and BPD studies 
 ## In primaquine treated individuals, the weighted average of reinfections is 83 (79.2-85.6), for 121 recurrences
 ```
 
-Results for all those genotyped who did receive primaquine in the VHX study (unknown denominator)
+Results for all those genotyped who did receive primaquine in the VHX study
 
 ```
 ## In primaquine treated individuals (VHX), the weighted average of relapses is 10.8 (8.8-13.3), for 34 recurrences
@@ -1489,7 +1489,7 @@ Results for all those genotyped who did receive primaquine in the VHX study (unk
 ## In primaquine treated individuals (VHX), the weighted average of reinfections is 89.2 (86.7-91.2), for 34 recurrences
 ```
 
-Results for all those genotyped who did receive primaquine in the BPD study (known denominator)
+Results for all those genotyped who did receive primaquine in the BPD study
 
 ```
 ## In primaquine treated individuals (BPD), the weighted average of relapses is 19.4 (16.6-23.7), for 87 recurrences
@@ -2221,6 +2221,18 @@ writeLines(sprintf('The primaquine failure rate, based on genetic model only, in
 
 ```
 ## The primaquine failure rate, based on genetic model only, in the 655 individuals is 4.79% (4.68-4.88) over the course of 522 years total follow-up.
+```
+
+```r
+writeLines(sprintf('Observed BPD recurrences estimated to be failures, based on genetic model only, in the %s individuals is %s%% (%s-%s).',
+                   nrow(BPD_data), 
+                   round(sum(thetas_9MS_Tagnostic$`L50%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),1),
+                   round(sum(thetas_9MS_Tagnostic$`L2.5%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),1),
+                   round(sum(thetas_9MS_Tagnostic$`L97.5%`[grep('BPD',thetas_9MS_Tagnostic$Episode_Identifier)]),1)))
+```
+
+```
+## Observed BPD recurrences estimated to be failures, based on genetic model only, in the 655 individuals is 29.9% (29.1-30.9).
 ```
 
 

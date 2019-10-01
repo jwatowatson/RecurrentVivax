@@ -1433,7 +1433,7 @@ axis(1, at = 30*(0:12), labels = 0:12)
 ```{r CompleteDataPlot, fig.height=7, fig.width=7, echo=FALSE}
 if(CREATE_PLOTS){
   
-  par(las=1, mfcol = c(2,1), mar=c(4,4,1,1), bty='n', family = 'serif')
+  par(las=1, mfcol = c(2,1), mar=c(4,4,2,1), bty='n', family = 'serif')
   MS_final = arrange(MS_final, desc(L_median))
   
   plot(NULL,
@@ -1442,6 +1442,7 @@ if(CREATE_PLOTS){
        panel.first = grid(),  
        yaxt='n', ylab='', xlab = '')
   mtext(text = 'Recurrence rank',side = 1, line = 2)
+  mtext(text='a', side = 3, adj = 0, line=0.5)
   axis(2, at = c(0,.5,1))
   title(ylab = 'Relapse posterior probability', line = 3)
   polygon(x = c(-100,nrow(MS_final)+100,nrow(MS_final)+100,-100),
@@ -1471,6 +1472,7 @@ if(CREATE_PLOTS){
        ylim = c(0,1),
        panel.first = grid(), 
        xlab = '',ylab = '',yaxt='n', xaxt='n')
+  mtext(text='b', side = 3, adj = 0, line=0.5)
   axis(2, at = c(0,.5,1))
   axis(1, at = seq(0, 360, by =60), labels = seq(0, 360, by=60)/30)
   title(xlab = '', ylab = 'Relapse posterior probability', line = 3)
@@ -1650,7 +1652,7 @@ if(RUN_MODELS_FALSE_POSITIVE){
 writeLines(sprintf('The false-positive discovery rate of the genetic model is estimated as %s percent. 
                    \nThis is based on %s pairwise comparisons',
                    round(100*sum((Inflated_Results$L+Inflated_Results$C) > Epsilon_upper,
-                                  na.rm = T)/sum(!is.na(Inflated_Results$L)),1),
+                                 na.rm = T)/sum(!is.na(Inflated_Results$L)),1),
                    nrow(Inflated_Results)))
 
 writeLines(sprintf('The null data are more diverse than the real data. As such %s percent were probablistically phased without convergence', round(sum(grepl('P0', Inflated_Results$Phased))/nrow(Inflated_Results)*100)))  
