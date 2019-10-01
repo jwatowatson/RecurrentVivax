@@ -674,9 +674,9 @@ State_names = list(L='Relapse',I='Reinfection',C='Recrudescence')
 if(PLOT_RESULTS){
   
   mycols = brewer.pal(length(State_names), 'Dark2')
-  relationship_names = c('Clone' = 'Clonal scenario', 
-                         'Sibling' = 'Sibling scenario',
-                         'Stranger' = 'Stranger scenario')
+  relationship_names = c('Clone' = 'clonal scenario', 
+                         'Sibling' = 'sibling scenario',
+                         'Stranger' = 'stranger scenario')
   
   par(mfrow = c(1,3), family = 'serif', pty = 's', oma = c(0,0,3,0), las =1, mar=c(4,5,4,1))
   BESIDES = T # Allows visualisation of error by stacking bars side by side
@@ -762,9 +762,9 @@ State_names = list(L='Relapse',I='Reinfection',C='Recrudescence')
 if(PLOT_RESULTS){
   
   mycols = brewer.pal(length(State_names), 'Dark2')
-  relationship_names = c('Clone' = 'Clonal scenario', 
-                         'Sibling' = 'Sibling scenario',
-                         'Stranger' = 'Stranger scenario')
+  relationship_names = c('Clone' = 'clonal scenario', 
+                         'Sibling' = 'sibling scenario',
+                         'Stranger' = 'stranger scenario')
   
   par(mfrow = c(1,3), family = 'serif', pty = 's', oma = c(0,0,3,0), las =1, mar=c(4,5,4,1))
   BESIDES = T # Allows visualisation of error by stacking bars side by side
