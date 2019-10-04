@@ -1580,7 +1580,7 @@ Label_probability = function(drug,t, thetas){
 ```r
 labels2 = extract(mod2_Fit, 'prob_labels')$prob_labels
 
-layout(mat = matrix(data = c(1,1,2,2,1,1,2,2,3,3,4,5,3,3,4,5),byrow = T,nrow = 4))
+layout(mat = matrix(data = c(1,1,2,2,1,1,2,2,3,3,4,4,3,3,4,4),byrow = T,nrow = 4))
 par(las=1,bty='n', cex.lab=1.3, cex.axis=1.3, mar=c(4,5,3,1), family = 'serif')
 
 #****************************** Relapse **********************************
@@ -1594,7 +1594,7 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReLap),
      cex=1,panel.first = grid(),
      ylab='',yaxt='n',
      xlab='', xlim=c(0,360))
-mtext(text='a (Relapse)', side = 3, adj = 0, line=0.5)
+mtext(text='a) relapse', side = 3, adj = 0, line=0.5)
 mtext(text = 'Probability',side = 2,line=3.5,cex=.8,las=3)
 axis(side=2, at = -2:0, c(expression(10^-2, 10^-1),1))
 axis(1, at = seq(0, 360, by=60), labels = seq(0, 360, by=60)/30)
@@ -1611,7 +1611,7 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_ReCrud),
      cex=1,panel.first = grid(),
      ylab='',yaxt='n',
      xlab='', xlim=c(0,360), ylim= c(min(log10(mean_labels_ReCrud)),0))
-mtext(text='b (Recrudescence)', side = 3, adj = 0, line=0.5)
+mtext(text='b) recrudescence', side = 3, adj = 0, line=0.5)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.9)
 mtext(text = 'Probability',side = 2,line=3.5,cex=.8,las=3)
 axis(1, at = seq(0,12,by=2)*30, labels = seq(0,12,by=2))
@@ -1629,13 +1629,13 @@ plot(Combined_Time_Data$Time_to_event[ind_plotting], log10(mean_labels_Reinfecti
      xlab='', xlim=c(0,360))
 mtext(text = 'Probability',side = 2, las=3,line=3.5,cex=.8)
 mtext(text = 'Months from last episode',side = 1,line=3,cex=.9)
-mtext(text='c (Reinfection)', side = 3, adj = 0, line=0.5)
+mtext(text='c) reinfection', side = 3, adj = 0, line=0.5)
 axis(1, at = seq(0, 360, by=60), labels = seq(0, 360, by=60)/30)
 axis(side=2, at = c(-3,-2,-1,0), c(expression(10^-3, 10^-2, 10^-1),1))
 axis(2, at = log10(seq(.1,1,by=.1)), labels = NA)
 axis(2, at = log10(seq(.01,.1,by=.01)), labels = NA)
 axis(2, at = log10(seq(.001,.01,by=.001)), labels = NA)
-legend('bottomright',family('serif'), inset = 0.01, cex=1.35,
+legend('bottomright',family('serif'), inset = 0.03, cex=1.35,
        legend = c('Artesunate','Chloroquine','Primaquine+'),lty=1,
        col=drug_cols3,pch = 20, bty='o',lwd=2,bg='white')
 
@@ -1645,45 +1645,47 @@ Recurrence_cols_PMQ = brewer.pal(4,'Greens')[2:4]
 Recurrence_cols_noPMQ = brewer.pal(4,'Oranges')[2:4]
 
 LinesTypes = c(1,3,2)
-par(cex.lab=.7, cex.axis=.75)
+#par(cex.lab=.7, cex.axis=.75)
 t_points = seq(0,360,by=1)/30
 
 # Behaviour for PMQ
 PMQ_labels = Label_probability(drug = 'PMQ+',t = t_points*30, thetas = thetas_mod2)
 plot(t_points, PMQ_labels[,1], lwd=2, type='l', ylim = c(0,1),
-     main = 'PMQ+', col=drug_cols3['CHQ/PMQ'], panel.first = grid(), 
-     xlab='', ylab='Recurrence state probability',yaxt='n',xaxt='n',lty=LinesTypes[1])
+     main = '', col=drug_cols3['CHQ/PMQ'], panel.first = grid(), 
+     xlab='', ylab='',yaxt='n',xaxt='n',lty=LinesTypes[1])
+mtext(text = 'Probability',side = 2, las=3,line=3.5,cex=.8)
+mtext(text='d) all recurrence states', side = 3, adj = 0, line=0.5)
+mtext(text = 'Months from last episode',side = 1,line=3,cex=.9)
+
 lines(t_points, PMQ_labels[,2], lwd=2,col=drug_cols3['CHQ/PMQ'], lty=LinesTypes[2])
 lines(t_points, PMQ_labels[,3], lwd=2,col=drug_cols3['CHQ/PMQ'], lty=LinesTypes[3])
-mtext(text='d', side = 3, adj = 0, line=0.5)
-mtext(text = 'Months from last episode',side = 1,line=3,cex=.65)
+
 axis(2, at = c(0,.25,.5,.75,1))
-axis(1, at = c(0,3,6,9,12))
+axis(1, at = seq(0, 360, by=60)/30)
 
 legend('right',inset = 0.01,col='black',pch = NA, bty='o',
        legend = c('Relapse','Recrudescence', 'Reinfection'),
-       lwd=1,bg='white',lty=LinesTypes, cex=.6)
+       lwd=1,bg='white',lty=LinesTypes, cex=1)
 
 # Behaviour for CQ and AS
 CQ_labels = Label_probability(drug = 'CHQ',t = t_points*30, thetas = thetas_mod2)
 AS_labels = Label_probability(drug = 'AS',t = t_points*30, thetas = thetas_mod2)
-plot(t_points, CQ_labels[,1], lwd=1, type='l', ylim = c(0,1),
-     main = 'No PMQ', col=drug_cols3['CHQ'], xlab='',lty=LinesTypes[1],
-     panel.first = grid(), ylab = 'Recurrence state probability',xaxt='n',yaxt='n')
-mtext(text='e', side = 3, adj = 0, line=0.5)
-axis(2, at = c(0,.25,.5,.75,1))
-axis(1, at = c(0,3,6,9,12))
+lines(t_points, CQ_labels[,1], lwd=1, 
+      col=drug_cols3['CHQ'], lty=LinesTypes[1])
+
 lines(t_points, CQ_labels[,2], lwd=1,col=drug_cols3['CHQ'],lty=LinesTypes[2])
 lines(t_points, CQ_labels[,3], lwd=1,col=drug_cols3['CHQ'],lty=LinesTypes[3])
 
 lines(t_points, AS_labels[,1], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[1])
 lines(t_points, AS_labels[,2], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[2])
 lines(t_points, AS_labels[,3], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[3])
-
-mtext(text = 'Months from last episode',side = 1,line=3,cex=.65)
 ```
 
 ![](TimingModelStan_files/figure-html/Model2FinalPlot-1.png)<!-- -->
+
+```r
+#mtext(text = 'Months from last episode',side = 1,line=3,cex=.65)
+```
 
 
 
