@@ -48,9 +48,9 @@ In this script, simulated genetic data are generated and plotted, and the result
 Figures \ref{fig: fraction IBS} and \ref{fig: fraction IBS} show the fraction of markers at which evidence of IBS is detected for non-erroneous and erroneous data, respectively. When the recurrent episode contains a clone of a parasite haploid genotype in the initial episode and the data are non-erroneous (as they are in Figure \ref{fig: fraction IBS}), the fraction of markers at which evidence of IBS is detected is always one. We thus do not plot the clonal scenario for non-erroneous data. On average, the mean fractions (vertical colored bars) range from approximately 0.1 under the stranger scenario with high cardinality (erroneous and not), to above 0.6 under the sibling scenario with lower cardinality (non-erroneous) and above 0.6 under the clonal scenario with higher cardinality (erroneous). 
 
 
-![\label{fig: fraction IBS}The fraction of markers at which evidence of IBS is detected when the recurrent episode is compared with the initial episode: non-erroneous data. Vertical coloured bars denote mean fractions. Different colours represent results for different numbers of markers, $m$.](SimulationStudy_Genetic_Model_files/figure-html/fraction_IBS-1.png)
+![\label{fig: fraction IBS}The fraction of markers at which evidence of IBS is detected when the recurrent episode is compared with the initial episode: non-erroneous data. Vertical coloured bars denote mean fractions. Different colours represent results for different numbers of markers, $m$.](SimulationStudy_Genetic_Model_files/figure-html/fraction_IBS-1.svg)
 
-![\label{fig: fraction IBS erroneous}The fraction of markers at which evidence of IBS is detected when the recurrent episode is compared with the initial episode: erroneous data. Vertical coloured bars denote mean fractions. Different colours represent results for different numbers of markers, $m$.](SimulationStudy_Genetic_Model_files/figure-html/fraction_IBS_erroneous-1.png)
+![\label{fig: fraction IBS erroneous}The fraction of markers at which evidence of IBS is detected when the recurrent episode is compared with the initial episode: erroneous data. Vertical coloured bars denote mean fractions. Different colours represent results for different numbers of markers, $m$.](SimulationStudy_Genetic_Model_files/figure-html/fraction_IBS_erroneous-1.svg)
 
 
 
@@ -66,36 +66,36 @@ Figures \ref{fig: fraction IBS} and \ref{fig: fraction IBS} show the fraction of
 In the following Figures 3 to 12, each comprising three plots, each plot corresponds to a different relationship simulation scenario. Colored bars show the median of 250 posterior probabilities (dots) with error bars extending $\pm$ two standard deviation. The prior probability of each recurrence state throughout was 1/3. 
 
 
-![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-1.png)
+![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-1.svg)
 
 
-![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-2.png)
+![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-2.svg)
 
 
-![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-3.png)
+![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-3.svg)
 
 
-![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-4.png)
+![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-4.svg)
 
 
-![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-5.png)
+![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-5.svg)
 
 
-![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-6.png)
-
-
-
-![\label{fig: error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario assuming an extremely high probability of error.](SimulationStudy_Genetic_Model_files/figure-html/GenSim_Error-1.png)
-
-
-![\label{fig: error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario assuming an extremely high probability of error.](SimulationStudy_Genetic_Model_files/figure-html/GenSim_Error-2.png)
-
-
-![\label{fig: error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario assuming an extremely high probability of error.](SimulationStudy_Genetic_Model_files/figure-html/GenSim_Error-3.png)
+![\label{fig: no-error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario without error.](SimulationStudy_Genetic_Model_files/figure-html/results_COI_effect-6.svg)
 
 
 
-![\label{fig: COI31}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario when the COI of the initial infection is three and the COI of the recurrent infection is one.](SimulationStudy_Genetic_Model_files/figure-html/GenSim_COI31-1.png)
+![\label{fig: error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario assuming an extremely high probability of error.](SimulationStudy_Genetic_Model_files/figure-html/GenSim_Error-1.svg)
+
+
+![\label{fig: error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario assuming an extremely high probability of error.](SimulationStudy_Genetic_Model_files/figure-html/GenSim_Error-2.svg)
+
+
+![\label{fig: error}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario assuming an extremely high probability of error.](SimulationStudy_Genetic_Model_files/figure-html/GenSim_Error-3.svg)
+
+
+
+![\label{fig: COI31}The probability of recurrent states as a function of the number of markers typed in a sibling, stranger and clonal scenario when the COI of the initial infection is three and the COI of the recurrent infection is one.](SimulationStudy_Genetic_Model_files/figure-html/GenSim_COI31-1.svg)
 
 
 ## Inference as a function of the number of markers typed discounting error

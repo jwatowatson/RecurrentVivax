@@ -5,6 +5,7 @@ output:
   html_document:
     df_print: paged
     keep_md: yes
+  pdf_document: default
 ---
 
 # Preamble
@@ -1328,7 +1329,7 @@ if(any(grepl('P0', MS_final$Phased))){
   writeLines('Zero accounts of unconverged probablistic phasing')}
 ```
 
-```{r CoatneyStylePLot, echo=FALSE}
+```{r CoatneyStylePLot, echo=FALSE, dev="svg"}
 if(CREATE_PLOTS){
   
   ## Time series data colored by genetic STATE: classification
@@ -1430,7 +1431,7 @@ axis(1, at = 30*(0:12), labels = 0:12)
 ```
 
 
-```{r CompleteDataPlot, fig.height=7, fig.width=7, echo=FALSE}
+```{r CompleteDataPlot, fig.height=7, fig.width=7, echo=FALSE, dev = 'svg'}
 if(CREATE_PLOTS){
   
   par(las=1, mfcol = c(2,1), mar=c(4,4,2,1), bty='n', family = 'serif')

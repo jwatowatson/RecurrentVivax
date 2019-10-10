@@ -1,10 +1,10 @@
 ---
 title: "Simulation study for the genetic model"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
     keep_md: yes
+  pdf_document: default
 header-includes: \usepackage{float}
 ---
 
@@ -25,7 +25,7 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
                       echo = TRUE, include = TRUE, 
                       fig.width = 7, fig.height = 7,
                       fig.pos = 'H', 
-                      dev = 'png', dpi = 300)
+                      dev = 'svg', dpi = 300)
 
 rm(list = ls())
 load('../RData/RPackages_List.RData')

@@ -1108,7 +1108,7 @@ Label_probability = function(drug,t, thetas){
 ```
 
 
-```{r Model2FinalPlot}
+```{r Model2FinalPlot, dev = 'svg'}
 labels2 = extract(mod2_Fit, 'prob_labels')$prob_labels
 
 layout(mat = matrix(data = c(1,1,2,2,1,1,2,2,3,3,4,4,3,3,4,4),byrow = T,nrow = 4))
@@ -1276,7 +1276,7 @@ save(Post_samples_matrix, file = '../RData/TimingModel/MOD2_Posterior_samples.RD
 
 
 
-```{r UncertaintyOutputsModel2}
+```{r UncertaintyOutputsModel2, dev = 'svg'}
 ## Threshold value for classification
 Epsilon_upper = 0.7
 Epsilon_lower = 0.3

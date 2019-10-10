@@ -5,6 +5,7 @@ output:
   html_document:
     df_print: paged
     keep_md: yes
+  pdf_document: default
 ---
 
 # Preamble
@@ -1340,7 +1341,7 @@ round(100*table(X0$trial_arm_partner)[names(R)]/R)[treatment_order]
 ## Zero accounts of unconverged probablistic phasing
 ```
 
-![](Pooled_Analysis_files/figure-html/CoatneyStylePLot-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/CoatneyStylePLot-1.svg)<!-- -->
 
 ```
 ## The Coatney style plot is showing 487 recurrences in 208 individuals
@@ -1390,7 +1391,7 @@ axis(1, at = 30*(0:12), labels = 0:12)
 ![](Pooled_Analysis_files/figure-html/histogram_representation_classification-1.png)<!-- -->
 
 
-![](Pooled_Analysis_files/figure-html/CompleteDataPlot-1.png)<!-- -->
+![](Pooled_Analysis_files/figure-html/CompleteDataPlot-1.svg)<!-- -->
 
 Individuals who appear to relapse very late (more than 300 days after last episode):
 
@@ -1404,8 +1405,8 @@ writeLines(sprintf('The episode ids of interest are: %s',
 ```
 
 ```
-## The episode ids of interest are: VHX_235_3
 ## The episode ids of interest are: BPD_27_2
+## The episode ids of interest are: VHX_235_3
 ```
 
 ```r
@@ -1540,13 +1541,13 @@ if(RUN_MODELS_FALSE_POSITIVE){
 
 
 ```
-## The false-positive discovery rate of the genetic model is estimated as 2.5 percent. 
+## The false-positive discovery rate of the genetic model is estimated as 2.3 percent. 
 ##                    
-## This is based on 249540 pairwise comparisons
+## This is based on 247262 pairwise comparisons
 ```
 
 ```
-## The null data are more diverse than the real data. As such 3 percent were probablistically phased without convergence
+## The null data are more diverse than the real data. As such 1 percent were probablistically phased without convergence
 ```
 
 
@@ -2330,7 +2331,7 @@ toc()
 ```
 
 ```
-## 14.881 sec elapsed
+## 126.966 sec elapsed
 ```
 
 

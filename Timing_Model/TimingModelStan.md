@@ -1681,7 +1681,7 @@ lines(t_points, AS_labels[,2], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[2])
 lines(t_points, AS_labels[,3], lwd=1,col=drug_cols3['AS'],lty=LinesTypes[3])
 ```
 
-![](TimingModelStan_files/figure-html/Model2FinalPlot-1.png)<!-- -->
+![](TimingModelStan_files/figure-html/Model2FinalPlot-1.svg)<!-- -->
 
 ```r
 #mtext(text = 'Months from last episode',side = 1,line=3,cex=.65)
@@ -1847,7 +1847,7 @@ legend('topleft',legend = c('Artesunate',
        family('serif'), inset = 0.03, cex=0.9)
 ```
 
-![](TimingModelStan_files/figure-html/UncertaintyOutputsModel2-1.png)<!-- -->
+![](TimingModelStan_files/figure-html/UncertaintyOutputsModel2-1.svg)<!-- -->
 
 Some rough calculations to make sure we're not completely off track with the model output
 
@@ -1957,5 +1957,5 @@ toc()
 ```
 
 ```
-## 83.479 sec elapsed
+## 180.099 sec elapsed
 ```
