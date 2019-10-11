@@ -1341,6 +1341,7 @@ if(CREATE_PLOTS){
        xlim = c(0,370), 
        ylim = c(1,length(ids)),
        xaxt='n', yaxt='n')
+  title(ylab = "Individuals", line = -1)
   mtext(text = 'Months from start of study', side = 1, line=2.5, cex=1)
   axis(1, at = seq(0,370, by=60), labels = seq(0,370, by=60)/30, cex.axis=1)
   

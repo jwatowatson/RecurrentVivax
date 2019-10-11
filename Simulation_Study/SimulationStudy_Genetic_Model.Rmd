@@ -34,7 +34,7 @@ if(length(new.pkg) > 0){ # Install using .R script
   stop('Please run the script Install_and_load_required_packages.R before returning to this script. Thanks.')}else{
     sapply(pkgs, require, character.only = TRUE) # Load all packages
   }
-
+# require(vioplot)
 ```
 
 ```{r, echo=FALSE}
@@ -631,11 +631,19 @@ if(PLOT_RESULTS){
           for(i in 1:length(States)){
             points(x = jitter(rep(Z[i,j], sum(ind)), factor = 1), 
                    y = thetas_all[ind,States[i]], 
-                   col= "black", pch = ".", cex = 1)  
+                   col= "black", pch = ".", cex = 1) 
             #print(sum(ind))
           }
-          
         }
+        
+        # for(j in 1:length(JOBS_pattern)){
+        #   ind <- thetas_all$setting == JOBS_pattern[j]
+        # for(i in 1:length(States)){
+        #   if(any(thetas_all[ind,States[i]] > 0) & length(unique(thetas_all[ind,States[i]]))>4){
+        #     x = vioplot(x = thetas_all[ind,States[i]], at = Z[i,j], add = TRUE, 
+        #                 col = adjustcolor('black', alpha.f = 0.1))
+        #   }
+        # }}
         
         title(main = paste0(letters[which(relationships == relationship)], ") ", relationship_names[relationship]), 
               adj = 0)
