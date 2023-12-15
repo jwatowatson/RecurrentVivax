@@ -1,9 +1,12 @@
 #=======================================================================
-# This function take as input an MS data frame and plots accordingly
-# The order of the markers in the input is preservered in the plot
-# The numbers of alleles, thus ranks and colours used to denote the alleles are 
-# specific to the input. As such, when plotting different subsets of a master data set, 
-# numbers, ranks and colours will change.  
+# This function take as input an MS data frame and plots accordingly The order
+# of the markers in the input is preserved in the plot The numbers of alleles,
+# thus ranks and colours used to denote the alleles are specific to the input.
+# As such, when plotting different subsets of a master data set, numbers, ranks
+# and colours will change.
+#
+# Idea for future - set allele legend area proportional to frequency
+#
 # Author: Aimee Taylor 
 #=======================================================================
 
@@ -66,7 +69,8 @@ ColorPlot_MSdata = function(MS_data, surpress_messages = FALSE){
   }
   
   # Create an index to visually group individuals
-  IDs = as.numeric(as.factor(MS_data$ID[!duplicated(MS_data$Episode_Identifier)]))
+  IDs_factor <- as.factor(MS_data$ID[!duplicated(MS_data$Episode_Identifier)])
+  IDs = as.numeric(IDs_factor)
   #as.numeric(do.call(rbind, strsplit(episodes_uniq, split = '_'))[,2,drop = F])
   ID_01 = c(0, rep(NA, no_episodes-1))
   for(i in 2:no_episodes){
@@ -115,10 +119,10 @@ ColorPlot_MSdata = function(MS_data, surpress_messages = FALSE){
   }
   axis(at = xaxis_at, side = 1, line = -0.5, labels = markers, cex.axis = 0.5, tick = F)
   axis(at = xaxis_at, side = 1, line = 0.5, labels = paste('(', max_ranks, ')', sep = ''), cex.axis = 0.5, tick = F)
-  axis(side = 2, at = ID_midpoints, labels = unique(IDs), cex.axis = 0.5, las = 2, lwd.ticks = 0.25)
+  axis(side = 2, at = ID_midpoints, labels = levels(IDs_factor)[unique(IDs)], cex.axis = 0.5, las = 2, lwd.ticks = 0.25, lwd = 0)
   axis(side = 1, at = c(0, tail(xaxis, 1)), line = -0.5, labels = rep('Grouping', 2), las = 2, cex.axis = 0.5, tick = F)
   title(ylab = bquote(.(no_episodes)~'episodes (one row per episode, grouped by patient ID)'), 
-        line = 2, cex.lab = 0.5)
+        line = 3.3, cex.lab = 0.5)
   title(xlab = 'Microsatellite (number of distinct alleles)', line = 3, cex.lab = 0.5)
   
   # Add legend
